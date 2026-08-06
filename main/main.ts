@@ -1,10 +1,32 @@
 import { app, BrowserWindow, dialog, ipcMain, protocol, net } from 'electron';
 import * as path from 'path';
-import { pathToFileURL } from 'url';
+import * as fs from 'fs';
+import { Readable } from 'stream';
 import { initDb, getDb } from './db';
 import { startWatching } from './scanner';
 
 const isDev = process.env.NODE_ENV === 'development';
+
+// MIME type lookup for audio and image files
+function getMimeType(filePath: string): string {
+  const ext = path.extname(filePath).toLowerCase();
+  const mimeMap: Record<string, string> = {
+    '.mp3': 'audio/mpeg',
+    '.flac': 'audio/flac',
+    '.wav': 'audio/wav',
+    '.m4a': 'audio/mp4',
+    '.ogg': 'audio/ogg',
+    '.aac': 'audio/aac',
+    '.wma': 'audio/x-ms-wma',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.png': 'image/png',
+    '.webp': 'image/webp',
+    '.gif': 'image/gif',
+    '.bmp': 'image/bmp',
+  };
+  return mimeMap[ext] || 'application/octet-stream';
+}
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -49,10 +71,9 @@ function createWindow() {
 
 app.whenReady().then(() => {
   // ── local:// protocol handler ──────────────────────────────────────
+  // Serves local files with FULL Range request support for audio seeking.
   // The renderer encodes file paths as base64 in a query parameter:
   //   local://file?p=<base64-encoded-absolute-path>
-  // This completely avoids URL authority/path parsing issues with
-  // Windows drive letters (C:) and special characters (spaces, apostrophes).
   protocol.handle('local', (request) => {
     try {
       const url = new URL(request.url);
@@ -65,13 +86,53 @@ app.whenReady().then(() => {
 
       // Decode the base64-encoded absolute file path
       const filePath = Buffer.from(base64Path, 'base64').toString('utf-8');
-      const fileUrl = pathToFileURL(filePath).toString();
 
-      console.log('[local://] Serving:', filePath);
+      if (!fs.existsSync(filePath)) {
+        console.error('[local://] File not found:', filePath);
+        return new Response('File not found', { status: 404 });
+      }
 
-      // bypassCustomProtocolHandlers delegates to Chromium's native file:// handler
-      // which supports HTTP Range headers required for audio seeking
-      return net.fetch(fileUrl, { bypassCustomProtocolHandlers: true });
+      const stat = fs.statSync(filePath);
+      const fileSize = stat.size;
+      const mimeType = getMimeType(filePath);
+      const rangeHeader = request.headers.get('Range');
+
+      if (rangeHeader) {
+        // ── Range request (audio seeking) ──
+        // Parse "bytes=START-END" or "bytes=START-"
+        const match = rangeHeader.match(/bytes=(\d+)-(\d*)/);
+        if (match) {
+          const start = parseInt(match[1], 10);
+          const end = match[2] ? parseInt(match[2], 10) : fileSize - 1;
+          const chunkSize = end - start + 1;
+
+          const nodeStream = fs.createReadStream(filePath, { start, end });
+          const webStream = Readable.toWeb(nodeStream) as ReadableStream;
+
+          return new Response(webStream, {
+            status: 206,
+            headers: {
+              'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+              'Accept-Ranges': 'bytes',
+              'Content-Length': String(chunkSize),
+              'Content-Type': mimeType,
+            },
+          });
+        }
+      }
+
+      // ── Full file request (initial load) ──
+      const nodeStream = fs.createReadStream(filePath);
+      const webStream = Readable.toWeb(nodeStream) as ReadableStream;
+
+      return new Response(webStream, {
+        status: 200,
+        headers: {
+          'Accept-Ranges': 'bytes',
+          'Content-Length': String(fileSize),
+          'Content-Type': mimeType,
+        },
+      });
     } catch (err) {
       console.error('[local://] Protocol handler error:', err);
       return new Response('Internal error', { status: 500 });
