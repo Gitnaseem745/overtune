@@ -4,9 +4,9 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as mm from 'music-metadata';
 import crypto from 'crypto';
+import { app, BrowserWindow } from 'electron';
 
 const watchers = new Map<string, chokidar.FSWatcher>();
-
 const supportedExtensions = ['.mp3', '.flac', '.wav', '.m4a', '.ogg'];
 
 type Task = () => Promise<void>;
@@ -39,16 +39,22 @@ class AsyncQueue {
   }
 }
 
-// Limit concurrency to 5 files at a time to prevent RAM and file-descriptor exhaustion
 const fileProcessQueue = new AsyncQueue(5);
+
+function notifyLibraryUpdated() {
+  const windows = BrowserWindow.getAllWindows();
+  windows.forEach((win) => {
+    win.webContents.send('library-updated');
+  });
+}
 
 export function startWatching(folderPath: string) {
   if (watchers.has(folderPath)) {
-    return; // Already watching
+    return;
   }
 
   const watcher = chokidar.watch(folderPath, {
-    ignored: /(^|[\/\\])\../, // ignore dotfiles
+    ignored: /(^|[\/\\])\../,
     persistent: true,
   });
 
@@ -80,6 +86,22 @@ function isAudioFile(filePath: string) {
   return supportedExtensions.includes(ext);
 }
 
+async function saveCoverArt(picture: mm.IPicture, albumId: number): Promise<string | null> {
+  try {
+    const userDataPath = app.getPath('userData');
+    const coversDir = path.join(userDataPath, 'covers');
+    if (!fs.existsSync(coversDir)) {
+      fs.mkdirSync(coversDir, { recursive: true });
+    }
+    const ext = picture.format.includes('png') ? '.png' : '.jpg';
+    const coverPath = path.join(coversDir, `album_${albumId}${ext}`);
+    await fs.promises.writeFile(coverPath, picture.data);
+    return coverPath;
+  } catch (err) {
+    console.error('Error saving cover art:', err);
+    return null;
+  }
+}
 
 async function handleFileAdded(filePath: string) {
   console.log(`File added: ${filePath}`);
@@ -88,7 +110,6 @@ async function handleFileAdded(filePath: string) {
   try {
     const metadata = await mm.parseFile(filePath);
     
-    // Fallback logic
     const title = metadata.common.title || path.basename(filePath, path.extname(filePath));
     const artistName = metadata.common.artist || 'Unknown Artist';
     const albumTitle = metadata.common.album || 'Unknown Album';
@@ -97,7 +118,6 @@ async function handleFileAdded(filePath: string) {
     const trackNumber = metadata.common.track.no || null;
     const genre = metadata.common.genre ? metadata.common.genre[0] : null;
 
-    // Create hash to deduplicate
     const fileHash = crypto.createHash('md5').update(`${artistName}-${title}-${duration}`).digest('hex');
 
     const insertArtist = db.prepare(`INSERT INTO artists (name) VALUES (?) ON CONFLICT(name) DO UPDATE SET name=excluded.name RETURNING id`);
@@ -108,6 +128,15 @@ async function handleFileAdded(filePath: string) {
     const albumRow = insertAlbum.get(albumTitle, artistId, year) as { id: number };
     const albumId = albumRow.id;
 
+    // Check and save cover art if available
+    let coverArtPath: string | null = null;
+    if (metadata.common.picture && metadata.common.picture.length > 0) {
+      coverArtPath = await saveCoverArt(metadata.common.picture[0], albumId);
+      if (coverArtPath) {
+        db.prepare(`UPDATE albums SET cover_art_path = ? WHERE id = ?`).run(coverArtPath, albumId);
+      }
+    }
+
     const insertTrack = db.prepare(`
       INSERT INTO tracks (title, album_id, artist_id, path, duration, track_number, genre, file_hash)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -116,6 +145,7 @@ async function handleFileAdded(filePath: string) {
     
     insertTrack.run(title, albumId, artistId, filePath, duration, trackNumber, genre, fileHash);
     console.log(`Successfully added track: ${title} by ${artistName}`);
+    notifyLibraryUpdated();
   } catch (error) {
     console.error(`Error inserting track: ${filePath}`, error);
   }
@@ -127,6 +157,7 @@ function handleFileRemoved(filePath: string) {
   try {
     const stmt = db.prepare(`DELETE FROM tracks WHERE path = ?`);
     stmt.run(filePath);
+    notifyLibraryUpdated();
   } catch (error) {
     console.error(`Error deleting track: ${filePath}`, error);
   }
