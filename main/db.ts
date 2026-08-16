@@ -3,22 +3,27 @@ import * as path from 'path';
 import { app } from 'electron';
 import * as fs from 'fs';
 
-// Store DB in the user data directory
-const userDataPath = app.getPath('userData');
-const dbPath = path.join(userDataPath, 'overtone.db');
-
 let db: Database.Database;
+
+function getDbPath() {
+  const userDataPath = app.getPath('userData');
+  if (!fs.existsSync(userDataPath)) {
+    fs.mkdirSync(userDataPath, { recursive: true });
+  }
+  return path.join(userDataPath, 'overtone.db');
+}
 
 export function initDb() {
   if (db) return db;
 
-  // Create db directory if it doesn't exist just in case
-  if (!fs.existsSync(userDataPath)) {
-    fs.mkdirSync(userDataPath, { recursive: true });
+  try {
+    const dbPath = getDbPath();
+    db = new Database(dbPath);
+    db.pragma('journal_mode = WAL');
+  } catch (err) {
+    console.error('[DB] Failed to initialize SQLite database:', err);
+    throw err;
   }
-
-  db = new Database(dbPath);
-  db.pragma('journal_mode = WAL');
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS artists (

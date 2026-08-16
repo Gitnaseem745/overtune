@@ -66,7 +66,7 @@ const pkgPath = path.join(rootDir, 'package.json');
 const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
 const appName = pkg.build?.productName || pkg.productName || 'Overtone';
 
-const TOTAL_STEPS = 5;
+const TOTAL_STEPS = 6;
 const startTime = Date.now();
 
 console.log(`${colors.magenta}${colors.bright}`);
@@ -119,8 +119,13 @@ async function build() {
     }
     logSuccess('Dependencies and environment verified.');
 
-    // ── STEP 2: Clean Stale Artifacts ──
-    logHeader(2, TOTAL_STEPS, 'Cleaning Previous Build Artifacts');
+    // ── STEP 2: Ensure Native Dependencies are Rebuilt for Electron ABI ──
+    logHeader(2, TOTAL_STEPS, 'Rebuilding Native Addons for Electron (better-sqlite3)');
+    await runCommand('npx', ['electron-builder', 'install-app-deps'], 'Native Module Rebuild');
+    logSuccess('Native modules compiled for Electron ABI.');
+
+    // ── STEP 3: Clean Stale Artifacts ──
+    logHeader(3, TOTAL_STEPS, 'Cleaning Previous Build Artifacts');
     const dirsToClean = [
       path.join(rootDir, 'out'),
       path.join(rootDir, 'dist'),
@@ -135,8 +140,8 @@ async function build() {
     }
     logSuccess('Cleaned old build output folders.');
 
-    // ── STEP 3: Build Next.js Static UI Export ──
-    logHeader(3, TOTAL_STEPS, 'Building Next.js Static Export');
+    // ── STEP 4: Build Next.js Static UI Export ──
+    logHeader(4, TOTAL_STEPS, 'Building Next.js Static Export');
     await runCommand('npx', ['next', 'build'], 'Next.js Frontend Build');
     
     if (!fs.existsSync(path.join(rootDir, 'out', 'index.html'))) {
@@ -144,8 +149,8 @@ async function build() {
     }
     logSuccess('Next.js static frontend successfully generated in out/');
 
-    // ── STEP 4: Bundle Electron Main & Preload ──
-    logHeader(4, TOTAL_STEPS, 'Compiling Electron Main & Preload Scripts');
+    // ── STEP 5: Bundle Electron Main & Preload ──
+    logHeader(5, TOTAL_STEPS, 'Compiling Electron Main & Preload Scripts');
     await runCommand('npx', [
       'tsup', 
       'main/main.ts', 
@@ -160,8 +165,8 @@ async function build() {
     }
     logSuccess('Electron main & preload bundles generated in dist/');
 
-    // ── STEP 5: Package Windows NSIS .exe Installer ──
-    logHeader(5, TOTAL_STEPS, 'Packaging Windows NSIS .exe Installer via electron-builder');
+    // ── STEP 6: Package Windows NSIS .exe Installer ──
+    logHeader(6, TOTAL_STEPS, 'Packaging Windows NSIS .exe Installer via electron-builder');
     await runCommand('npx', ['electron-builder', '--win', 'nsis'], 'Electron Builder Packaging');
 
     // ── Completion & Output Analysis ──

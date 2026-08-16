@@ -5,7 +5,16 @@ import { Readable } from 'stream';
 import { initDb, getDb } from './db';
 import { startWatching } from './scanner';
 
-const isDev = process.env.NODE_ENV === 'development';
+const isDev = !app.isPackaged && process.env.NODE_ENV === 'development';
+
+// ── Uncaught Exception Handling ─────────────────────────────────────
+process.on('uncaughtException', (error) => {
+  console.error('[Main] Uncaught Exception:', error);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[Main] Unhandled Rejection:', reason);
+});
 
 // MIME type lookup for audio and image files
 function getMimeType(filePath: string): string {
@@ -42,22 +51,39 @@ protocol.registerSchemesAsPrivileged([
   },
 ]);
 
+let mainWindow: BrowserWindow | null = null;
+
 function createWindow() {
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
     minWidth: 900,
     minHeight: 600,
+    autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
+      webSecurity: true,
     },
     show: false,
   });
 
   mainWindow.once('ready-to-show', () => {
-    mainWindow.show();
+    if (mainWindow && !mainWindow.isVisible()) {
+      mainWindow.show();
+    }
+  });
+
+  // Fallback to guarantee window is visible
+  setTimeout(() => {
+    if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible()) {
+      mainWindow.show();
+    }
+  }, 1000);
+
+  mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
+    console.error(`[WebContents] Failed to load: ${validatedURL} (${errorCode}: ${errorDescription})`);
   });
 
   if (isDev) {
@@ -65,91 +91,113 @@ function createWindow() {
     mainWindow.webContents.openDevTools();
   } else {
     // In production, load the static exported Next.js app
-    mainWindow.loadFile(path.join(__dirname, '../out/index.html'));
+    const indexPath = path.join(__dirname, '../out/index.html');
+    mainWindow.loadFile(indexPath).catch((err) => {
+      console.error('[Main] Failed to loadFile:', err);
+    });
   }
+
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+  });
 }
 
-app.whenReady().then(() => {
-  // ── local:// protocol handler ──────────────────────────────────────
-  // Serves local files with FULL Range request support for audio seeking.
-  // The renderer encodes file paths as base64 in a query parameter:
-  //   local://file?p=<base64-encoded-absolute-path>
-  protocol.handle('local', (request) => {
-    try {
-      const url = new URL(request.url);
-      const base64Path = url.searchParams.get('p');
+// Ensure single instance lock so multiple clicks don't spawn orphan background processes
+const gotTheLock = app.requestSingleInstanceLock();
 
-      if (!base64Path) {
-        console.error('[local://] Missing "p" query parameter in:', request.url);
-        return new Response('Bad request: missing path parameter', { status: 400 });
-      }
-
-      // Decode the base64-encoded absolute file path
-      const filePath = Buffer.from(base64Path, 'base64').toString('utf-8');
-
-      if (!fs.existsSync(filePath)) {
-        console.error('[local://] File not found:', filePath);
-        return new Response('File not found', { status: 404 });
-      }
-
-      const stat = fs.statSync(filePath);
-      const fileSize = stat.size;
-      const mimeType = getMimeType(filePath);
-      const rangeHeader = request.headers.get('Range');
-
-      if (rangeHeader) {
-        // ── Range request (audio seeking) ──
-        // Parse "bytes=START-END" or "bytes=START-"
-        const match = rangeHeader.match(/bytes=(\d+)-(\d*)/);
-        if (match) {
-          const start = parseInt(match[1], 10);
-          const end = match[2] ? parseInt(match[2], 10) : fileSize - 1;
-          const chunkSize = end - start + 1;
-
-          const nodeStream = fs.createReadStream(filePath, { start, end });
-          const webStream = Readable.toWeb(nodeStream) as ReadableStream;
-
-          return new Response(webStream, {
-            status: 206,
-            headers: {
-              'Content-Range': `bytes ${start}-${end}/${fileSize}`,
-              'Accept-Ranges': 'bytes',
-              'Content-Length': String(chunkSize),
-              'Content-Type': mimeType,
-            },
-          });
-        }
-      }
-
-      // ── Full file request (initial load) ──
-      const nodeStream = fs.createReadStream(filePath);
-      const webStream = Readable.toWeb(nodeStream) as ReadableStream;
-
-      return new Response(webStream, {
-        status: 200,
-        headers: {
-          'Accept-Ranges': 'bytes',
-          'Content-Length': String(fileSize),
-          'Content-Type': mimeType,
-        },
-      });
-    } catch (err) {
-      console.error('[local://] Protocol handler error:', err);
-      return new Response('Internal error', { status: 500 });
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+      mainWindow.show();
     }
   });
 
-  initDb();
-  createWindow();
+  app.whenReady().then(() => {
+    // ── local:// protocol handler ──────────────────────────────────────
+    protocol.handle('local', (request) => {
+      try {
+        const url = new URL(request.url);
+        const base64Path = url.searchParams.get('p');
 
-  app.on('activate', function () {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+        if (!base64Path) {
+          console.error('[local://] Missing "p" query parameter in:', request.url);
+          return new Response('Bad request: missing path parameter', { status: 400 });
+        }
+
+        // Decode the base64-encoded absolute file path
+        const filePath = Buffer.from(base64Path, 'base64').toString('utf-8');
+
+        if (!fs.existsSync(filePath)) {
+          console.error('[local://] File not found:', filePath);
+          return new Response('File not found', { status: 404 });
+        }
+
+        const stat = fs.statSync(filePath);
+        const fileSize = stat.size;
+        const mimeType = getMimeType(filePath);
+        const rangeHeader = request.headers.get('Range');
+
+        if (rangeHeader) {
+          // ── Range request (audio seeking) ──
+          const match = rangeHeader.match(/bytes=(\d+)-(\d*)/);
+          if (match) {
+            const start = parseInt(match[1], 10);
+            const end = match[2] ? parseInt(match[2], 10) : fileSize - 1;
+            const chunkSize = end - start + 1;
+
+            const nodeStream = fs.createReadStream(filePath, { start, end });
+            const webStream = Readable.toWeb(nodeStream) as ReadableStream;
+
+            return new Response(webStream, {
+              status: 206,
+              headers: {
+                'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+                'Accept-Ranges': 'bytes',
+                'Content-Length': String(chunkSize),
+                'Content-Type': mimeType,
+              },
+            });
+          }
+        }
+
+        // ── Full file request (initial load) ──
+        const nodeStream = fs.createReadStream(filePath);
+        const webStream = Readable.toWeb(nodeStream) as ReadableStream;
+
+        return new Response(webStream, {
+          status: 200,
+          headers: {
+            'Accept-Ranges': 'bytes',
+            'Content-Length': String(fileSize),
+            'Content-Type': mimeType,
+          },
+        });
+      } catch (err) {
+        console.error('[local://] Protocol handler error:', err);
+        return new Response('Internal error', { status: 500 });
+      }
+    });
+
+    try {
+      initDb();
+    } catch (e) {
+      console.error('[Main] initDb error:', e);
+    }
+    createWindow();
+
+    app.on('activate', function () {
+      if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    });
   });
-});
 
-app.on('window-all-closed', function () {
-  if (process.platform !== 'darwin') app.quit();
-});
+  app.on('window-all-closed', function () {
+    if (process.platform !== 'darwin') app.quit();
+  });
+}
 
 // IPC handler for opening folder dialog
 ipcMain.handle('dialog:openDirectory', async () => {
