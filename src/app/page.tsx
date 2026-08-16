@@ -3,6 +3,7 @@
 import { usePlayerStore } from '../store/usePlayerStore';
 import { AudioEngine } from '../components/AudioEngine';
 import { SettingsModal } from '../components/SettingsModal';
+import { CreatePlaylistModal } from '../components/CreatePlaylistModal';
 import { Sidebar } from '../components/Sidebar';
 import { TopHeader } from '../components/TopHeader';
 import { RightPanel } from '../components/RightPanel';
@@ -13,6 +14,8 @@ import { SongsView } from '../components/SongsView';
 import { AlbumsView } from '../components/AlbumsView';
 import { ArtistsView } from '../components/ArtistsView';
 import { DetailView } from '../components/DetailView';
+import { PlaylistDetailView } from '../components/PlaylistDetailView';
+import { LikedSongsView } from '../components/LikedSongsView';
 import { LocalFilesView } from '../components/LocalFilesView';
 
 export default function Home() {
@@ -34,6 +37,9 @@ export default function Home() {
 
       {/* Preferences & Appearance Settings Modal */}
       <SettingsModal />
+
+      {/* Create Playlist Modal */}
+      <CreatePlaylistModal />
 
       {/* ── Main Layout Body ── */}
       <div className={`flex flex-1 min-h-0 ${isSpotifyLayout ? 'p-2 gap-2 bg-black' : ''}`}>
@@ -63,6 +69,8 @@ export default function Home() {
             {activeTab === 'Albums' && <AlbumsView />}
             {activeTab === 'Artists' && <ArtistsView />}
             {(activeTab === 'AlbumDetail' || activeTab === 'ArtistDetail') && <DetailView />}
+            {activeTab === 'PlaylistDetail' && <PlaylistDetailView />}
+            {activeTab === 'LikedSongs' && <LikedSongsView />}
             {activeTab === 'Local Files' && <LocalFilesView />}
           </div>
         </main>
@@ -76,3 +84,4 @@ export default function Home() {
     </div>
   );
 }
+

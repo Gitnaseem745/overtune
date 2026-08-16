@@ -2,7 +2,13 @@ import { app, BrowserWindow, dialog, ipcMain, protocol, net } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { Readable } from 'stream';
-import { initDb, getDb } from './db';
+import { 
+  initDb, getDb, 
+  getPlaylists, getPlaylistTracks, createPlaylist, 
+  renamePlaylist, deletePlaylist, addTrackToPlaylist, 
+  removeTrackFromPlaylist, getFavorites, toggleFavorite, 
+  exportPlaylistToM3U, importPlaylistFromM3U 
+} from './db';
 import { startWatching } from './scanner';
 
 const isDev = !app.isPackaged && process.env.NODE_ENV === 'development';
@@ -264,3 +270,68 @@ ipcMain.handle('db:getArtists', () => {
   `);
   return stmt.all();
 });
+
+// ── Playlist IPC Handlers ─────────────────────────────────────────────
+
+ipcMain.handle('db:getPlaylists', () => {
+  return getPlaylists();
+});
+
+ipcMain.handle('db:getPlaylistTracks', (_event, playlistId: number) => {
+  return getPlaylistTracks(playlistId);
+});
+
+ipcMain.handle('db:createPlaylist', (_event, name: string) => {
+  return createPlaylist(name);
+});
+
+ipcMain.handle('db:renamePlaylist', (_event, id: number, name: string) => {
+  return renamePlaylist(id, name);
+});
+
+ipcMain.handle('db:deletePlaylist', (_event, id: number) => {
+  return deletePlaylist(id);
+});
+
+ipcMain.handle('db:addTrackToPlaylist', (_event, playlistId: number, trackId: number) => {
+  return addTrackToPlaylist(playlistId, trackId);
+});
+
+ipcMain.handle('db:removeTrackFromPlaylist', (_event, playlistId: number, trackId: number) => {
+  return removeTrackFromPlaylist(playlistId, trackId);
+});
+
+// ── Favorites IPC Handlers ────────────────────────────────────────────
+
+ipcMain.handle('db:getFavorites', () => {
+  return getFavorites();
+});
+
+ipcMain.handle('db:toggleFavorite', (_event, trackId: number) => {
+  return toggleFavorite(trackId);
+});
+
+// ── M3U Export & Import Dialog IPC ────────────────────────────────────
+
+ipcMain.handle('dialog:exportPlaylistM3U', async (_event, playlistId: number) => {
+  const { canceled, filePath } = await dialog.showSaveDialog({
+    title: 'Export Playlist as .m3u',
+    filters: [{ name: 'M3U Playlist', extensions: ['m3u'] }],
+    defaultPath: 'playlist.m3u',
+  });
+
+  if (canceled || !filePath) return false;
+  return await exportPlaylistToM3U(playlistId, filePath);
+});
+
+ipcMain.handle('dialog:importPlaylistM3U', async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog({
+    title: 'Import M3U / M3U8 Playlist',
+    filters: [{ name: 'M3U Playlists', extensions: ['m3u', 'm3u8'] }],
+    properties: ['openFile'],
+  });
+
+  if (canceled || filePaths.length === 0) return null;
+  return await importPlaylistFromM3U(filePaths[0]);
+});
+

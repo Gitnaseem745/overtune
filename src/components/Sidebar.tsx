@@ -1,10 +1,10 @@
 'use client';
 
 import { usePlayerStore } from '../store/usePlayerStore';
-import { ActiveTab } from '../types/music';
+import { ActiveTab, Playlist } from '../types/music';
 import { 
   Compass, Music, Disc3, Mic2, Folder, 
-  Library, Plus, Heart, ListFilter, Sparkles
+  Library, Plus, Heart, ListMusic, FileUp 
 } from 'lucide-react';
 
 export function Sidebar() {
@@ -15,9 +15,13 @@ export function Sidebar() {
   const tracks = usePlayerStore((s) => s.tracks);
   const albums = usePlayerStore((s) => s.albums);
   const artists = usePlayerStore((s) => s.artists);
+  const playlists = usePlayerStore((s) => s.playlists);
+  const selectedPlaylist = usePlayerStore((s) => s.selectedPlaylist);
   const favorites = usePlayerStore((s) => s.favorites);
   const selectAlbum = usePlayerStore((s) => s.selectAlbum);
   const selectArtist = usePlayerStore((s) => s.selectArtist);
+  const selectPlaylist = usePlayerStore((s) => s.selectPlaylist);
+  const setCreatePlaylistOpen = usePlayerStore((s) => s.setCreatePlaylistOpen);
 
   const isDark = theme === 'dark';
   const isSpotifyLayout = layout === 'spotify';
@@ -82,21 +86,23 @@ export function Sidebar() {
         <div className={`flex-1 rounded-2xl p-4 flex flex-col overflow-hidden transition-colors ${
           isDark ? 'bg-[#181818]' : 'bg-white shadow-xs border border-gray-100'
         }`}>
-          {/* Header */}
+          {/* Header with + Create Playlist */}
           <div className="flex items-center justify-between px-2 mb-3">
             <div className="flex items-center gap-2 text-neutral-400 hover:text-white transition-colors cursor-pointer">
               <Library size={18} />
               <span className="font-bold text-sm">Your Library</span>
             </div>
-            <button 
-              onClick={() => setActiveTab('Local Files')}
-              className={`p-1.5 rounded-full transition-colors ${
-                isDark ? 'hover:bg-neutral-800 text-neutral-400 hover:text-white' : 'hover:bg-gray-100 text-gray-500'
-              }`}
-              title="Add Music Folder"
-            >
-              <Plus size={18} />
-            </button>
+            <div className="flex items-center gap-1">
+              <button 
+                onClick={() => setCreatePlaylistOpen(true)}
+                className={`p-1.5 rounded-full transition-colors ${
+                  isDark ? 'hover:bg-neutral-800 text-neutral-400 hover:text-white' : 'hover:bg-gray-100 text-gray-500'
+                }`}
+                title="Create New Playlist"
+              >
+                <Plus size={18} />
+              </button>
+            </div>
           </div>
 
           {/* Quick Filter Tags */}
@@ -127,9 +133,11 @@ export function Sidebar() {
           <div className="flex-1 overflow-y-auto space-y-1 pr-1">
             {/* Liked Songs Entry */}
             <div
-              onClick={() => setActiveTab('Songs')}
+              onClick={() => setActiveTab('LikedSongs')}
               className={`flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-all ${
-                isDark ? 'hover:bg-neutral-800/60' : 'hover:bg-gray-50'
+                activeTab === 'LikedSongs'
+                  ? isDark ? 'bg-neutral-800 text-white font-bold' : 'bg-amber-50 text-[#f9a826] font-bold'
+                  : isDark ? 'hover:bg-neutral-800/60' : 'hover:bg-gray-50'
               }`}
             >
               <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center text-white flex-shrink-0 shadow-sm">
@@ -142,6 +150,31 @@ export function Sidebar() {
                 </span>
               </div>
             </div>
+
+            {/* Native Playlists */}
+            {playlists.map((playlist) => (
+              <div
+                key={playlist.id}
+                onClick={() => selectPlaylist(playlist)}
+                className={`flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-all ${
+                  activeTab === 'PlaylistDetail' && selectedPlaylist?.id === playlist.id
+                    ? isDark ? 'bg-neutral-800 text-white font-bold' : 'bg-amber-50 text-[#f9a826] font-bold'
+                    : isDark ? 'hover:bg-neutral-800/60' : 'hover:bg-gray-50'
+                }`}
+              >
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                  isDark ? 'bg-neutral-800 text-emerald-400' : 'bg-amber-50 text-[#f9a826]'
+                }`}>
+                  <ListMusic size={18} />
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="font-semibold text-xs truncate">{playlist.name}</span>
+                  <span className={`text-[11px] truncate ${isDark ? 'text-neutral-400' : 'text-gray-400'}`}>
+                    Playlist • {playlist.track_count || 0} songs
+                  </span>
+                </div>
+              </div>
+            ))}
 
             {/* Quick Local Files Entry */}
             <div
@@ -164,29 +197,6 @@ export function Sidebar() {
                 </span>
               </div>
             </div>
-
-            {/* Top Scanned Albums in Sidebar */}
-            {albums.slice(0, 6).map((album) => (
-              <div
-                key={album.id}
-                onClick={() => selectAlbum(album)}
-                className={`flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-all ${
-                  isDark ? 'hover:bg-neutral-800/60' : 'hover:bg-gray-50'
-                }`}
-              >
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden ${
-                  isDark ? 'bg-neutral-800 text-neutral-500' : 'bg-gray-100 text-gray-400'
-                }`}>
-                  <Disc3 size={18} />
-                </div>
-                <div className="flex flex-col min-w-0">
-                  <span className="font-semibold text-xs truncate">{album.title}</span>
-                  <span className={`text-[11px] truncate ${isDark ? 'text-neutral-400' : 'text-gray-400'}`}>
-                    Album • {album.artist}
-                  </span>
-                </div>
-              </div>
-            ))}
           </div>
         </div>
       </aside>
@@ -226,6 +236,63 @@ export function Sidebar() {
           </ul>
         </div>
 
+        {/* Playlists Section in Classic Layout */}
+        <div>
+          <div className="flex items-center justify-between px-3 mb-2">
+            <h3 className={`text-[11px] uppercase font-bold tracking-wider ${
+              isDark ? 'text-neutral-500' : 'text-gray-400'
+            }`}>
+              Playlists
+            </h3>
+            <button
+              onClick={() => setCreatePlaylistOpen(true)}
+              className={`p-1 rounded-md transition-colors ${
+                isDark ? 'hover:bg-neutral-800 text-neutral-400 hover:text-white' : 'hover:bg-gray-200 text-gray-500'
+              }`}
+              title="Create Playlist"
+            >
+              <Plus size={14} />
+            </button>
+          </div>
+
+          <ul className="space-y-0.5">
+            <NavItem name="Liked Songs" tab="LikedSongs" icon={Heart} badge={favorites.size} />
+            {playlists.map((playlist) => {
+              const isActive = activeTab === 'PlaylistDetail' && selectedPlaylist?.id === playlist.id;
+              return (
+                <li key={playlist.id} className="relative" onClick={() => selectPlaylist(playlist)}>
+                  {isActive && (
+                    <div className={`absolute inset-y-0 left-0 w-1.5 rounded-r-full ${
+                      isDark ? 'bg-[#1db954]' : 'bg-[#f9a826]'
+                    }`} />
+                  )}
+                  <button 
+                    className={`w-full flex items-center justify-between px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+                      isActive 
+                        ? isDark 
+                          ? 'bg-neutral-800 text-white font-bold' 
+                          : 'bg-amber-50/70 text-[#f9a826] font-bold' 
+                        : isDark
+                          ? 'text-neutral-400 hover:text-white hover:bg-neutral-800/40'
+                          : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100/70'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 truncate">
+                      <ListMusic size={15} className={isActive ? (isDark ? 'text-[#1db954]' : 'text-[#f9a826]') : ''} />
+                      <span className="truncate">{playlist.name}</span>
+                    </div>
+                    {playlist.track_count !== undefined && playlist.track_count > 0 && (
+                      <span className="text-[10px] font-mono text-neutral-400">
+                        {playlist.track_count}
+                      </span>
+                    )}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+
         <div>
           <h3 className={`text-[11px] uppercase font-bold px-3 mb-2 tracking-wider ${
             isDark ? 'text-neutral-500' : 'text-gray-400'
@@ -240,3 +307,4 @@ export function Sidebar() {
     </aside>
   );
 }
+

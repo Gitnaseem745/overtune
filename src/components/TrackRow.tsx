@@ -1,9 +1,13 @@
 'use client';
 
+import { useState, useRef, useEffect } from 'react';
 import { usePlayerStore } from '../store/usePlayerStore';
 import { Track } from '../types/music';
 import { getLocalUrl, formatTime } from '../lib/utils';
-import { Play, Pause, Heart, Music, Plus, ListPlus } from 'lucide-react';
+import { 
+  Play, Pause, Heart, Music, Plus, 
+  MoreHorizontal, ListPlus, Radio, Check 
+} from 'lucide-react';
 
 interface TrackRowProps {
   track: Track;
@@ -16,19 +20,49 @@ export function TrackRow({ track, index, contextQueue }: TrackRowProps) {
   const isPlaying = usePlayerStore((s) => s.isPlaying);
   const theme = usePlayerStore((s) => s.theme);
   const favorites = usePlayerStore((s) => s.favorites);
+  const playlists = usePlayerStore((s) => s.playlists);
   const playTrack = usePlayerStore((s) => s.playTrack);
   const toggleFavorite = usePlayerStore((s) => s.toggleFavorite);
   const addToQueue = usePlayerStore((s) => s.addToQueue);
   const playNextInQueue = usePlayerStore((s) => s.playNextInQueue);
+  const addTrackToPlaylist = usePlayerStore((s) => s.addTrackToPlaylist);
+  const setCreatePlaylistOpen = usePlayerStore((s) => s.setCreatePlaylistOpen);
+
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [playlistSubmenu, setPlaylistSubmenu] = useState(false);
+  const [addedToast, setAddedToast] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const isDark = theme === 'dark';
   const isActive = currentTrack?.id === track.id;
   const isFav = favorites.has(track.id);
 
+  // Close menu on outside click
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+        setPlaylistSubmenu(false);
+      }
+    };
+    if (menuOpen) {
+      document.addEventListener('mousedown', handleOutsideClick);
+    }
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [menuOpen]);
+
+  const handleAddToPlaylist = async (playlistId: number, playlistName: string) => {
+    await addTrackToPlaylist(playlistId, track.id);
+    setAddedToast(playlistName);
+    setMenuOpen(false);
+    setPlaylistSubmenu(false);
+    setTimeout(() => setAddedToast(null), 2000);
+  };
+
   return (
     <div
       onClick={() => playTrack(track, contextQueue)}
-      className={`grid grid-cols-[auto_1fr_1.2fr_90px_60px_40px] items-center gap-4 py-2.5 px-3 cursor-pointer rounded-xl transition-all duration-150 group select-none ${
+      className={`grid grid-cols-[auto_1fr_1.2fr_90px_60px_60px] items-center gap-4 py-2.5 px-3 cursor-pointer rounded-xl transition-all duration-150 group select-none relative ${
         isActive
           ? isDark
             ? 'bg-neutral-800/90 text-white shadow-xs'
@@ -98,8 +132,8 @@ export function TrackRow({ track, index, contextQueue }: TrackRowProps) {
         {formatTime(track.duration)}
       </div>
 
-      {/* Action / Like */}
-      <div className="flex items-center justify-end gap-1">
+      {/* Action: Like & More Menu */}
+      <div className="flex items-center justify-end gap-1.5 relative">
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -110,7 +144,121 @@ export function TrackRow({ track, index, contextQueue }: TrackRowProps) {
         >
           <Heart fill={isFav ? '#ef4444' : 'none'} className={isFav ? 'text-red-500' : ''} size={15} />
         </button>
+
+        {/* More Options Menu Trigger */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setMenuOpen(!menuOpen);
+          }}
+          className="p-1 text-neutral-400 hover:text-white transition-colors opacity-0 group-hover:opacity-100"
+          title="More options"
+        >
+          <MoreHorizontal size={16} />
+        </button>
+
+        {/* Dropdown Menu */}
+        {menuOpen && (
+          <div
+            ref={menuRef}
+            onClick={(e) => e.stopPropagation()}
+            className={`absolute right-0 top-8 z-50 w-52 rounded-2xl shadow-2xl border p-1.5 text-xs animate-fadeIn ${
+              isDark 
+                ? 'bg-[#242424] border-neutral-700 text-white' 
+                : 'bg-white border-gray-200 text-gray-900'
+            }`}
+          >
+            {/* Play Next */}
+            <button
+              onClick={() => {
+                playNextInQueue(track);
+                setMenuOpen(false);
+              }}
+              className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl transition-colors ${
+                isDark ? 'hover:bg-neutral-700/70' : 'hover:bg-gray-100'
+              }`}
+            >
+              <Radio size={14} />
+              <span>Play Next</span>
+            </button>
+
+            {/* Add to Queue */}
+            <button
+              onClick={() => {
+                addToQueue(track);
+                setMenuOpen(false);
+              }}
+              className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl transition-colors ${
+                isDark ? 'hover:bg-neutral-700/70' : 'hover:bg-gray-100'
+              }`}
+            >
+              <ListPlus size={14} />
+              <span>Add to Queue</span>
+            </button>
+
+            <div className={`my-1 border-t ${isDark ? 'border-neutral-700' : 'border-gray-100'}`} />
+
+            {/* Add to Playlist Submenu Trigger */}
+            <div className="relative">
+              <button
+                onClick={() => setPlaylistSubmenu(!playlistSubmenu)}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl transition-colors ${
+                  isDark ? 'hover:bg-neutral-700/70' : 'hover:bg-gray-100'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Plus size={14} />
+                  <span>Add to Playlist</span>
+                </div>
+                <span className="text-[10px] text-neutral-400">▶</span>
+              </button>
+
+              {/* Submenu of Playlists */}
+              {playlistSubmenu && (
+                <div className={`absolute right-full top-0 mr-1 w-48 rounded-2xl shadow-2xl border p-1.5 max-h-56 overflow-y-auto ${
+                  isDark ? 'bg-[#242424] border-neutral-700 text-white' : 'bg-white border-gray-200 text-gray-900'
+                }`}>
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setCreatePlaylistOpen(true);
+                    }}
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl font-bold ${
+                      isDark ? 'hover:bg-neutral-700/70 text-[#1db954]' : 'hover:bg-gray-100 text-[#f9a826]'
+                    }`}
+                  >
+                    <Plus size={14} />
+                    <span>New Playlist</span>
+                  </button>
+
+                  {playlists.length > 0 && <div className={`my-1 border-t ${isDark ? 'border-neutral-700' : 'border-gray-100'}`} />}
+
+                  {playlists.map((pl) => (
+                    <button
+                      key={pl.id}
+                      onClick={() => handleAddToPlaylist(pl.id, pl.name)}
+                      className={`w-full text-left px-3 py-2 rounded-xl truncate transition-colors ${
+                        isDark ? 'hover:bg-neutral-700/70' : 'hover:bg-gray-100'
+                      }`}
+                    >
+                      {pl.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Added Notification Pill */}
+        {addedToast && (
+          <div className="absolute right-0 -top-7 px-2.5 py-1 rounded-md bg-emerald-600 text-white text-[10px] font-bold shadow-md animate-fadeIn flex items-center gap-1 z-50 whitespace-nowrap">
+            <Check size={10} />
+            Added to {addedToast}
+          </div>
+        )}
       </div>
     </div>
   );
 }
+

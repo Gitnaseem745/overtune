@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Track, Album, Artist, ThemeMode, LayoutMode, RepeatMode, ActiveTab } from '../types/music';
+import { Track, Album, Artist, Playlist, ThemeMode, LayoutMode, RepeatMode, ActiveTab } from '../types/music';
 
 interface PlayerState {
   // ── Appearance & UI Preferences ──
@@ -11,11 +11,15 @@ interface PlayerState {
   searchQuery: string;
   isRightPanelOpen: boolean;
   isSettingsOpen: boolean;
+  isCreatePlaylistOpen: boolean;
 
   // ── Library Data ──
   tracks: Track[];
   albums: Album[];
   artists: Artist[];
+  playlists: Playlist[];
+  selectedPlaylist: Playlist | null;
+  playlistTracks: Track[];
   favorites: Set<number>;
   selectedAlbum: Album | null;
   selectedArtist: Artist | null;
@@ -46,13 +50,25 @@ interface PlayerState {
   setRightPanelOpen: (open: boolean) => void;
   toggleSettings: () => void;
   setSettingsOpen: (open: boolean) => void;
+  setCreatePlaylistOpen: (open: boolean) => void;
 
   setTracks: (tracks: Track[]) => void;
   setAlbums: (albums: Album[]) => void;
   setArtists: (artists: Artist[]) => void;
-  toggleFavorite: (trackId: number) => void;
+  setPlaylists: (playlists: Playlist[]) => void;
+  toggleFavorite: (trackId: number) => Promise<void>;
   selectAlbum: (album: Album | null) => void;
   selectArtist: (artist: Artist | null) => void;
+  selectPlaylist: (playlist: Playlist | null) => Promise<void>;
+
+  // Playlist Actions
+  createPlaylist: (name: string) => Promise<Playlist | null>;
+  renamePlaylist: (id: number, name: string) => Promise<void>;
+  deletePlaylist: (id: number) => Promise<void>;
+  addTrackToPlaylist: (playlistId: number, trackId: number) => Promise<void>;
+  removeTrackFromPlaylist: (playlistId: number, trackId: number) => Promise<void>;
+  exportPlaylistM3U: (playlistId: number) => Promise<boolean>;
+  importPlaylistM3U: () => Promise<void>;
 
   setCurrentTrack: (track: Track | null) => void;
   setIsPlaying: (isPlaying: boolean) => void;
@@ -93,9 +109,13 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   tracks: [],
   albums: [],
   artists: [],
+  playlists: [],
+  selectedPlaylist: null,
+  playlistTracks: [],
   favorites: new Set<number>(),
   selectedAlbum: null,
   selectedArtist: null,
+  isCreatePlaylistOpen: false,
 
   currentTrack: null,
   isPlaying: false,
@@ -162,18 +182,31 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   setRightPanelOpen: (isRightPanelOpen) => set({ isRightPanelOpen }),
   toggleSettings: () => set((state) => ({ isSettingsOpen: !state.isSettingsOpen })),
   setSettingsOpen: (isSettingsOpen) => set({ isSettingsOpen }),
+  setCreatePlaylistOpen: (isCreatePlaylistOpen) => set({ isCreatePlaylistOpen }),
 
   setTracks: (tracks) => set({ tracks }),
   setAlbums: (albums) => set({ albums }),
   setArtists: (artists) => set({ artists }),
+  setPlaylists: (playlists) => set({ playlists }),
 
-  toggleFavorite: (trackId) =>
-    set((state) => {
-      const next = new Set(state.favorites);
-      if (next.has(trackId)) next.delete(trackId);
-      else next.add(trackId);
-      return { favorites: next };
-    }),
+  toggleFavorite: async (trackId) => {
+    if (typeof window !== 'undefined' && window.api) {
+      try {
+        await window.api.toggleFavorite(trackId);
+        const favs = await window.api.getFavorites();
+        set({ favorites: new Set(favs || []) });
+      } catch (err) {
+        console.error('Error toggling favorite:', err);
+      }
+    } else {
+      set((state) => {
+        const next = new Set(state.favorites);
+        if (next.has(trackId)) next.delete(trackId);
+        else next.add(trackId);
+        return { favorites: next };
+      });
+    }
+  },
 
   selectAlbum: (album) => {
     if (album) {
@@ -204,6 +237,145 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       });
     } else {
       set({ selectedArtist: null });
+    }
+  },
+
+  selectPlaylist: async (playlist) => {
+    if (playlist) {
+      const { tabHistory, tabHistoryIndex } = get();
+      const newHistory = tabHistory.slice(0, tabHistoryIndex + 1);
+      newHistory.push('PlaylistDetail');
+      
+      let pTracks: Track[] = [];
+      if (typeof window !== 'undefined' && window.api) {
+        try {
+          pTracks = await window.api.getPlaylistTracks(playlist.id);
+        } catch (err) {
+          console.error('Error getting playlist tracks:', err);
+        }
+      }
+
+      set({
+        selectedPlaylist: playlist,
+        playlistTracks: pTracks || [],
+        activeTab: 'PlaylistDetail',
+        tabHistory: newHistory,
+        tabHistoryIndex: newHistory.length - 1,
+      });
+    } else {
+      set({ selectedPlaylist: null, playlistTracks: [] });
+    }
+  },
+
+  createPlaylist: async (name) => {
+    if (typeof window !== 'undefined' && window.api) {
+      try {
+        const newPl = await window.api.createPlaylist(name);
+        const playlists = await window.api.getPlaylists();
+        set({ playlists: playlists || [] });
+        return newPl;
+      } catch (err) {
+        console.error('Error creating playlist:', err);
+        return null;
+      }
+    }
+    return null;
+  },
+
+  renamePlaylist: async (id, name) => {
+    if (typeof window !== 'undefined' && window.api) {
+      try {
+        await window.api.renamePlaylist(id, name);
+        const playlists = await window.api.getPlaylists();
+        const { selectedPlaylist } = get();
+        const updatedSelected = selectedPlaylist?.id === id 
+          ? { ...selectedPlaylist, name } 
+          : selectedPlaylist;
+        set({ playlists: playlists || [], selectedPlaylist: updatedSelected });
+      } catch (err) {
+        console.error('Error renaming playlist:', err);
+      }
+    }
+  },
+
+  deletePlaylist: async (id) => {
+    if (typeof window !== 'undefined' && window.api) {
+      try {
+        await window.api.deletePlaylist(id);
+        const playlists = await window.api.getPlaylists();
+        const { selectedPlaylist, activeTab } = get();
+        set({
+          playlists: playlists || [],
+          selectedPlaylist: selectedPlaylist?.id === id ? null : selectedPlaylist,
+          activeTab: selectedPlaylist?.id === id ? 'Discover' : activeTab,
+        });
+      } catch (err) {
+        console.error('Error deleting playlist:', err);
+      }
+    }
+  },
+
+  addTrackToPlaylist: async (playlistId, trackId) => {
+    if (typeof window !== 'undefined' && window.api) {
+      try {
+        await window.api.addTrackToPlaylist(playlistId, trackId);
+        const [playlists, pTracks] = await Promise.all([
+          window.api.getPlaylists(),
+          window.api.getPlaylistTracks(playlistId),
+        ]);
+        const { selectedPlaylist } = get();
+        set({
+          playlists: playlists || [],
+          playlistTracks: selectedPlaylist?.id === playlistId ? (pTracks || []) : get().playlistTracks,
+        });
+      } catch (err) {
+        console.error('Error adding track to playlist:', err);
+      }
+    }
+  },
+
+  removeTrackFromPlaylist: async (playlistId, trackId) => {
+    if (typeof window !== 'undefined' && window.api) {
+      try {
+        await window.api.removeTrackFromPlaylist(playlistId, trackId);
+        const [playlists, pTracks] = await Promise.all([
+          window.api.getPlaylists(),
+          window.api.getPlaylistTracks(playlistId),
+        ]);
+        set({
+          playlists: playlists || [],
+          playlistTracks: pTracks || [],
+        });
+      } catch (err) {
+        console.error('Error removing track from playlist:', err);
+      }
+    }
+  },
+
+  exportPlaylistM3U: async (playlistId) => {
+    if (typeof window !== 'undefined' && window.api) {
+      try {
+        return await window.api.exportPlaylistM3U(playlistId);
+      } catch (err) {
+        console.error('Error exporting playlist:', err);
+        return false;
+      }
+    }
+    return false;
+  },
+
+  importPlaylistM3U: async () => {
+    if (typeof window !== 'undefined' && window.api) {
+      try {
+        const imported = await window.api.importPlaylistM3U();
+        if (imported) {
+          const playlists = await window.api.getPlaylists();
+          set({ playlists: playlists || [] });
+          await get().selectPlaylist(imported);
+        }
+      } catch (err) {
+        console.error('Error importing playlist:', err);
+      }
     }
   },
 
@@ -351,15 +523,19 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   refreshLibrary: async () => {
     if (typeof window !== 'undefined' && window.api) {
       try {
-        const [t, al, ar] = await Promise.all([
+        const [t, al, ar, pl, favs] = await Promise.all([
           window.api.getTracks(),
           window.api.getAlbums(),
           window.api.getArtists(),
+          window.api.getPlaylists(),
+          window.api.getFavorites(),
         ]);
         set({
           tracks: t || [],
           albums: al || [],
           artists: ar || [],
+          playlists: pl || [],
+          favorites: new Set(favs || []),
         });
       } catch (err) {
         console.error('Error refreshing library:', err);

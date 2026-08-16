@@ -33,9 +33,19 @@ export interface Playlist {
   created_at: string;
   is_pinned: boolean;
   track_count?: number;
+  cover_art?: string | null;
 }
 
 export type ThemeMode = 'light' | 'dark';
 export type LayoutMode = 'classic' | 'spotify';
 export type RepeatMode = 'off' | 'all' | 'one';
-export type ActiveTab = 'Discover' | 'Songs' | 'Albums' | 'Artists' | 'Local Files' | 'AlbumDetail' | 'ArtistDetail';
+export type ActiveTab = 
+  | 'Discover' 
+  | 'Songs' 
+  | 'Albums' 
+  | 'Artists' 
+  | 'Local Files' 
+  | 'AlbumDetail' 
+  | 'ArtistDetail' 
+  | 'PlaylistDetail' 
+  | 'LikedSongs';
