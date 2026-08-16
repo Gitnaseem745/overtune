@@ -90,6 +90,8 @@ export function AudioEngine() {
     }
   }, [volume, isMuted]);
 
+  const updateTrackDurationInStore = usePlayerStore((s) => s.updateTrackDurationInStore);
+
   // Audio element event listeners
   const onTimeUpdate = () => {
     if (audioRef.current) {
@@ -97,16 +99,26 @@ export function AudioEngine() {
     }
   };
 
-  const onLoadedMetadata = () => {
+  const handleDurationDetected = () => {
     if (audioRef.current && isFinite(audioRef.current.duration) && audioRef.current.duration > 0) {
-      setDuration(audioRef.current.duration);
+      const dur = audioRef.current.duration;
+      setDuration(dur);
+      if (currentTrack && (!currentTrack.duration || currentTrack.duration <= 0)) {
+        const roundedSec = Math.round(dur);
+        updateTrackDurationInStore(currentTrack.id, roundedSec);
+        if (typeof window !== 'undefined' && window.api?.updateTrackDuration) {
+          window.api.updateTrackDuration(currentTrack.id, roundedSec);
+        }
+      }
     }
   };
 
+  const onLoadedMetadata = () => {
+    handleDurationDetected();
+  };
+
   const onDurationChange = () => {
-    if (audioRef.current && isFinite(audioRef.current.duration) && audioRef.current.duration > 0) {
-      setDuration(audioRef.current.duration);
-    }
+    handleDurationDetected();
   };
 
   const onEnded = () => {

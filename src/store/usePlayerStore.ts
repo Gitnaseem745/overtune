@@ -1,10 +1,11 @@
 import { create } from 'zustand';
-import { Track, Album, Artist, Playlist, ThemeMode, LayoutMode, RepeatMode, ActiveTab } from '../types/music';
+import { Track, Album, Artist, Playlist, ThemeMode, LayoutMode, AccentColor, RepeatMode, ActiveTab } from '../types/music';
 
 interface PlayerState {
   // ── Appearance & UI Preferences ──
   theme: ThemeMode;
   layout: LayoutMode;
+  accentColor: AccentColor;
   activeTab: ActiveTab;
   tabHistory: ActiveTab[];
   tabHistoryIndex: number;
@@ -42,6 +43,7 @@ interface PlayerState {
   // ── Actions ──
   setTheme: (theme: ThemeMode) => void;
   setLayout: (layout: LayoutMode) => void;
+  setAccentColor: (accent: AccentColor) => void;
   setActiveTab: (tab: ActiveTab) => void;
   navigateBack: () => void;
   navigateForward: () => void;
@@ -57,6 +59,7 @@ interface PlayerState {
   setArtists: (artists: Artist[]) => void;
   setPlaylists: (playlists: Playlist[]) => void;
   toggleFavorite: (trackId: number) => Promise<void>;
+  updateTrackDurationInStore: (trackId: number, duration: number) => void;
   selectAlbum: (album: Album | null) => void;
   selectArtist: (artist: Artist | null) => void;
   selectPlaylist: (playlist: Playlist | null) => Promise<void>;
@@ -99,6 +102,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   // Defaults - Light theme & Classic layout as requested by default
   theme: (typeof window !== 'undefined' && (localStorage.getItem('overtone_theme') as ThemeMode)) || 'light',
   layout: (typeof window !== 'undefined' && (localStorage.getItem('overtone_layout') as LayoutMode)) || 'classic',
+  accentColor: (typeof window !== 'undefined' && (localStorage.getItem('overtone_accent') as AccentColor)) || 'orange',
   activeTab: 'Discover',
   tabHistory: ['Discover'],
   tabHistoryIndex: 0,
@@ -142,6 +146,29 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       localStorage.setItem('overtone_layout', layout);
     }
     set({ layout });
+  },
+
+  setAccentColor: (accentColor) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('overtone_accent', accentColor);
+    }
+    set({ accentColor });
+  },
+
+  updateTrackDurationInStore: (trackId, duration) => {
+    set((state) => {
+      const updatedTracks = state.tracks.map((t) => (t.id === trackId ? { ...t, duration } : t));
+      const updatedQueue = state.queue.map((t) => (t.id === trackId ? { ...t, duration } : t));
+      const updatedPlaylistTracks = state.playlistTracks.map((t) => (t.id === trackId ? { ...t, duration } : t));
+      const updatedCurrentTrack = state.currentTrack?.id === trackId ? { ...state.currentTrack, duration } : state.currentTrack;
+
+      return {
+        tracks: updatedTracks,
+        queue: updatedQueue,
+        playlistTracks: updatedPlaylistTracks,
+        currentTrack: updatedCurrentTrack,
+      };
+    });
   },
 
   setActiveTab: (tab) => {

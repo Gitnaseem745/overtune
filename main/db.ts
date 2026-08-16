@@ -261,3 +261,17 @@ export async function importPlaylistFromM3U(m3uFilePath: string): Promise<any> {
 
   return getPlaylists().find((p: any) => p.id === newPlaylist.id);
 }
+
+// ── Track Metadata Updates ───────────────────────────────────────────
+
+export function updateTrackDuration(trackId: number, duration: number): boolean {
+  try {
+    const database = getDb();
+    database.prepare(`UPDATE tracks SET duration = ? WHERE id = ?`).run(duration, trackId);
+    return true;
+  } catch (e) {
+    console.error('Error updating track duration in DB:', e);
+    return false;
+  }
+}
+

@@ -11,9 +11,11 @@ export function CreatePlaylistModal() {
   const importPlaylistM3U = usePlayerStore((s) => s.importPlaylistM3U);
   const selectPlaylist = usePlayerStore((s) => s.selectPlaylist);
   const theme = usePlayerStore((s) => s.theme);
+  const accentColor = usePlayerStore((s) => s.accentColor);
 
   const [playlistName, setPlaylistName] = useState('');
   const isDark = theme === 'dark';
+  const accentHex = accentColor === 'green' ? '#1db954' : '#f9a826';
 
   if (!isCreatePlaylistOpen) return null;
 
@@ -45,9 +47,10 @@ export function CreatePlaylistModal() {
         {/* Header */}
         <div className={`flex items-center justify-between px-6 py-5 border-b ${isDark ? 'border-neutral-800' : 'border-gray-100'}`}>
           <div className="flex items-center gap-3">
-            <div className={`w-9 h-9 rounded-2xl flex items-center justify-center text-white shadow-md ${
-              isDark ? 'bg-[#1db954] shadow-emerald-500/20' : 'bg-[#f9a826] shadow-amber-500/20'
-            }`}>
+            <div 
+              className="w-9 h-9 rounded-2xl flex items-center justify-center text-black font-bold shadow-md"
+              style={{ backgroundColor: accentHex }}
+            >
               <ListMusic size={18} />
             </div>
             <h3 className="font-bold text-base">Create New Playlist</h3>
@@ -76,9 +79,12 @@ export function CreatePlaylistModal() {
               placeholder="My Awesome Playlist #1"
               className={`w-full rounded-2xl py-3 px-4 text-sm outline-none transition-all ${
                 isDark
-                  ? 'bg-neutral-900 border border-neutral-700 focus:border-[#1db954] text-white placeholder-neutral-500'
-                  : 'bg-gray-50 border border-gray-200 focus:border-[#f9a826] text-gray-900 placeholder-gray-400'
+                  ? 'bg-neutral-900 border border-neutral-700 text-white placeholder-neutral-500'
+                  : 'bg-gray-50 border border-gray-200 text-gray-900 placeholder-gray-400'
               }`}
+              style={{
+                borderColor: playlistName ? accentHex : undefined,
+              }}
             />
           </div>
 
@@ -86,11 +92,11 @@ export function CreatePlaylistModal() {
             <button
               type="submit"
               disabled={!playlistName.trim()}
-              className={`flex-1 py-3 rounded-full font-bold text-xs shadow-md transition-all active:scale-95 disabled:opacity-40 ${
-                isDark
-                  ? 'bg-[#1db954] hover:bg-[#1ed760] text-black shadow-emerald-500/20'
-                  : 'bg-[#f9a826] hover:bg-amber-600 text-white shadow-amber-500/20'
-              }`}
+              className="flex-1 py-3 rounded-full font-bold text-xs text-black shadow-md transition-all active:scale-95 disabled:opacity-40"
+              style={{ 
+                backgroundColor: accentHex,
+                boxShadow: `0 4px 14px ${accentHex}30` 
+              }}
             >
               Create Playlist
             </button>

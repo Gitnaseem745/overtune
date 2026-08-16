@@ -1,8 +1,40 @@
+import { AccentColor } from '../types/music';
+
 export function formatTime(seconds: number): string {
-  if (!seconds || !isFinite(seconds) || seconds < 0) return '0:00';
+  if (seconds === undefined || seconds === null || !isFinite(seconds) || seconds <= 0) {
+    return '--:--';
+  }
   const mins = Math.floor(seconds / 60);
   const secs = Math.floor(seconds % 60);
   return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+}
+
+export function getAccentColorHex(accent: AccentColor = 'orange'): string {
+  switch (accent) {
+    case 'green':
+      return '#1db954';
+    case 'purple':
+      return '#a855f7';
+    case 'blue':
+      return '#3b82f6';
+    case 'orange':
+    default:
+      return '#f9a826';
+  }
+}
+
+export function getAccentHoverHex(accent: AccentColor = 'orange'): string {
+  switch (accent) {
+    case 'green':
+      return '#1ed760';
+    case 'purple':
+      return '#c084fc';
+    case 'blue':
+      return '#60a5fa';
+    case 'orange':
+    default:
+      return '#ea9719';
+  }
 }
 
 /**
@@ -18,3 +50,4 @@ export function getLocalUrl(filePath?: string | null): string {
     return '';
   }
 }
+

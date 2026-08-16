@@ -19,6 +19,7 @@ export function TrackRow({ track, index, contextQueue }: TrackRowProps) {
   const currentTrack = usePlayerStore((s) => s.currentTrack);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
   const theme = usePlayerStore((s) => s.theme);
+  const accentColor = usePlayerStore((s) => s.accentColor);
   const favorites = usePlayerStore((s) => s.favorites);
   const playlists = usePlayerStore((s) => s.playlists);
   const playTrack = usePlayerStore((s) => s.playTrack);
@@ -36,6 +37,7 @@ export function TrackRow({ track, index, contextQueue }: TrackRowProps) {
   const isDark = theme === 'dark';
   const isActive = currentTrack?.id === track.id;
   const isFav = favorites.has(track.id);
+  const accentHex = accentColor === 'green' ? '#1db954' : '#f9a826';
 
   // Close menu on outside click
   useEffect(() => {
@@ -66,31 +68,36 @@ export function TrackRow({ track, index, contextQueue }: TrackRowProps) {
         isActive
           ? isDark
             ? 'bg-neutral-800/90 text-white shadow-xs'
-            : 'bg-amber-50/80 border border-amber-200/60 shadow-xs'
+            : 'bg-white border shadow-xs'
           : isDark
             ? 'hover:bg-neutral-800/50 text-neutral-300'
             : 'hover:bg-gray-100/70 text-gray-800'
       }`}
+      style={{
+        borderColor: isActive ? (isDark ? undefined : `${accentHex}60`) : undefined,
+      }}
     >
       {/* Track Index / Animated Bars / Play icon */}
       <div className="w-7 flex items-center justify-center font-mono text-xs">
         {isActive && isPlaying ? (
           <div className="flex items-end gap-0.5 h-3.5">
-            <span className={`w-0.5 h-3 animate-bounce ${isDark ? 'bg-[#1db954]' : 'bg-[#f9a826]'}`} style={{ animationDelay: '0ms' }} />
-            <span className={`w-0.5 h-3.5 animate-bounce ${isDark ? 'bg-[#1db954]' : 'bg-[#f9a826]'}`} style={{ animationDelay: '150ms' }} />
-            <span className={`w-0.5 h-2 animate-bounce ${isDark ? 'bg-[#1db954]' : 'bg-[#f9a826]'}`} style={{ animationDelay: '300ms' }} />
+            <span className="w-0.5 h-3 animate-bounce" style={{ backgroundColor: accentHex, animationDelay: '0ms' }} />
+            <span className="w-0.5 h-3.5 animate-bounce" style={{ backgroundColor: accentHex, animationDelay: '150ms' }} />
+            <span className="w-0.5 h-2 animate-bounce" style={{ backgroundColor: accentHex, animationDelay: '300ms' }} />
           </div>
         ) : (
-          <span className={`group-hover:hidden ${isActive ? (isDark ? 'text-[#1db954] font-bold' : 'text-[#f9a826] font-bold') : 'text-neutral-400'}`}>
+          <span 
+            className="group-hover:hidden"
+            style={{ color: isActive ? accentHex : undefined, fontWeight: isActive ? 'bold' : 'normal' }}
+          >
             {index + 1}
           </span>
         )}
         <Play 
           fill="currentColor" 
           size={14} 
-          className={`hidden group-hover:block ml-0.5 ${
-            isDark ? 'text-[#1db954]' : 'text-[#f9a826]'
-          }`} 
+          className="hidden group-hover:block ml-0.5"
+          style={{ color: accentHex }} 
         />
       </div>
 
@@ -106,9 +113,10 @@ export function TrackRow({ track, index, contextQueue }: TrackRowProps) {
           )}
         </div>
         <div className="flex flex-col min-w-0">
-          <span className={`font-semibold text-xs sm:text-sm truncate ${
-            isActive ? (isDark ? 'text-[#1db954]' : 'text-[#f9a826]') : (isDark ? 'text-white' : 'text-gray-900')
-          }`}>
+          <span 
+            className="font-semibold text-xs sm:text-sm truncate"
+            style={{ color: isActive ? accentHex : isDark ? '#ffffff' : '#111827' }}
+          >
             {track.title}
           </span>
           <span className={`text-[11px] sm:text-xs truncate ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>

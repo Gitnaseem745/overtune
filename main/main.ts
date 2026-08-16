@@ -7,7 +7,8 @@ import {
   getPlaylists, getPlaylistTracks, createPlaylist, 
   renamePlaylist, deletePlaylist, addTrackToPlaylist, 
   removeTrackFromPlaylist, getFavorites, toggleFavorite, 
-  exportPlaylistToM3U, importPlaylistFromM3U 
+  exportPlaylistToM3U, importPlaylistFromM3U,
+  updateTrackDuration
 } from './db';
 import { startWatching } from './scanner';
 
@@ -334,4 +335,9 @@ ipcMain.handle('dialog:importPlaylistM3U', async () => {
   if (canceled || filePaths.length === 0) return null;
   return await importPlaylistFromM3U(filePaths[0]);
 });
+
+ipcMain.handle('db:updateTrackDuration', (_event, trackId: number, duration: number) => {
+  return updateTrackDuration(trackId, duration);
+});
+
 

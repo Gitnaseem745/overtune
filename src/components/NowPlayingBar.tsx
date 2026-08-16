@@ -1,7 +1,7 @@
 'use client';
 
 import { usePlayerStore } from '../store/usePlayerStore';
-import { getLocalUrl, formatTime } from '../lib/utils';
+import { getLocalUrl, formatTime, getAccentColorHex, getAccentHoverHex } from '../lib/utils';
 import { 
   Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, 
   Volume2, VolumeX, Heart, Music, ListMusic 
@@ -19,6 +19,7 @@ export function NowPlayingBar() {
   const audioError = usePlayerStore((s) => s.audioError);
   const theme = usePlayerStore((s) => s.theme);
   const layout = usePlayerStore((s) => s.layout);
+  const accentColor = usePlayerStore((s) => s.accentColor);
   const favorites = usePlayerStore((s) => s.favorites);
   const isRightPanelOpen = usePlayerStore((s) => s.isRightPanelOpen);
 
@@ -37,6 +38,16 @@ export function NowPlayingBar() {
   const isDark = theme === 'dark';
   const isFav = currentTrack ? favorites.has(currentTrack.id) : false;
   const effectiveDuration = duration > 0 ? duration : (currentTrack?.duration || 0);
+
+  const accentHex = getAccentColorHex(accentColor);
+  const accentHoverHex = getAccentHoverHex(accentColor);
+
+  // Calculate percentages for timeline & volume fill
+  const progressPercent = effectiveDuration > 0 ? Math.min(100, Math.max(0, (currentTime / effectiveDuration) * 100)) : 0;
+  const currentVol = isMuted ? 0 : volume;
+  const volPercent = Math.min(100, Math.max(0, currentVol * 100));
+
+  const trackBg = isDark ? '#282828' : '#e5e7eb';
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const targetTime = parseFloat(e.target.value);
@@ -110,14 +121,11 @@ export function NowPlayingBar() {
       {/* ── Center: Transport Controls & Seek Slider ── */}
       <div className="flex-1 max-w-xl flex flex-col items-center px-4">
         {/* Buttons */}
-        <div className="flex items-center gap-6 mb-1.5">
+        <div className="flex items-center gap-6 mb-1">
           <button 
             onClick={() => setShuffleOn(!shuffleOn)}
-            className={`transition-colors ${
-              shuffleOn 
-                ? (isDark ? 'text-[#1db954]' : 'text-[#f9a826]') 
-                : (isDark ? 'text-neutral-400 hover:text-white' : 'text-gray-400 hover:text-gray-700')
-            }`}
+            className="transition-colors"
+            style={{ color: shuffleOn ? accentHex : isDark ? '#a3a3a3' : '#9ca3af' }}
             title="Shuffle"
           >
             <Shuffle size={16} />
@@ -143,17 +151,17 @@ export function NowPlayingBar() {
               }
             }}
             disabled={!currentTrack && tracks.length === 0}
-            className={`w-10 h-10 rounded-full flex items-center justify-center shadow-md transition-all active:scale-95 disabled:opacity-40 ${
-              isDark
-                ? 'bg-[#1db954] hover:bg-[#1ed760] text-black shadow-emerald-500/30'
-                : 'bg-[#f9a826] hover:bg-amber-600 text-white shadow-amber-500/30'
-            }`}
+            className="w-10 h-10 rounded-full flex items-center justify-center text-black shadow-md transition-all transform hover:scale-105 active:scale-95 disabled:opacity-40"
+            style={{ 
+              backgroundColor: accentHex,
+              boxShadow: `0 4px 14px ${accentHex}40`
+            }}
             title={isPlaying ? 'Pause' : 'Play'}
           >
             {isPlaying ? (
-              <Pause fill="currentColor" size={16} />
+              <Pause fill="currentColor" size={16} className="text-black" />
             ) : (
-              <Play fill="currentColor" size={16} className="ml-0.5" />
+              <Play fill="currentColor" size={16} className="ml-0.5 text-black" />
             )}
           </button>
 
@@ -170,44 +178,64 @@ export function NowPlayingBar() {
 
           <button 
             onClick={cycleRepeatMode}
-            className={`relative transition-colors ${
-              repeatMode !== 'off'
-                ? (isDark ? 'text-[#1db954]' : 'text-[#f9a826]') 
-                : (isDark ? 'text-neutral-400 hover:text-white' : 'text-gray-400 hover:text-gray-700')
-            }`}
+            className="relative transition-colors"
+            style={{ color: repeatMode !== 'off' ? accentHex : isDark ? '#a3a3a3' : '#9ca3af' }}
             title={`Repeat: ${repeatMode}`}
           >
             <Repeat size={16} />
             {repeatMode === 'one' && (
-              <span className={`absolute -top-1 -right-1 text-[8px] font-bold rounded-full w-3 h-3 flex items-center justify-center ${
-                isDark ? 'bg-[#1db954] text-black' : 'bg-[#f9a826] text-white'
-              }`}>
+              <span 
+                className="absolute -top-1 -right-1 text-[8px] font-bold rounded-full w-3 h-3 flex items-center justify-center text-black"
+                style={{ backgroundColor: accentHex }}
+              >
                 1
               </span>
             )}
           </button>
         </div>
 
-        {/* Seek Bar */}
-        <div className="flex items-center w-full gap-3">
+        {/* ── Seek Bar & Dynamic Wave Animation ── */}
+        <div className="flex items-center w-full gap-3 relative group">
           <span className={`text-[11px] font-mono w-10 text-right ${isDark ? 'text-neutral-400' : 'text-gray-400'}`}>
             {formatTime(currentTime)}
           </span>
 
-          <input
-            type="range"
-            min={0}
-            max={effectiveDuration > 0 ? effectiveDuration : 100}
-            step={0.1}
-            value={currentTime}
-            onChange={handleSeek}
-            disabled={!currentTrack}
-            className={`flex-1 h-1.5 rounded-lg appearance-none cursor-pointer ${
-              isDark 
-                ? 'bg-neutral-800 accent-[#1db954] hover:accent-[#1ed760]' 
-                : 'bg-gray-200 accent-[#f9a826] hover:accent-amber-600'
-            }`}
-          />
+          <div className="relative flex-1 flex items-center h-6">
+            {/* Background Track with Filled Gradient */}
+            <input
+              type="range"
+              min={0}
+              max={effectiveDuration > 0 ? effectiveDuration : 100}
+              step={0.1}
+              value={currentTime}
+              onChange={handleSeek}
+              disabled={!currentTrack}
+              style={{
+                background: `linear-gradient(to right, ${accentHex} 0%, ${accentHex} ${progressPercent}%, ${trackBg} ${progressPercent}%, ${trackBg} 100%)`,
+                accentColor: accentHex,
+              }}
+              className="w-full h-1.5 rounded-full appearance-none cursor-pointer focus:outline-none transition-all"
+            />
+
+            {/* Smooth Snake Wave Animation overlaid on the active track */}
+            {isPlaying && effectiveDuration > 0 && progressPercent > 2 && (
+              <div 
+                className="absolute left-0 top-1/2 -translate-y-1/2 pointer-events-none flex items-center gap-[2px] overflow-hidden rounded-full h-2.5 opacity-70"
+                style={{ width: `${Math.min(progressPercent, 98)}%` }}
+              >
+                {Array.from({ length: 48 }).map((_, i) => (
+                  <span
+                    key={i}
+                    className="w-[3px] rounded-full bg-white/75 transition-all"
+                    style={{
+                      height: `${15 + Math.sin((i * 0.45) + (currentTime * 4)) * 35 + 25}%`,
+                      opacity: 0.6 + Math.sin(i * 0.3) * 0.4,
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
 
           <span className={`text-[11px] font-mono w-10 ${isDark ? 'text-neutral-400' : 'text-gray-400'}`}>
             {formatTime(effectiveDuration)}
@@ -223,9 +251,10 @@ export function NowPlayingBar() {
             onClick={toggleRightPanel}
             className={`p-1.5 rounded-lg transition-colors ${
               isRightPanelOpen
-                ? (isDark ? 'text-[#1db954] bg-neutral-800' : 'text-[#f9a826] bg-amber-50')
-                : (isDark ? 'text-neutral-400 hover:text-white' : 'text-gray-500 hover:text-gray-900')
+                ? isDark ? 'bg-neutral-800' : 'bg-gray-100'
+                : isDark ? 'text-neutral-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
             }`}
+            style={{ color: isRightPanelOpen ? accentHex : undefined }}
             title={isRightPanelOpen ? 'Hide Queue & Info Panel' : 'Show Queue & Info Panel'}
           >
             <ListMusic size={18} />
@@ -242,6 +271,7 @@ export function NowPlayingBar() {
           {isMuted || volume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}
         </button>
 
+        {/* Volume Slider with Filled Progress Track */}
         <input
           type="range"
           min={0}
@@ -249,11 +279,11 @@ export function NowPlayingBar() {
           step={0.01}
           value={isMuted ? 0 : volume}
           onChange={handleVolumeChange}
-          className={`w-24 h-1.5 rounded-lg appearance-none cursor-pointer ${
-            isDark 
-              ? 'bg-neutral-800 accent-[#1db954]' 
-              : 'bg-gray-200 accent-[#f9a826]'
-          }`}
+          style={{
+            background: `linear-gradient(to right, ${accentHex} 0%, ${accentHex} ${volPercent}%, ${trackBg} ${volPercent}%, ${trackBg} 100%)`,
+            accentColor: accentHex,
+          }}
+          className="w-24 h-1.5 rounded-full appearance-none cursor-pointer focus:outline-none transition-all"
         />
       </div>
     </footer>

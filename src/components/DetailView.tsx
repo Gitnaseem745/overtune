@@ -12,11 +12,13 @@ export function DetailView() {
   const selectedArtist = usePlayerStore((s) => s.selectedArtist);
   const tracks = usePlayerStore((s) => s.tracks);
   const theme = usePlayerStore((s) => s.theme);
+  const accentColor = usePlayerStore((s) => s.accentColor);
   const playTrack = usePlayerStore((s) => s.playTrack);
   const setShuffleOn = usePlayerStore((s) => s.setShuffleOn);
   const navigateBack = usePlayerStore((s) => s.navigateBack);
 
   const isDark = theme === 'dark';
+  const accentHex = accentColor === 'green' ? '#1db954' : '#f9a826';
   const isAlbum = activeTab === 'AlbumDetail' && selectedAlbum !== null;
   const isArtist = activeTab === 'ArtistDetail' && selectedArtist !== null;
 
@@ -52,7 +54,7 @@ export function DetailView() {
       <div className={`p-8 rounded-b-3xl relative overflow-hidden transition-colors ${
         isDark 
           ? 'bg-gradient-to-b from-neutral-800 to-[#121212] border-b border-neutral-800' 
-          : 'bg-gradient-to-b from-amber-100/60 to-white border-b border-gray-100'
+          : 'bg-gradient-to-b from-gray-100 to-white border-b border-gray-200/60'
       }`}>
         <button
           onClick={navigateBack}
@@ -66,7 +68,7 @@ export function DetailView() {
 
         <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6">
           {/* Cover / Avatar */}
-          <div className={`w-40 h-40 sm:w-48 sm:h-48 rounded-2xl overflow-hidden shadow-2xl flex-shrink-0 flex items-center justify-center ${
+          <div className={`w-40 h-40 sm:w-48 sm:h-48 overflow-hidden shadow-2xl flex-shrink-0 flex items-center justify-center ${
             isArtist ? 'rounded-full' : 'rounded-2xl'
           } ${isDark ? 'bg-neutral-800' : 'bg-gray-100'}`}>
             {isAlbum && selectedAlbum?.cover_art ? (
@@ -78,7 +80,7 @@ export function DetailView() {
             ) : isAlbum ? (
               <Disc3 size={64} className={isDark ? 'text-neutral-600' : 'text-gray-400'} />
             ) : (
-              <Mic2 size={64} className={isDark ? 'text-emerald-400' : 'text-[#f9a826]'} />
+              <Mic2 size={64} style={{ color: accentHex }} />
             )}
           </div>
 
@@ -113,12 +115,14 @@ export function DetailView() {
           <div className="flex items-center gap-4">
             <button
               onClick={() => handlePlayAll(false)}
-              className={`w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-transform hover:scale-105 active:scale-95 ${
-                isDark ? 'bg-[#1db954] text-black shadow-emerald-500/30' : 'bg-[#f9a826] text-white shadow-amber-500/30'
-              }`}
+              className="w-12 h-12 rounded-full flex items-center justify-center text-black shadow-lg transition-transform hover:scale-105 active:scale-95"
+              style={{ 
+                backgroundColor: accentHex,
+                boxShadow: `0 4px 14px ${accentHex}40`
+              }}
               title="Play All"
             >
-              <Play fill="currentColor" size={20} className="ml-0.5" />
+              <Play fill="currentColor" size={20} className="ml-0.5 text-black" />
             </button>
 
             <button

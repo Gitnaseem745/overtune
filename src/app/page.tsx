@@ -29,7 +29,7 @@ export default function Home() {
   return (
     <div 
       className={`flex flex-col h-screen w-screen font-sans overflow-hidden select-none transition-colors duration-200 ${
-        isDark ? 'bg-black text-white' : 'bg-white text-gray-900'
+        isDark ? 'bg-black text-white' : 'bg-[#f4f5f8] text-gray-900'
       }`}
     >
       {/* Headless Audio Engine */}
@@ -42,7 +42,7 @@ export default function Home() {
       <CreatePlaylistModal />
 
       {/* ── Main Layout Body ── */}
-      <div className={`flex flex-1 min-h-0 ${isSpotifyLayout ? 'p-2 gap-2 bg-black' : ''}`}>
+      <div className={`flex flex-1 min-h-0 ${isSpotifyLayout ? (isDark ? 'p-2 gap-2 bg-black' : 'p-2 gap-2 bg-[#f4f5f8]') : ''}`}>
         
         {/* Left Sidebar (Classic 2-col or Spotify 3-col) */}
         <Sidebar />
@@ -53,7 +53,7 @@ export default function Home() {
             isSpotifyLayout 
               ? isDark 
                 ? 'bg-[#121212] rounded-2xl border border-neutral-800/80 shadow-md' 
-                : 'bg-white rounded-2xl border border-gray-100 shadow-sm' 
+                : 'bg-white rounded-2xl border border-gray-200/80 shadow-xs' 
               : isDark
                 ? 'bg-[#121212]'
                 : 'bg-white'

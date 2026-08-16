@@ -9,11 +9,13 @@ export function DiscoverView() {
   const tracks = usePlayerStore((s) => s.tracks);
   const albums = usePlayerStore((s) => s.albums);
   const theme = usePlayerStore((s) => s.theme);
+  const accentColor = usePlayerStore((s) => s.accentColor);
   const playTrack = usePlayerStore((s) => s.playTrack);
   const selectAlbum = usePlayerStore((s) => s.selectAlbum);
   const setActiveTab = usePlayerStore((s) => s.setActiveTab);
 
   const isDark = theme === 'dark';
+  const accentHex = accentColor === 'green' ? '#1db954' : '#f9a826';
   const topTracks = tracks.slice(0, 10);
 
   return (
@@ -22,14 +24,15 @@ export function DiscoverView() {
       {/* Top Banner / Greeting */}
       <section className={`p-7 rounded-3xl relative overflow-hidden transition-all ${
         isDark 
-          ? 'bg-gradient-to-r from-emerald-950/70 via-neutral-900 to-neutral-900 border border-neutral-800' 
-          : 'bg-gradient-to-r from-amber-50 via-orange-50/50 to-white border border-amber-100/70 shadow-xs'
+          ? 'bg-gradient-to-r from-neutral-900 via-neutral-900 to-[#181818] border border-neutral-800' 
+          : 'bg-gradient-to-r from-gray-50 via-white to-gray-50 border border-gray-200/60 shadow-xs'
       }`}>
         <div className="relative z-10 max-w-xl">
           <div className="flex items-center gap-2 mb-2">
-            <span className={`text-xs font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full ${
-              isDark ? 'bg-emerald-900/60 text-emerald-300 border border-emerald-700/40' : 'bg-amber-100 text-amber-800'
-            }`}>
+            <span 
+              className="text-xs font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full text-black"
+              style={{ backgroundColor: accentHex }}
+            >
               Local-First Player
             </span>
           </div>
@@ -48,7 +51,8 @@ export function DiscoverView() {
           <h3 className="text-xl font-bold tracking-tight">Scanned Albums</h3>
           <button 
             onClick={() => setActiveTab('Albums')}
-            className={`text-xs font-bold hover:underline ${isDark ? 'text-[#1db954]' : 'text-[#f9a826]'}`}
+            className="text-xs font-bold hover:underline"
+            style={{ color: accentHex }}
           >
             See All ({albums.length})
           </button>

@@ -19,9 +19,10 @@ declare global {
       exportPlaylistM3U: (playlistId: number) => Promise<boolean>;
       importPlaylistM3U: () => Promise<any | null>;
 
-      // Favorites
+      // Favorites & Metadata
       getFavorites: () => Promise<number[]>;
       toggleFavorite: (trackId: number) => Promise<boolean>;
+      updateTrackDuration: (trackId: number, duration: number) => Promise<boolean>;
 
       onLibraryUpdated: (callback: () => void) => () => void;
     };

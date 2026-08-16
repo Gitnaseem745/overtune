@@ -12,6 +12,7 @@ export function RightPanel() {
   const toggleRightPanel = usePlayerStore((s) => s.toggleRightPanel);
   const layout = usePlayerStore((s) => s.layout);
   const theme = usePlayerStore((s) => s.theme);
+  const accentColor = usePlayerStore((s) => s.accentColor);
   const currentTrack = usePlayerStore((s) => s.currentTrack);
   const queue = usePlayerStore((s) => s.queue);
   const queueIndex = usePlayerStore((s) => s.queueIndex);
@@ -27,17 +28,17 @@ export function RightPanel() {
 
   return (
     <aside 
-      className={`w-80 flex flex-col p-2 flex-shrink-0 select-none transition-all animate-fadeIn ${
+      className={`w-80 flex flex-col flex-shrink-0 select-none transition-all animate-fadeIn ${
         isDark ? 'text-white' : 'text-gray-900'
       }`}
     >
       <div className={`flex-1 rounded-2xl p-4 flex flex-col overflow-hidden transition-colors ${
-        isDark ? 'bg-[#181818]' : 'bg-white shadow-xs border border-gray-100'
+        isDark ? 'bg-[#181818] border border-neutral-800/80' : 'bg-white shadow-xs border border-gray-200/80'
       }`}>
         {/* Header */}
         <div className="flex items-center justify-between px-2 mb-4">
           <div className="flex items-center gap-2">
-            <ListMusic size={18} className={isDark ? 'text-[#1db954]' : 'text-[#f9a826]'} />
+            <ListMusic size={18} style={{ color: accentColor === 'green' ? '#1db954' : '#f9a826' }} />
             <h3 className="font-bold text-sm">Now Playing & Queue</h3>
           </div>
           <button 

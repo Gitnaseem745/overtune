@@ -8,9 +8,11 @@ export function LocalFilesView() {
   const albums = usePlayerStore((s) => s.albums);
   const artists = usePlayerStore((s) => s.artists);
   const theme = usePlayerStore((s) => s.theme);
+  const accentColor = usePlayerStore((s) => s.accentColor);
   const refreshLibrary = usePlayerStore((s) => s.refreshLibrary);
 
   const isDark = theme === 'dark';
+  const accentHex = accentColor === 'green' ? '#1db954' : '#f9a826';
 
   const handleScanFolder = async () => {
     if (typeof window !== 'undefined' && window.api) {
@@ -23,11 +25,14 @@ export function LocalFilesView() {
     <div className="px-8 py-12 pb-36 flex flex-col items-center justify-center min-h-[70vh] max-w-2xl mx-auto text-center select-none">
       
       {/* Icon Card */}
-      <div className={`w-24 h-24 rounded-3xl flex items-center justify-center mb-6 shadow-sm border transition-transform hover:scale-105 ${
-        isDark 
-          ? 'bg-neutral-800 border-neutral-700 text-[#1db954]' 
-          : 'bg-gradient-to-tr from-amber-100 to-orange-100 border-amber-200/60 text-[#f9a826]'
-      }`}>
+      <div 
+        className={`w-24 h-24 rounded-3xl flex items-center justify-center mb-6 shadow-sm border transition-transform hover:scale-105 ${
+          isDark 
+            ? 'bg-neutral-800 border-neutral-700' 
+            : 'bg-white border-gray-200/80'
+        }`}
+        style={{ color: accentHex }}
+      >
         <Folder size={44} />
       </div>
 
@@ -44,13 +49,13 @@ export function LocalFilesView() {
       {/* Button */}
       <button
         onClick={handleScanFolder}
-        className={`px-8 py-3.5 rounded-full font-bold shadow-lg transition-all transform hover:-translate-y-0.5 active:translate-y-0 text-sm flex items-center gap-2.5 ${
-          isDark
-            ? 'bg-[#1db954] hover:bg-[#1ed760] text-black shadow-emerald-500/25'
-            : 'bg-[#f9a826] hover:bg-amber-600 text-white shadow-amber-500/25'
-        }`}
+        className="px-8 py-3.5 rounded-full font-bold shadow-lg transition-all transform hover:-translate-y-0.5 active:translate-y-0 text-sm flex items-center gap-2.5 text-black hover:scale-105"
+        style={{ 
+          backgroundColor: accentHex,
+          boxShadow: `0 6px 20px ${accentHex}35` 
+        }}
       >
-        <Folder size={18} />
+        <Folder size={18} className="text-black" />
         Choose Music Folder
       </button>
 

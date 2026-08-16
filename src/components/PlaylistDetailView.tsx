@@ -13,6 +13,7 @@ export function PlaylistDetailView() {
   const selectedPlaylist = usePlayerStore((s) => s.selectedPlaylist);
   const playlistTracks = usePlayerStore((s) => s.playlistTracks);
   const theme = usePlayerStore((s) => s.theme);
+  const accentColor = usePlayerStore((s) => s.accentColor);
   const playTrack = usePlayerStore((s) => s.playTrack);
   const setShuffleOn = usePlayerStore((s) => s.setShuffleOn);
   const navigateBack = usePlayerStore((s) => s.navigateBack);
@@ -26,6 +27,7 @@ export function PlaylistDetailView() {
   const [exportSuccess, setExportSuccess] = useState(false);
 
   const isDark = theme === 'dark';
+  const accentHex = accentColor === 'green' ? '#1db954' : '#f9a826';
 
   const totalDuration = useMemo(() => {
     const sec = playlistTracks.reduce((acc, t) => acc + (t.duration || 0), 0);
@@ -74,8 +76,8 @@ export function PlaylistDetailView() {
       {/* ── Big Hero Banner ── */}
       <div className={`p-8 rounded-b-3xl relative overflow-hidden transition-colors ${
         isDark 
-          ? 'bg-gradient-to-b from-emerald-950/40 via-neutral-900 to-[#121212] border-b border-neutral-800' 
-          : 'bg-gradient-to-b from-amber-100/60 to-white border-b border-gray-100'
+          ? 'bg-gradient-to-b from-neutral-800 to-[#121212] border-b border-neutral-800' 
+          : 'bg-gradient-to-b from-gray-100 to-white border-b border-gray-200/60'
       }`}>
         <button
           onClick={navigateBack}
@@ -99,7 +101,7 @@ export function PlaylistDetailView() {
                 className="w-full h-full object-cover" 
               />
             ) : (
-              <ListMusic size={64} className={isDark ? 'text-[#1db954]' : 'text-[#f9a826]'} />
+              <ListMusic size={64} style={{ color: accentHex }} />
             )}
           </div>
 
@@ -172,12 +174,14 @@ export function PlaylistDetailView() {
               <>
                 <button
                   onClick={() => handlePlayAll(false)}
-                  className={`w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-transform hover:scale-105 active:scale-95 ${
-                    isDark ? 'bg-[#1db954] text-black shadow-emerald-500/30' : 'bg-[#f9a826] text-white shadow-amber-500/30'
-                  }`}
+                  className="w-12 h-12 rounded-full flex items-center justify-center text-black shadow-lg transition-transform hover:scale-105 active:scale-95"
+                  style={{ 
+                    backgroundColor: accentHex,
+                    boxShadow: `0 4px 14px ${accentHex}40`
+                  }}
                   title="Play All"
                 >
-                  <Play fill="currentColor" size={20} className="ml-0.5" />
+                  <Play fill="currentColor" size={20} className="ml-0.5 text-black" />
                 </button>
 
                 <button

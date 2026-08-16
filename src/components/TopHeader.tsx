@@ -1,9 +1,11 @@
 'use client';
 
 import { usePlayerStore } from '../store/usePlayerStore';
+import { getAccentColorHex } from '../lib/utils';
+import { AccentColor } from '../types/music';
 import { 
   Search, ChevronLeft, ChevronRight, Sun, Moon, 
-  Settings, Columns3, LayoutGrid, Sparkles 
+  Settings, Columns3, LayoutGrid, Palette 
 } from 'lucide-react';
 
 export function TopHeader() {
@@ -13,6 +15,8 @@ export function TopHeader() {
   const setTheme = usePlayerStore((s) => s.setTheme);
   const layout = usePlayerStore((s) => s.layout);
   const setLayout = usePlayerStore((s) => s.setLayout);
+  const accentColor = usePlayerStore((s) => s.accentColor);
+  const setAccentColor = usePlayerStore((s) => s.setAccentColor);
   const toggleSettings = usePlayerStore((s) => s.toggleSettings);
   const navigateBack = usePlayerStore((s) => s.navigateBack);
   const navigateForward = usePlayerStore((s) => s.navigateForward);
@@ -22,6 +26,7 @@ export function TopHeader() {
   const isDark = theme === 'dark';
   const canGoBack = tabHistoryIndex > 0;
   const canGoForward = tabHistoryIndex < tabHistory.length - 1;
+  const currentAccentHex = getAccentColorHex(accentColor);
 
   const toggleTheme = () => {
     setTheme(isDark ? 'light' : 'dark');
@@ -31,12 +36,18 @@ export function TopHeader() {
     setLayout(layout === 'classic' ? 'spotify' : 'classic');
   };
 
+  const cycleAccentColor = () => {
+    const accents: AccentColor[] = ['orange', 'green', 'purple', 'blue'];
+    const nextIdx = (accents.indexOf(accentColor) + 1) % accents.length;
+    setAccentColor(accents[nextIdx]);
+  };
+
   return (
     <header 
       className={`h-16 flex items-center justify-between px-6 flex-shrink-0 sticky top-0 z-20 backdrop-blur-md transition-colors duration-200 border-b ${
         isDark 
           ? 'bg-[#121212]/90 border-neutral-800/80 text-white' 
-          : 'bg-white/85 border-gray-100 text-gray-900'
+          : 'bg-white/90 border-gray-100 text-gray-900'
       }`}
     >
       {/* Left: History navigation & Search */}
@@ -83,15 +94,32 @@ export function TopHeader() {
             placeholder="Search songs, artists, or albums..."
             className={`w-full rounded-full py-2 pl-10 pr-4 text-xs sm:text-sm outline-none transition-all ${
               isDark
-                ? 'bg-[#242424] text-white placeholder-neutral-500 border border-transparent focus:border-[#1db954] focus:bg-[#282828]'
-                : 'bg-[#f8f9fa] text-gray-900 placeholder-gray-400 border border-transparent focus:border-[#f9a826] focus:bg-white shadow-xs'
+                ? 'bg-[#242424] text-white placeholder-neutral-500 border border-transparent focus:bg-[#282828]'
+                : 'bg-[#f4f5f8] text-gray-900 placeholder-gray-400 border border-transparent focus:bg-white shadow-xs'
             }`}
+            style={{
+              borderColor: searchQuery ? currentAccentHex : undefined,
+            }}
           />
         </div>
       </div>
 
       {/* Right: Quick Switchers & User Profile */}
-      <div className="flex items-center gap-3 pl-4">
+      <div className="flex items-center gap-2.5 pl-4">
+        {/* Quick Accent Color Toggle */}
+        <button
+          onClick={cycleAccentColor}
+          className={`p-2 rounded-full transition-all flex items-center justify-center shadow-xs ${
+            isDark ? 'bg-neutral-800/80 hover:bg-neutral-700' : 'bg-gray-100 hover:bg-gray-200'
+          }`}
+          title={`Cycle Accent Color (Current: ${accentColor.toUpperCase()})`}
+        >
+          <div 
+            className="w-4 h-4 rounded-full shadow-inner"
+            style={{ backgroundColor: currentAccentHex }}
+          />
+        </button>
+
         {/* Quick Theme Toggle */}
         <button
           onClick={toggleTheme}
@@ -110,8 +138,8 @@ export function TopHeader() {
           onClick={toggleLayout}
           className={`p-2 rounded-full transition-all flex items-center gap-1.5 text-xs font-semibold ${
             isDark
-              ? 'bg-neutral-800/80 hover:bg-neutral-700 text-emerald-400'
-              : 'bg-gray-100 hover:bg-gray-200 text-amber-600'
+              ? 'bg-neutral-800/80 hover:bg-neutral-700 text-neutral-300'
+              : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
           }`}
           title={`Switch to ${layout === 'classic' ? 'Spotify 3-Column' : 'Classic 2-Column'} Layout`}
         >
@@ -135,14 +163,18 @@ export function TopHeader() {
         <div className={`flex items-center gap-2.5 pl-2 py-1 pr-3 rounded-full border transition-all ${
           isDark ? 'border-neutral-800 bg-neutral-900' : 'border-gray-200/70 bg-white shadow-xs'
         }`}>
-          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-white font-bold text-xs shadow-xs ${
-            isDark ? 'bg-gradient-to-tr from-[#1db954] to-emerald-300' : 'bg-gradient-to-tr from-[#f9a826] to-amber-300'
-          }`}>
+          <div 
+            className="w-7 h-7 rounded-full flex items-center justify-center text-black font-bold text-xs shadow-xs"
+            style={{ backgroundColor: currentAccentHex }}
+          >
             O
           </div>
           <div className="hidden sm:flex flex-col">
             <span className="text-xs font-bold leading-none">Overtone</span>
-            <span className={`text-[10px] leading-tight font-medium ${isDark ? 'text-emerald-400' : 'text-amber-600'}`}>
+            <span 
+              className="text-[10px] leading-tight font-medium"
+              style={{ color: currentAccentHex }}
+            >
               {layout === 'spotify' ? 'Spotify Pro' : 'Classic'}
             </span>
           </div>

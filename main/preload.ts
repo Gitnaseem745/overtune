@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld('api', {
   // Favorites
   getFavorites: () => ipcRenderer.invoke('db:getFavorites'),
   toggleFavorite: (trackId: number) => ipcRenderer.invoke('db:toggleFavorite', trackId),
+  updateTrackDuration: (trackId: number, duration: number) => ipcRenderer.invoke('db:updateTrackDuration', trackId, duration),
 
   onLibraryUpdated: (callback: () => void) => {
     const handler = () => callback();

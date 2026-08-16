@@ -25,34 +25,39 @@ export function Sidebar() {
 
   const isDark = theme === 'dark';
   const isSpotifyLayout = layout === 'spotify';
+  const accentColor = usePlayerStore((s) => s.accentColor);
+
+  const accentHex = accentColor === 'green' ? '#1db954' : '#f9a826';
 
   const NavItem = ({ name, tab, icon: Icon, badge }: { name: string; tab: ActiveTab; icon: any; badge?: number }) => {
     const isActive = activeTab === tab;
     return (
       <li className="relative" onClick={() => setActiveTab(tab)}>
         {!isSpotifyLayout && isActive && (
-          <div className={`absolute inset-y-0 left-0 w-1.5 rounded-r-full ${
-            isDark ? 'bg-[#1db954]' : 'bg-[#f9a826]'
-          }`} />
+          <div 
+            className="absolute inset-y-0 left-0 w-1.5 rounded-r-full"
+            style={{ backgroundColor: accentHex }} 
+          />
         )}
         <button 
           className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
             isActive 
               ? isDark 
                 ? 'bg-neutral-800 text-white font-bold' 
-                : 'bg-amber-50/70 text-[#f9a826] font-bold' 
+                : 'bg-gray-100/90 font-bold' 
               : isDark
                 ? 'text-neutral-400 hover:text-white hover:bg-neutral-800/40'
                 : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100/70'
           }`}
+          style={{ color: isActive ? accentHex : undefined }}
         >
           <div className="flex items-center gap-3">
-            <Icon size={18} className={isActive ? (isDark ? 'text-[#1db954]' : 'text-[#f9a826]') : ''} />
+            <Icon size={18} style={{ color: isActive ? accentHex : undefined }} />
             <span>{name}</span>
           </div>
           {badge !== undefined && badge > 0 && (
             <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
-              isDark ? 'bg-neutral-800 text-neutral-400' : 'bg-gray-100 text-gray-500'
+              isDark ? 'bg-neutral-800 text-neutral-400' : 'bg-gray-200/70 text-gray-600'
             }`}>
               {badge}
             </span>
@@ -65,13 +70,16 @@ export function Sidebar() {
   // ── SPOTIFY PRO 3-COLUMN SIDEBAR ──
   if (isSpotifyLayout) {
     return (
-      <aside className="w-72 flex flex-col gap-2 p-2 flex-shrink-0 select-none">
+      <aside className="w-72 flex flex-col gap-2 flex-shrink-0 select-none">
         {/* Top Mini Nav Box */}
-        <div className={`rounded-2xl p-4 transition-colors ${isDark ? 'bg-[#181818]' : 'bg-white shadow-xs border border-gray-100'}`}>
+        <div className={`rounded-2xl p-4 transition-colors ${
+          isDark ? 'bg-[#181818] border border-neutral-800/80' : 'bg-white shadow-xs border border-gray-200/80'
+        }`}>
           <div className="flex items-center gap-2.5 px-2 mb-3">
-            <div className={`w-7 h-7 rounded-xl flex items-center justify-center text-white shadow-xs ${
-              isDark ? 'bg-[#1db954]' : 'bg-[#f9a826]'
-            }`}>
+            <div 
+              className="w-7 h-7 rounded-xl flex items-center justify-center text-black font-bold shadow-xs"
+              style={{ backgroundColor: accentHex }}
+            >
               <Music size={16} />
             </div>
             <span className="font-extrabold text-base tracking-tight">Overtone</span>
@@ -84,7 +92,7 @@ export function Sidebar() {
 
         {/* Your Library Box */}
         <div className={`flex-1 rounded-2xl p-4 flex flex-col overflow-hidden transition-colors ${
-          isDark ? 'bg-[#181818]' : 'bg-white shadow-xs border border-gray-100'
+          isDark ? 'bg-[#181818] border border-neutral-800/80' : 'bg-white shadow-xs border border-gray-200/80'
         }`}>
           {/* Header with + Create Playlist */}
           <div className="flex items-center justify-between px-2 mb-3">

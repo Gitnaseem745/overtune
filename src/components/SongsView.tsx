@@ -9,10 +9,12 @@ export function SongsView() {
   const tracks = usePlayerStore((s) => s.tracks);
   const searchQuery = usePlayerStore((s) => s.searchQuery);
   const theme = usePlayerStore((s) => s.theme);
+  const accentColor = usePlayerStore((s) => s.accentColor);
   const playTrack = usePlayerStore((s) => s.playTrack);
   const setShuffleOn = usePlayerStore((s) => s.setShuffleOn);
 
   const isDark = theme === 'dark';
+  const accentHex = accentColor === 'green' ? '#1db954' : '#f9a826';
 
   const filteredTracks = useMemo(() => {
     if (!searchQuery.trim()) return tracks;
@@ -50,13 +52,13 @@ export function SongsView() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => handlePlayAll(false)}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-xs shadow-md transition-all active:scale-95 ${
-                isDark
-                  ? 'bg-[#1db954] hover:bg-[#1ed760] text-black shadow-emerald-500/20'
-                  : 'bg-[#f9a826] hover:bg-amber-600 text-white shadow-amber-500/20'
-              }`}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-xs text-black shadow-md transition-all active:scale-95 hover:scale-105"
+              style={{ 
+                backgroundColor: accentHex,
+                boxShadow: `0 4px 14px ${accentHex}35` 
+              }}
             >
-              <Play fill="currentColor" size={14} />
+              <Play fill="currentColor" size={14} className="text-black" />
               Play All
             </button>
             <button
