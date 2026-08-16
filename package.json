@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "main": "dist/main.js",
+  "description": "Overtone - Modern Local Music Player (Spotify Clone, Local-First)",
+  "author": "Naseem Ansari",
   "scripts": {
     "dev:next": "next dev",
     "dev:electron": "wait-on tcp:3000 && tsup main/main.ts main/preload.ts --format cjs --external electron --external better-sqlite3 && cross-env NODE_ENV=development electron .",
@@ -10,6 +12,8 @@
     "build:next": "next build",
     "build:electron": "tsup main/main.ts main/preload.ts --format cjs --external electron --external better-sqlite3",
     "build": "npm run build:next && npm run build:electron",
+    "build:installer": "node scripts/build-installer.js",
+    "dist:installer": "node scripts/build-installer.js",
     "pack": "electron-builder --dir",
     "dist": "electron-builder",
     "start": "next start",
@@ -19,6 +23,9 @@
     "appId": "com.overtone.app",
     "productName": "Overtone",
     "npmRebuild": false,
+    "asarUnpack": [
+      "**/*.node"
+    ],
     "directories": {
       "output": "release"
     },
@@ -41,8 +48,10 @@
     "win": {
       "target": [
         {
-          "target": "portable",
-          "arch": ["x64"]
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "signAndEditExecutable": false
