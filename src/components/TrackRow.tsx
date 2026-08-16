@@ -29,6 +29,8 @@ export function TrackRow({ track, index, contextQueue }: TrackRowProps) {
   const addTrackToPlaylist = usePlayerStore((s) => s.addTrackToPlaylist);
   const setCreatePlaylistOpen = usePlayerStore((s) => s.setCreatePlaylistOpen);
 
+  const setIsPlaying = usePlayerStore((s) => s.setIsPlaying);
+
   const [menuOpen, setMenuOpen] = useState(false);
   const [playlistSubmenu, setPlaylistSubmenu] = useState(false);
   const [addedToast, setAddedToast] = useState<string | null>(null);
@@ -61,9 +63,17 @@ export function TrackRow({ track, index, contextQueue }: TrackRowProps) {
     setTimeout(() => setAddedToast(null), 2000);
   };
 
+  const handleRowClick = () => {
+    if (isActive) {
+      setIsPlaying(!isPlaying);
+    } else {
+      playTrack(track, contextQueue);
+    }
+  };
+
   return (
     <div
-      onClick={() => playTrack(track, contextQueue)}
+      onClick={handleRowClick}
       className={`grid grid-cols-[auto_1fr_1.2fr_90px_60px_60px] items-center gap-4 py-2.5 px-3 cursor-pointer rounded-xl transition-all duration-150 group select-none relative ${
         isActive
           ? isDark
@@ -86,19 +96,21 @@ export function TrackRow({ track, index, contextQueue }: TrackRowProps) {
             <span className="w-0.5 h-2 animate-bounce" style={{ backgroundColor: accentHex, animationDelay: '300ms' }} />
           </div>
         ) : (
-          <span 
-            className="group-hover:hidden"
-            style={{ color: isActive ? accentHex : undefined, fontWeight: isActive ? 'bold' : 'normal' }}
-          >
-            {index + 1}
-          </span>
+          <>
+            <span 
+              className="group-hover:hidden"
+              style={{ color: isActive ? accentHex : undefined, fontWeight: isActive ? 'bold' : 'normal' }}
+            >
+              {index + 1}
+            </span>
+            <Play 
+              fill="currentColor" 
+              size={14} 
+              className="hidden group-hover:block ml-0.5"
+              style={{ color: accentHex }} 
+            />
+          </>
         )}
-        <Play 
-          fill="currentColor" 
-          size={14} 
-          className="hidden group-hover:block ml-0.5"
-          style={{ color: accentHex }} 
-        />
       </div>
 
       {/* Title & Artist & Thumbnail */}

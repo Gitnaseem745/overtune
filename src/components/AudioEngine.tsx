@@ -6,6 +6,7 @@ import { getLocalUrl } from '../lib/utils';
 
 export function AudioEngine() {
   const audioRef = useRef<HTMLAudioElement>(null);
+  const loadedTrackIdRef = useRef<number | null>(null);
 
   const currentTrack = usePlayerStore((s) => s.currentTrack);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
@@ -19,6 +20,7 @@ export function AudioEngine() {
   const setAudioError = usePlayerStore((s) => s.setAudioError);
   const handleNext = usePlayerStore((s) => s.handleNext);
   const refreshLibrary = usePlayerStore((s) => s.refreshLibrary);
+  const updateTrackDurationInStore = usePlayerStore((s) => s.updateTrackDurationInStore);
 
   // Initial load of library + real-time IPC watcher listener
   useEffect(() => {
@@ -32,56 +34,69 @@ export function AudioEngine() {
     }
   }, [refreshLibrary]);
 
-  // Handle Track Source change
+  // Safe play helper to prevent unhandled AbortErrors from interruptions
+  const safePlay = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    
+    setAudioError(null);
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch((err) => {
+        // AbortError is normal when switching tracks or pausing before load completes
+        if (err.name === 'AbortError' || err.message?.includes('interrupted')) {
+          return;
+        }
+        console.error('[AudioEngine] Play failed:', err);
+        setAudioError(`Playback error: ${err.message}`);
+        setIsPlaying(false);
+      });
+    }
+  };
+
+  // 1. Handle Track Source Change
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
     if (currentTrack) {
-      const url = getLocalUrl(currentTrack.path);
-      if (audio.src !== url) {
+      // Only reload if the track ID actually changed
+      if (loadedTrackIdRef.current !== currentTrack.id) {
+        loadedTrackIdRef.current = currentTrack.id;
+        setAudioError(null);
+
+        const url = getLocalUrl(currentTrack.path);
         audio.src = url;
         audio.load();
-        
-        const onCanPlay = () => {
-          audio.removeEventListener('canplay', onCanPlay);
-          if (isPlaying) {
-            audio.play().catch((err) => {
-              console.error('[AudioEngine] Play rejected:', err);
-              setAudioError(`Playback error: ${err.message}`);
-              setIsPlaying(false);
-            });
-          }
-        };
 
-        audio.addEventListener('canplay', onCanPlay);
+        if (isPlaying) {
+          safePlay();
+        }
       }
     } else {
+      loadedTrackIdRef.current = null;
       audio.removeAttribute('src');
+      audio.load();
     }
-  }, [currentTrack]);
+  }, [currentTrack?.id]);
 
-  // Handle Play/Pause state change
+  // 2. Handle Play / Pause State Toggle
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !currentTrack) return;
 
     if (isPlaying) {
       if (audio.paused) {
-        audio.play().catch((err) => {
-          console.error('[AudioEngine] Play failed:', err);
-          setAudioError(`Playback failed: ${err.message}`);
-          setIsPlaying(false);
-        });
+        safePlay();
       }
     } else {
       if (!audio.paused) {
         audio.pause();
       }
     }
-  }, [isPlaying, currentTrack]);
+  }, [isPlaying]);
 
-  // Handle Volume & Mute change
+  // 3. Handle Volume & Mute Change
   useEffect(() => {
     const audio = audioRef.current;
     if (audio) {
@@ -89,8 +104,6 @@ export function AudioEngine() {
       audio.muted = isMuted;
     }
   }, [volume, isMuted]);
-
-  const updateTrackDurationInStore = usePlayerStore((s) => s.updateTrackDurationInStore);
 
   // Audio element event listeners
   const onTimeUpdate = () => {
@@ -103,6 +116,7 @@ export function AudioEngine() {
     if (audioRef.current && isFinite(audioRef.current.duration) && audioRef.current.duration > 0) {
       const dur = audioRef.current.duration;
       setDuration(dur);
+      
       if (currentTrack && (!currentTrack.duration || currentTrack.duration <= 0)) {
         const roundedSec = Math.round(dur);
         updateTrackDurationInStore(currentTrack.id, roundedSec);
@@ -113,27 +127,16 @@ export function AudioEngine() {
     }
   };
 
-  const onLoadedMetadata = () => {
-    handleDurationDetected();
-  };
-
-  const onDurationChange = () => {
-    handleDurationDetected();
-  };
-
   const onEnded = () => {
     if (repeatMode === 'one') {
       if (audioRef.current) {
         audioRef.current.currentTime = 0;
-        audioRef.current.play().catch(console.error);
+        safePlay();
       }
     } else {
       handleNext();
     }
   };
-
-  const onPlay = () => setIsPlaying(true);
-  const onPause = () => setIsPlaying(false);
 
   const onError = () => {
     if (audioRef.current?.error) {
@@ -144,7 +147,7 @@ export function AudioEngine() {
     }
   };
 
-  // Expose an audio seek handler through custom event if needed
+  // Expose an audio seek handler through custom event
   useEffect(() => {
     const handleSeekEvent = (e: CustomEvent<{ time: number }>) => {
       if (audioRef.current) {
@@ -160,11 +163,14 @@ export function AudioEngine() {
       ref={audioRef}
       preload="auto"
       onTimeUpdate={onTimeUpdate}
-      onLoadedMetadata={onLoadedMetadata}
-      onDurationChange={onDurationChange}
+      onLoadedMetadata={handleDurationDetected}
+      onDurationChange={handleDurationDetected}
+      onCanPlay={() => {
+        if (isPlaying && audioRef.current?.paused) {
+          safePlay();
+        }
+      }}
       onEnded={onEnded}
-      onPlay={onPlay}
-      onPause={onPause}
       onError={onError}
     />
   );
