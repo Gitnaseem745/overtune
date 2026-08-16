@@ -76,12 +76,11 @@ export function Sidebar() {
           isDark ? 'bg-[#181818] border border-neutral-800/80' : 'bg-white shadow-xs border border-gray-200/80'
         }`}>
           <div className="flex items-center gap-2.5 px-2 mb-3">
-            <div 
-              className="w-7 h-7 rounded-xl flex items-center justify-center text-black font-bold shadow-xs"
-              style={{ backgroundColor: accentHex }}
-            >
-              <Music size={16} />
-            </div>
+            <img 
+              src="/icon.png" 
+              alt="Overtone" 
+              className="w-7 h-7 rounded-xl object-cover shadow-sm" 
+            />
             <span className="font-extrabold text-base tracking-tight">Overtone</span>
           </div>
           <ul className="space-y-1">
@@ -221,11 +220,11 @@ export function Sidebar() {
       }`}
     >
       <div className="flex items-center gap-3 p-6 mb-2">
-        <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-white shadow-md ${
-          isDark ? 'bg-[#1db954] shadow-emerald-500/20' : 'bg-[#f9a826] shadow-amber-500/20'
-        }`}>
-          <Music size={18} />
-        </div>
+        <img 
+          src="/icon.png" 
+          alt="Overtone" 
+          className="w-8 h-8 rounded-xl object-cover shadow-sm" 
+        />
         <span className="text-lg font-bold tracking-tight">Overtone</span>
       </div>
 

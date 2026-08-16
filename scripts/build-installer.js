@@ -117,7 +117,12 @@ async function build() {
     if (!fs.existsSync(path.join(rootDir, 'node_modules'))) {
       throw new Error('node_modules folder not found! Please run "npm install" first.');
     }
-    logSuccess('Dependencies and environment verified.');
+
+    if (!fs.existsSync(path.join(rootDir, 'build', 'icon.ico'))) {
+      logInfo('Generating missing icon assets...');
+      require('./generate-icons');
+    }
+    logSuccess('Dependencies, brand assets, and environment verified.');
 
     // ── STEP 2: Ensure Native Dependencies are Rebuilt for Electron ABI ──
     logHeader(2, TOTAL_STEPS, 'Rebuilding Native Addons for Electron (better-sqlite3)');

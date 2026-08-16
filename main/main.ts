@@ -60,13 +60,23 @@ protocol.registerSchemesAsPrivileged([
 
 let mainWindow: BrowserWindow | null = null;
 
+function getAppIconPath(): string {
+  const icoCandidate = path.join(__dirname, '../build/icon.ico');
+  const pngCandidate = path.join(__dirname, '../public/icon.png');
+  if (fs.existsSync(icoCandidate)) return icoCandidate;
+  if (fs.existsSync(pngCandidate)) return pngCandidate;
+  return '';
+}
+
 function createWindow() {
+  const iconPath = getAppIconPath();
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
     minWidth: 900,
     minHeight: 600,
     autoHideMenuBar: true,
+    icon: iconPath || undefined,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,

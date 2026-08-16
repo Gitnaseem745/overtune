@@ -42,12 +42,11 @@ export function SettingsModal() {
         {/* Header */}
         <div className={`flex items-center justify-between px-7 py-5 border-b ${isDark ? 'border-neutral-800/80' : 'border-gray-100'}`}>
           <div className="flex items-center gap-3">
-            <div 
-              className="w-9 h-9 rounded-2xl flex items-center justify-center font-bold text-black shadow-md"
-              style={{ backgroundColor: currentAccentHex }}
-            >
-              <Sparkles size={18} />
-            </div>
+            <img 
+              src="/icon.png" 
+              alt="Overtone" 
+              className="w-9 h-9 rounded-2xl object-cover shadow-md" 
+            />
             <div>
               <h3 className="font-bold text-lg leading-tight">Preferences & Appearance</h3>
               <p className={`text-xs ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>Customize your accent color, theme, and layout</p>

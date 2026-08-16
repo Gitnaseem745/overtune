@@ -160,15 +160,14 @@ export function TopHeader() {
         </button>
 
         {/* User Pill */}
-        <div className={`flex items-center gap-2.5 pl-2 py-1 pr-3 rounded-full border transition-all ${
+        <div className={`flex items-center gap-2.5 pl-1.5 py-1 pr-3 rounded-full border transition-all ${
           isDark ? 'border-neutral-800 bg-neutral-900' : 'border-gray-200/70 bg-white shadow-xs'
         }`}>
-          <div 
-            className="w-7 h-7 rounded-full flex items-center justify-center text-black font-bold text-xs shadow-xs"
-            style={{ backgroundColor: currentAccentHex }}
-          >
-            O
-          </div>
+          <img 
+            src="/icon.png" 
+            alt="Overtone" 
+            className="w-7 h-7 rounded-full object-cover shadow-xs" 
+          />
           <div className="hidden sm:flex flex-col">
             <span className="text-xs font-bold leading-none">Overtone</span>
             <span 
