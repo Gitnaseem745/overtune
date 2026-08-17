@@ -4,6 +4,7 @@ import { usePlayerStore } from '../store/usePlayerStore';
 import { AccentColor } from '../types/music';
 import { getAccentColorHex } from '../lib/utils';
 import { X, Sun, Moon, LayoutGrid, Columns3, Music, Sparkles, ShieldCheck, Palette, Check } from 'lucide-react';
+import { OVERTONE_LOGO_SRC } from '../lib/brand';
 
 export function SettingsModal() {
   const isSettingsOpen = usePlayerStore((s) => s.isSettingsOpen);
@@ -43,7 +44,7 @@ export function SettingsModal() {
         <div className={`flex items-center justify-between px-7 py-5 border-b ${isDark ? 'border-neutral-800/80' : 'border-gray-100'}`}>
           <div className="flex items-center gap-3">
             <img 
-              src="/icon.png" 
+              src={OVERTONE_LOGO_SRC} 
               alt="Overtone" 
               className="w-9 h-9 rounded-2xl object-cover shadow-md" 
             />

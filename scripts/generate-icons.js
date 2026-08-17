@@ -3,11 +3,11 @@ const path = require('path');
 const sharp = require('sharp');
 const pngToIco = require('png-to-ico').default || require('png-to-ico');
 
-const SOURCE_IMAGE = 'C:\\Users\\LAPTOP\\.gemini\\antigravity-ide\\brain\\9b90c5f0-85f2-4819-96be-134144915a58\\overtone_badge_icon_1786923110209.jpg';
 const ROOT_DIR = path.resolve(__dirname, '..');
+const SOURCE_IMAGE = path.join(ROOT_DIR, 'public', 'overtune_logo.png');
 
 async function generateAllIcons() {
-  console.log('🔄 Generating Overtone App Brand Icons...');
+  console.log(`🔄 Generating Overtone App Brand Icons from ${SOURCE_IMAGE}...`);
 
   if (!fs.existsSync(SOURCE_IMAGE)) {
     throw new Error(`Source image not found: ${SOURCE_IMAGE}`);
@@ -35,6 +35,16 @@ async function generateAllIcons() {
   fs.copyFileSync(masterPngPath, path.join(publicDir, 'logo.png'));
   fs.copyFileSync(masterPngPath, path.join(appDir, 'icon.png'));
   console.log('✔ Copied to public/icon.png and src/app/icon.png');
+
+  // Generate src/lib/brand.ts with base64 Data URI for robust cross-environment rendering
+  const brandB64 = fs.readFileSync(SOURCE_IMAGE).toString('base64');
+  const libDir = path.join(ROOT_DIR, 'src', 'lib');
+  if (!fs.existsSync(libDir)) fs.mkdirSync(libDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(libDir, 'brand.ts'),
+    `export const OVERTONE_LOGO_SRC = 'data:image/png;base64,${brandB64}';\n`
+  );
+  console.log('✔ Generated src/lib/brand.ts Data URI');
 
   // 2. Generate PNG sizes for ICO multi-resolution package
   const sizes = [16, 32, 48, 64, 128, 256];

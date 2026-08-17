@@ -16,9 +16,9 @@ export const metadata: Metadata = {
   title: "Overtone — Music Player",
   description: "A premium local music player for your desktop",
   icons: {
-    icon: "/icon.png",
+    icon: "/overtune_logo.png",
     shortcut: "/favicon.ico",
-    apple: "/icon.png",
+    apple: "/overtune_logo.png",
   },
 };
 

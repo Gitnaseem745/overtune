@@ -179,8 +179,17 @@ async function build() {
     let installerFile = null;
 
     if (fs.existsSync(releaseDir)) {
+      const targetName = `Overtone-Setup-${pkg.version}.exe`;
       const files = fs.readdirSync(releaseDir);
-      installerFile = files.find(f => f.endsWith('.exe') && !f.includes('uninstaller') && !f.includes('blockmap'));
+      if (files.includes(targetName)) {
+        installerFile = targetName;
+      } else {
+        const exeFiles = files
+          .filter(f => f.endsWith('.exe') && !f.includes('uninstaller') && !f.includes('blockmap'))
+          .map(f => ({ name: f, time: fs.statSync(path.join(releaseDir, f)).mtimeMs }))
+          .sort((a, b) => b.time - a.time);
+        installerFile = exeFiles.length > 0 ? exeFiles[0].name : null;
+      }
     }
 
     const elapsedSeconds = ((Date.now() - startTime) / 1000).toFixed(1);

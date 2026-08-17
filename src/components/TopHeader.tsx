@@ -7,6 +7,7 @@ import {
   Search, ChevronLeft, ChevronRight, Sun, Moon, 
   Settings, Columns3, LayoutGrid, Palette 
 } from 'lucide-react';
+import { OVERTONE_LOGO_SRC } from '../lib/brand';
 
 export function TopHeader() {
   const searchQuery = usePlayerStore((s) => s.searchQuery);
@@ -164,7 +165,7 @@ export function TopHeader() {
           isDark ? 'border-neutral-800 bg-neutral-900' : 'border-gray-200/70 bg-white shadow-xs'
         }`}>
           <img 
-            src="/icon.png" 
+            src={OVERTONE_LOGO_SRC} 
             alt="Overtone" 
             className="w-7 h-7 rounded-full object-cover shadow-xs" 
           />

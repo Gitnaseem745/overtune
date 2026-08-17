@@ -62,8 +62,12 @@ let mainWindow: BrowserWindow | null = null;
 
 function getAppIconPath(): string {
   const icoCandidate = path.join(__dirname, '../build/icon.ico');
+  const overtuneLogo = path.join(__dirname, '../public/overtune_logo.png');
+  const iconCandidate = path.join(__dirname, '../build/icon.png');
   const pngCandidate = path.join(__dirname, '../public/icon.png');
   if (fs.existsSync(icoCandidate)) return icoCandidate;
+  if (fs.existsSync(overtuneLogo)) return overtuneLogo;
+  if (fs.existsSync(iconCandidate)) return iconCandidate;
   if (fs.existsSync(pngCandidate)) return pngCandidate;
   return '';
 }

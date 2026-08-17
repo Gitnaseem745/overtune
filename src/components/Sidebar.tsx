@@ -6,6 +6,7 @@ import {
   Compass, Music, Disc3, Mic2, Folder, 
   Library, Plus, Heart, ListMusic, FileUp 
 } from 'lucide-react';
+import { OVERTONE_LOGO_SRC } from '../lib/brand';
 
 export function Sidebar() {
   const activeTab = usePlayerStore((s) => s.activeTab);
@@ -77,7 +78,7 @@ export function Sidebar() {
         }`}>
           <div className="flex items-center gap-2.5 px-2 mb-3">
             <img 
-              src="/icon.png" 
+              src={OVERTONE_LOGO_SRC} 
               alt="Overtone" 
               className="w-7 h-7 rounded-xl object-cover shadow-sm" 
             />
@@ -221,7 +222,7 @@ export function Sidebar() {
     >
       <div className="flex items-center gap-3 p-6 mb-2">
         <img 
-          src="/icon.png" 
+          src={OVERTONE_LOGO_SRC} 
           alt="Overtone" 
           className="w-8 h-8 rounded-xl object-cover shadow-sm" 
         />
