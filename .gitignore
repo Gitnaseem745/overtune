@@ -1,8 +1,6 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
-/node_modules
-/.pnp
+# Dependencies
+node_modules/
+.pnp
 .pnp.*
 .yarn/*
 !.yarn/patches
@@ -10,32 +8,84 @@
 !.yarn/releases
 !.yarn/versions
 
-# testing
-/coverage
+# Next.js Build Outputs
+.next/
+out/
+build/
+!build/icon.ico
+!build/icon.png
+!build/installerIcon.ico
+!build/uninstallerIcon.ico
 
-# next.js
-/.next/
-/out/
+# Electron / Bundler Build Outputs
+dist/
+release/
+*.exe
+*.dmg
+*.AppImage
+*.deb
+*.rpm
+*.zip
+*.7z
+*.blockmap
+builder-debug.yml
+builder-effective-config.yaml
+latest*.yml
 
-# misc
-.DS_Store
+# Testing & Coverage
+coverage/
+.nyc_output/
+
+# TypeScript & Next.js Typings
+*.tsbuildinfo
+next-env.d.ts
+
+# Environment & Secrets
+.env
+.env*.local
+.env.development
+.env.test
+.env.production
 *.pem
+*.key
+*.cert
 
-# debug
+# SQLite Databases & Local Storage Data
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+
+# Logs & Debugging
+logs/
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# OS & File System Artifacts
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
 
-# vercel
+# IDE & Editor Configurations
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+
+# Vercel & Deployment
 .vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-dist/
-release/
-

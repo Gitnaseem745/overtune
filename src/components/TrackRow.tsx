@@ -5,7 +5,7 @@ import { usePlayerStore } from '../store/usePlayerStore';
 import { Track } from '../types/music';
 import { getLocalUrl, formatTime } from '../lib/utils';
 import { 
-  Play, Pause, Heart, Music, Plus, 
+  Play, Heart, Music, Plus, 
   MoreHorizontal, ListPlus, Radio, Check 
 } from 'lucide-react';
 

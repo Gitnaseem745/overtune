@@ -5,7 +5,7 @@ import { getAccentColorHex } from '../lib/utils';
 import { AccentColor } from '../types/music';
 import { 
   Search, ChevronLeft, ChevronRight, Sun, Moon, 
-  Settings, Columns3, LayoutGrid, Palette 
+  Settings, Columns3, LayoutGrid 
 } from 'lucide-react';
 import { OVERTONE_LOGO_SRC } from '../lib/brand';
 

@@ -4,7 +4,7 @@ import { usePlayerStore } from '../store/usePlayerStore';
 import { getLocalUrl, formatTime } from '../lib/utils';
 import { 
   X, Music, ListMusic, Trash2, Play, 
-  Disc3, Mic2, FileAudio, Info 
+  Disc3 
 } from 'lucide-react';
 
 export function RightPanel() {

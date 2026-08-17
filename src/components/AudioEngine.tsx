@@ -154,8 +154,8 @@ export function AudioEngine() {
         audioRef.current.currentTime = e.detail.time;
       }
     };
-    window.addEventListener('audio-seek' as any, handleSeekEvent);
-    return () => window.removeEventListener('audio-seek' as any, handleSeekEvent);
+    window.addEventListener('audio-seek', handleSeekEvent as EventListener);
+    return () => window.removeEventListener('audio-seek', handleSeekEvent as EventListener);
   }, []);
 
   return (

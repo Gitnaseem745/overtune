@@ -1,12 +1,73 @@
 'use client';
 
+import React from 'react';
 import { usePlayerStore } from '../store/usePlayerStore';
-import { ActiveTab, Playlist } from '../types/music';
+import { ActiveTab } from '../types/music';
 import { 
   Compass, Music, Disc3, Mic2, Folder, 
-  Library, Plus, Heart, ListMusic, FileUp 
+  Library, Plus, Heart, ListMusic 
 } from 'lucide-react';
 import { OVERTONE_LOGO_SRC } from '../lib/brand';
+
+interface NavItemProps {
+  name: string;
+  tab: ActiveTab;
+  icon: React.ElementType;
+  badge?: number;
+  activeTab: ActiveTab;
+  isDark: boolean;
+  isSpotifyLayout: boolean;
+  accentHex: string;
+  onClick: (tab: ActiveTab) => void;
+}
+
+function NavItem({
+  name,
+  tab,
+  icon: Icon,
+  badge,
+  activeTab,
+  isDark,
+  isSpotifyLayout,
+  accentHex,
+  onClick,
+}: NavItemProps) {
+  const isActive = activeTab === tab;
+  return (
+    <li className="relative" onClick={() => onClick(tab)}>
+      {!isSpotifyLayout && isActive && (
+        <div 
+          className="absolute inset-y-0 left-0 w-1.5 rounded-r-full"
+          style={{ backgroundColor: accentHex }} 
+        />
+      )}
+      <button 
+        className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+          isActive 
+            ? isDark 
+              ? 'bg-neutral-800 text-white font-bold' 
+              : 'bg-gray-100/90 font-bold' 
+            : isDark
+              ? 'text-neutral-400 hover:text-white hover:bg-neutral-800/40'
+              : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100/70'
+        }`}
+        style={{ color: isActive ? accentHex : undefined }}
+      >
+        <div className="flex items-center gap-3">
+          <Icon size={18} style={{ color: isActive ? accentHex : undefined }} />
+          <span>{name}</span>
+        </div>
+        {badge !== undefined && badge > 0 && (
+          <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
+            isDark ? 'bg-neutral-800 text-neutral-400' : 'bg-gray-200/70 text-gray-600'
+          }`}>
+            {badge}
+          </span>
+        )}
+      </button>
+    </li>
+  );
+}
 
 export function Sidebar() {
   const activeTab = usePlayerStore((s) => s.activeTab);
@@ -19,8 +80,6 @@ export function Sidebar() {
   const playlists = usePlayerStore((s) => s.playlists);
   const selectedPlaylist = usePlayerStore((s) => s.selectedPlaylist);
   const favorites = usePlayerStore((s) => s.favorites);
-  const selectAlbum = usePlayerStore((s) => s.selectAlbum);
-  const selectArtist = usePlayerStore((s) => s.selectArtist);
   const selectPlaylist = usePlayerStore((s) => s.selectPlaylist);
   const setCreatePlaylistOpen = usePlayerStore((s) => s.setCreatePlaylistOpen);
 
@@ -29,44 +88,6 @@ export function Sidebar() {
   const accentColor = usePlayerStore((s) => s.accentColor);
 
   const accentHex = accentColor === 'green' ? '#1db954' : '#f9a826';
-
-  const NavItem = ({ name, tab, icon: Icon, badge }: { name: string; tab: ActiveTab; icon: any; badge?: number }) => {
-    const isActive = activeTab === tab;
-    return (
-      <li className="relative" onClick={() => setActiveTab(tab)}>
-        {!isSpotifyLayout && isActive && (
-          <div 
-            className="absolute inset-y-0 left-0 w-1.5 rounded-r-full"
-            style={{ backgroundColor: accentHex }} 
-          />
-        )}
-        <button 
-          className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-            isActive 
-              ? isDark 
-                ? 'bg-neutral-800 text-white font-bold' 
-                : 'bg-gray-100/90 font-bold' 
-              : isDark
-                ? 'text-neutral-400 hover:text-white hover:bg-neutral-800/40'
-                : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100/70'
-          }`}
-          style={{ color: isActive ? accentHex : undefined }}
-        >
-          <div className="flex items-center gap-3">
-            <Icon size={18} style={{ color: isActive ? accentHex : undefined }} />
-            <span>{name}</span>
-          </div>
-          {badge !== undefined && badge > 0 && (
-            <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
-              isDark ? 'bg-neutral-800 text-neutral-400' : 'bg-gray-200/70 text-gray-600'
-            }`}>
-              {badge}
-            </span>
-          )}
-        </button>
-      </li>
-    );
-  };
 
   // ── SPOTIFY PRO 3-COLUMN SIDEBAR ──
   if (isSpotifyLayout) {
@@ -85,8 +106,27 @@ export function Sidebar() {
             <span className="font-extrabold text-base tracking-tight">Overtone</span>
           </div>
           <ul className="space-y-1">
-            <NavItem name="Home" tab="Discover" icon={Compass} />
-            <NavItem name="Songs" tab="Songs" icon={Music} badge={tracks.length} />
+            <NavItem 
+              name="Home" 
+              tab="Discover" 
+              icon={Compass} 
+              activeTab={activeTab}
+              isDark={isDark}
+              isSpotifyLayout={isSpotifyLayout}
+              accentHex={accentHex}
+              onClick={setActiveTab}
+            />
+            <NavItem 
+              name="Songs" 
+              tab="Songs" 
+              icon={Music} 
+              badge={tracks.length} 
+              activeTab={activeTab}
+              isDark={isDark}
+              isSpotifyLayout={isSpotifyLayout}
+              accentHex={accentHex}
+              onClick={setActiveTab}
+            />
           </ul>
         </div>
 
@@ -237,10 +277,49 @@ export function Sidebar() {
             Browse Library
           </h3>
           <ul className="space-y-0.5">
-            <NavItem name="Discover" tab="Discover" icon={Compass} />
-            <NavItem name="Songs" tab="Songs" icon={Music} badge={tracks.length} />
-            <NavItem name="Albums" tab="Albums" icon={Disc3} badge={albums.length} />
-            <NavItem name="Artists" tab="Artists" icon={Mic2} badge={artists.length} />
+            <NavItem 
+              name="Discover" 
+              tab="Discover" 
+              icon={Compass} 
+              activeTab={activeTab}
+              isDark={isDark}
+              isSpotifyLayout={isSpotifyLayout}
+              accentHex={accentHex}
+              onClick={setActiveTab}
+            />
+            <NavItem 
+              name="Songs" 
+              tab="Songs" 
+              icon={Music} 
+              badge={tracks.length} 
+              activeTab={activeTab}
+              isDark={isDark}
+              isSpotifyLayout={isSpotifyLayout}
+              accentHex={accentHex}
+              onClick={setActiveTab}
+            />
+            <NavItem 
+              name="Albums" 
+              tab="Albums" 
+              icon={Disc3} 
+              badge={albums.length} 
+              activeTab={activeTab}
+              isDark={isDark}
+              isSpotifyLayout={isSpotifyLayout}
+              accentHex={accentHex}
+              onClick={setActiveTab}
+            />
+            <NavItem 
+              name="Artists" 
+              tab="Artists" 
+              icon={Mic2} 
+              badge={artists.length} 
+              activeTab={activeTab}
+              isDark={isDark}
+              isSpotifyLayout={isSpotifyLayout}
+              accentHex={accentHex}
+              onClick={setActiveTab}
+            />
           </ul>
         </div>
 
@@ -264,7 +343,17 @@ export function Sidebar() {
           </div>
 
           <ul className="space-y-0.5">
-            <NavItem name="Liked Songs" tab="LikedSongs" icon={Heart} badge={favorites.size} />
+            <NavItem 
+              name="Liked Songs" 
+              tab="LikedSongs" 
+              icon={Heart} 
+              badge={favorites.size} 
+              activeTab={activeTab}
+              isDark={isDark}
+              isSpotifyLayout={isSpotifyLayout}
+              accentHex={accentHex}
+              onClick={setActiveTab}
+            />
             {playlists.map((playlist) => {
               const isActive = activeTab === 'PlaylistDetail' && selectedPlaylist?.id === playlist.id;
               return (
@@ -308,11 +397,19 @@ export function Sidebar() {
             My Storage
           </h3>
           <ul className="space-y-0.5">
-            <NavItem name="Local Files" tab="Local Files" icon={Folder} />
+            <NavItem 
+              name="Local Files" 
+              tab="Local Files" 
+              icon={Folder} 
+              activeTab={activeTab}
+              isDark={isDark}
+              isSpotifyLayout={isSpotifyLayout}
+              accentHex={accentHex}
+              onClick={setActiveTab}
+            />
           </ul>
         </div>
       </div>
     </aside>
   );
 }
-

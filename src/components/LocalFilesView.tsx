@@ -1,7 +1,7 @@
 'use client';
 
 import { usePlayerStore } from '../store/usePlayerStore';
-import { Folder, HardDrive, CheckCircle2, Music, Sparkles } from 'lucide-react';
+import { Folder, CheckCircle2 } from 'lucide-react';
 
 export function LocalFilesView() {
   const tracks = usePlayerStore((s) => s.tracks);

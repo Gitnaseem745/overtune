@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { usePlayerStore } from '../store/usePlayerStore';
 import { TrackRow } from './TrackRow';
-import { Heart, Play, Shuffle, ChevronLeft, Music } from 'lucide-react';
+import { Heart, Play, Shuffle, ChevronLeft } from 'lucide-react';
 
 export function LikedSongsView() {
   const tracks = usePlayerStore((s) => s.tracks);

@@ -1,10 +1,30 @@
 {
-  "name": "music_player",
+  "name": "overtune",
   "version": "0.1.2",
-  "private": true,
-  "main": "dist/main.js",
   "description": "Overtone - Modern Local Music Player (Spotify Clone, Local-First)",
   "author": "Naseem Ansari",
+  "license": "MIT",
+  "main": "dist/main.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gitnaseem745/overtune.git"
+  },
+  "homepage": "https://github.com/gitnaseem745/overtune#readme",
+  "bugs": {
+    "url": "https://github.com/gitnaseem745/overtune/issues"
+  },
+  "keywords": [
+    "music-player",
+    "electron",
+    "nextjs",
+    "react",
+    "local-first",
+    "spotify-clone",
+    "audio",
+    "sqlite",
+    "desktop-app",
+    "open-source"
+  ],
   "scripts": {
     "dev:next": "next dev",
     "dev:electron": "wait-on tcp:3000 && tsup main/main.ts main/preload.ts --format cjs --external electron --external better-sqlite3 && cross-env NODE_ENV=development electron .",
@@ -17,7 +37,8 @@
     "pack": "electron-builder --dir",
     "dist": "electron-builder",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit"
   },
   "build": {
     "appId": "com.overtone.app",

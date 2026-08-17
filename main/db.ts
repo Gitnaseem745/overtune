@@ -217,20 +217,20 @@ export async function exportPlaylistToM3U(playlistId: number, destinationPath: s
   const playlist = database.prepare(`SELECT name FROM playlists WHERE id = ?`).get(playlistId) as { name: string } | undefined;
   if (!playlist) throw new Error('Playlist not found');
 
-  const tracks = getPlaylistTracks(playlistId) as any[];
+  const tracks = getPlaylistTracks(playlistId) as Array<{ duration?: number; artist?: string; title?: string; path?: string }>;
   
   let content = `#EXTM3U\n#PLAYLIST:${playlist.name}\n\n`;
   for (const t of tracks) {
     const duration = Math.round(t.duration || 0);
-    content += `#EXTINF:${duration},${t.artist} - ${t.title}\n`;
-    content += `${t.path}\n`;
+    content += `#EXTINF:${duration},${t.artist || 'Unknown Artist'} - ${t.title || 'Unknown Title'}\n`;
+    content += `${t.path || ''}\n`;
   }
 
   await fs.promises.writeFile(destinationPath, content, 'utf-8');
   return true;
 }
 
-export async function importPlaylistFromM3U(m3uFilePath: string): Promise<any> {
+export async function importPlaylistFromM3U(m3uFilePath: string): Promise<Record<string, unknown> | undefined> {
   const database = getDb();
   const fileContent = await fs.promises.readFile(m3uFilePath, 'utf-8');
   const playlistName = path.basename(m3uFilePath, path.extname(m3uFilePath));
@@ -239,7 +239,6 @@ export async function importPlaylistFromM3U(m3uFilePath: string): Promise<any> {
   const lines = fileContent.split(/\r?\n/);
   const m3uDir = path.dirname(m3uFilePath);
 
-  let currentPos = 0;
   for (const rawLine of lines) {
     const line = rawLine.trim();
     if (!line || line.startsWith('#')) continue;
@@ -255,11 +254,10 @@ export async function importPlaylistFromM3U(m3uFilePath: string): Promise<any> {
 
     if (trackRow) {
       addTrackToPlaylist(newPlaylist.id, trackRow.id);
-      currentPos++;
     }
   }
 
-  return getPlaylists().find((p: any) => p.id === newPlaylist.id);
+  return (getPlaylists() as Array<{ id: number; [key: string]: unknown }>).find((p) => p.id === newPlaylist.id);
 }
 
 // ── Track Metadata Updates ───────────────────────────────────────────

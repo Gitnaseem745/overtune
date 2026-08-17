@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { usePlayerStore } from '../store/usePlayerStore';
-import { X, ListMusic, FileUp, Sparkles } from 'lucide-react';
+import { X, ListMusic, FileUp } from 'lucide-react';
 
 export function CreatePlaylistModal() {
   const isCreatePlaylistOpen = usePlayerStore((s) => s.isCreatePlaylistOpen);

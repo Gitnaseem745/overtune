@@ -1,7 +1,7 @@
 'use client';
 
 import { usePlayerStore } from '../store/usePlayerStore';
-import { getLocalUrl, formatTime, getAccentColorHex, getAccentHoverHex } from '../lib/utils';
+import { getLocalUrl, formatTime, getAccentColorHex } from '../lib/utils';
 import { 
   Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, 
   Volume2, VolumeX, Heart, Music, ListMusic 
@@ -40,7 +40,6 @@ export function NowPlayingBar() {
   const effectiveDuration = duration > 0 ? duration : (currentTrack?.duration || 0);
 
   const accentHex = getAccentColorHex(accentColor);
-  const accentHoverHex = getAccentHoverHex(accentColor);
 
   // Calculate percentages for timeline & volume fill
   const progressPercent = effectiveDuration > 0 ? Math.min(100, Math.max(0, (currentTime / effectiveDuration) * 100)) : 0;

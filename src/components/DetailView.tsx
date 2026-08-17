@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { usePlayerStore } from '../store/usePlayerStore';
-import { getLocalUrl, formatTime } from '../lib/utils';
+import { getLocalUrl } from '../lib/utils';
 import { TrackRow } from './TrackRow';
 import { Disc3, Mic2, Play, Shuffle, ChevronLeft } from 'lucide-react';
 

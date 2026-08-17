@@ -3,7 +3,7 @@
 import { usePlayerStore } from '../store/usePlayerStore';
 import { getLocalUrl } from '../lib/utils';
 import { TrackRow } from './TrackRow';
-import { Disc3, Play, Sparkles, Music, Folder } from 'lucide-react';
+import { Disc3, Play, Folder } from 'lucide-react';
 
 export function DiscoverView() {
   const tracks = usePlayerStore((s) => s.tracks);

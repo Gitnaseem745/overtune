@@ -46,7 +46,7 @@ export function getLocalUrl(filePath?: string | null): string {
   try {
     const base64 = btoa(unescape(encodeURIComponent(filePath)));
     return `local://file?p=${base64}`;
-  } catch (e) {
+  } catch {
     return '';
   }
 }
