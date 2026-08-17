@@ -172,7 +172,7 @@ async function build() {
 
     // ── STEP 6: Package Windows NSIS .exe Installer ──
     logHeader(6, TOTAL_STEPS, 'Packaging Windows NSIS .exe Installer via electron-builder');
-    await runCommand('npx', ['electron-builder', '--win', 'nsis'], 'Electron Builder Packaging');
+    await runCommand('npx', ['electron-builder', '--win', 'nsis', '--publish', 'never'], 'Electron Builder Packaging');
 
     // ── Completion & Output Analysis ──
     const releaseDir = path.join(rootDir, 'release');

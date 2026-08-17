@@ -35,7 +35,7 @@
     "build:installer": "node scripts/build-installer.js",
     "dist:installer": "node scripts/build-installer.js",
     "pack": "electron-builder --dir",
-    "dist": "electron-builder",
+    "dist": "electron-builder --publish never",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit"
