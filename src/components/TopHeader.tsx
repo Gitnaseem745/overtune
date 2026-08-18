@@ -5,7 +5,7 @@ import { getAccentColorHex } from '../lib/utils';
 import { AccentColor } from '../types/music';
 import { 
   Search, ChevronLeft, ChevronRight, Sun, Moon, 
-  Settings, Columns3, LayoutGrid, Minus, Square, X 
+  Settings, Columns3, LayoutGrid, Minus, Square, X, PanelLeft 
 } from 'lucide-react';
 import { OvertoneLogo } from './OvertoneLogo';
 
@@ -18,6 +18,8 @@ export function TopHeader() {
   const setLayout = usePlayerStore((s) => s.setLayout);
   const accentColor = usePlayerStore((s) => s.accentColor);
   const setAccentColor = usePlayerStore((s) => s.setAccentColor);
+  const isSidebarOpen = usePlayerStore((s) => s.isSidebarOpen);
+  const toggleSidebar = usePlayerStore((s) => s.toggleSidebar);
   const toggleSettings = usePlayerStore((s) => s.toggleSettings);
   const navigateBack = usePlayerStore((s) => s.navigateBack);
   const navigateForward = usePlayerStore((s) => s.navigateForward);
@@ -76,6 +78,24 @@ export function TopHeader() {
       {/* Left: History navigation & Search */}
       <div className="flex items-center gap-4 flex-1 max-w-xl no-drag-region">
         <div className="flex items-center gap-1.5">
+          {/* Left Sidebar Toggle Button */}
+          <button
+            onClick={toggleSidebar}
+            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+              !isSidebarOpen
+                ? 'text-black font-bold shadow-md'
+                : isDark
+                  ? 'bg-neutral-900 text-neutral-300 hover:text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+            style={{
+              backgroundColor: !isSidebarOpen ? currentAccentHex : undefined,
+            }}
+            title={isSidebarOpen ? 'Hide Left Sidebar' : 'Show Left Sidebar'}
+          >
+            <PanelLeft size={16} />
+          </button>
+
           <button
             onClick={navigateBack}
             disabled={!canGoBack}

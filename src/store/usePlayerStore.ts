@@ -10,6 +10,8 @@ interface PlayerState {
   tabHistory: ActiveTab[];
   tabHistoryIndex: number;
   searchQuery: string;
+  isSidebarOpen: boolean;
+  isSidebarCollapsed: boolean;
   isRightPanelOpen: boolean;
   isSettingsOpen: boolean;
   isCreatePlaylistOpen: boolean;
@@ -49,6 +51,10 @@ interface PlayerState {
   navigateBack: () => void;
   navigateForward: () => void;
   setSearchQuery: (query: string) => void;
+  toggleSidebar: () => void;
+  toggleSidebarCollapse: () => void;
+  setSidebarOpen: (open: boolean) => void;
+  setSidebarCollapsed: (collapsed: boolean) => void;
   toggleRightPanel: () => void;
   setRightPanelOpen: (open: boolean) => void;
   toggleSettings: () => void;
@@ -110,6 +116,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   tabHistory: ['Discover'],
   tabHistoryIndex: 0,
   searchQuery: '',
+  isSidebarOpen: true,
+  isSidebarCollapsed: (typeof window !== 'undefined' && localStorage.getItem('overtone_sidebar_collapsed') === 'true') || false,
   isRightPanelOpen: true,
   isSettingsOpen: false,
   isCreatePlaylistOpen: false,
@@ -209,6 +217,21 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   },
 
   setSearchQuery: (searchQuery) => set({ searchQuery }),
+  toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
+  toggleSidebarCollapse: () => set((state) => {
+    const next = !state.isSidebarCollapsed;
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('overtone_sidebar_collapsed', String(next));
+    }
+    return { isSidebarCollapsed: next };
+  }),
+  setSidebarOpen: (isSidebarOpen) => set({ isSidebarOpen }),
+  setSidebarCollapsed: (isSidebarCollapsed) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('overtone_sidebar_collapsed', String(isSidebarCollapsed));
+    }
+    set({ isSidebarCollapsed });
+  },
   toggleRightPanel: () => set((state) => ({ isRightPanelOpen: !state.isRightPanelOpen })),
   setRightPanelOpen: (isRightPanelOpen) => set({ isRightPanelOpen }),
   toggleSettings: () => set((state) => ({ isSettingsOpen: !state.isSettingsOpen })),
