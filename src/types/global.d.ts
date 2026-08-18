@@ -26,6 +26,12 @@ declare global {
       toggleFavorite: (trackId: number) => Promise<boolean>;
       updateTrackDuration: (trackId: number, duration: number) => Promise<boolean>;
 
+      // Miniplayer
+      toggleMiniplayer: () => Promise<boolean>;
+      setMiniplayer: (enable: boolean) => Promise<boolean>;
+      getMiniplayerState: () => Promise<boolean>;
+      onMiniplayerStateChanged: (callback: (isMini: boolean) => void) => () => void;
+
       onLibraryUpdated: (callback: () => void) => () => void;
     };
   }

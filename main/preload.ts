@@ -22,6 +22,18 @@ contextBridge.exposeInMainWorld('api', {
   toggleFavorite: (trackId: number) => ipcRenderer.invoke('db:toggleFavorite', trackId),
   updateTrackDuration: (trackId: number, duration: number) => ipcRenderer.invoke('db:updateTrackDuration', trackId, duration),
 
+  // Miniplayer
+  toggleMiniplayer: () => ipcRenderer.invoke('window:toggleMiniplayer'),
+  setMiniplayer: (enable: boolean) => ipcRenderer.invoke('window:setMiniplayer', enable),
+  getMiniplayerState: () => ipcRenderer.invoke('window:getMiniplayerState'),
+  onMiniplayerStateChanged: (callback: (isMini: boolean) => void) => {
+    const handler = (_event: unknown, isMini: boolean) => callback(isMini);
+    ipcRenderer.on('window:miniplayerStateChanged', handler);
+    return () => {
+      ipcRenderer.removeListener('window:miniplayerStateChanged', handler);
+    };
+  },
+
   onLibraryUpdated: (callback: () => void) => {
     const handler = () => callback();
     ipcRenderer.on('library-updated', handler);

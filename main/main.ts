@@ -354,4 +354,68 @@ ipcMain.handle('db:updateTrackDuration', (_event, trackId: number, duration: num
   return updateTrackDuration(trackId, duration);
 });
 
+// ── Miniplayer IPC Handlers ───────────────────────────────────────────
+
+let isMiniplayer = false;
+let normalBounds: { width: number; height: number; x?: number; y?: number } = { width: 1280, height: 800 };
+let miniplayerBounds: { width: number; height: number; x?: number; y?: number } = { width: 340, height: 340 };
+
+ipcMain.handle('window:toggleMiniplayer', () => {
+  if (!mainWindow) return false;
+  isMiniplayer = !isMiniplayer;
+
+  if (isMiniplayer) {
+    normalBounds = mainWindow.getBounds();
+    mainWindow.setMinimumSize(220, 72);
+    mainWindow.setMaximumSize(600, 600);
+    mainWindow.setAlwaysOnTop(true, 'floating');
+    if (miniplayerBounds.x !== undefined && miniplayerBounds.y !== undefined) {
+      mainWindow.setBounds(miniplayerBounds);
+    } else {
+      mainWindow.setSize(340, 340);
+    }
+  } else {
+    miniplayerBounds = mainWindow.getBounds();
+    mainWindow.setMinimumSize(900, 600);
+    mainWindow.setMaximumSize(10000, 10000);
+    mainWindow.setAlwaysOnTop(false);
+    mainWindow.setBounds(normalBounds);
+  }
+
+  mainWindow.webContents.send('window:miniplayerStateChanged', isMiniplayer);
+  return isMiniplayer;
+});
+
+ipcMain.handle('window:getMiniplayerState', () => {
+  return isMiniplayer;
+});
+
+ipcMain.handle('window:setMiniplayer', (_event, enable: boolean) => {
+  if (!mainWindow) return false;
+  if (isMiniplayer === enable) return isMiniplayer;
+  isMiniplayer = enable;
+
+  if (isMiniplayer) {
+    normalBounds = mainWindow.getBounds();
+    mainWindow.setMinimumSize(220, 72);
+    mainWindow.setMaximumSize(600, 600);
+    mainWindow.setAlwaysOnTop(true, 'floating');
+    if (miniplayerBounds.x !== undefined && miniplayerBounds.y !== undefined) {
+      mainWindow.setBounds(miniplayerBounds);
+    } else {
+      mainWindow.setSize(340, 340);
+    }
+  } else {
+    miniplayerBounds = mainWindow.getBounds();
+    mainWindow.setMinimumSize(900, 600);
+    mainWindow.setMaximumSize(10000, 10000);
+    mainWindow.setAlwaysOnTop(false);
+    mainWindow.setBounds(normalBounds);
+  }
+
+  mainWindow.webContents.send('window:miniplayerStateChanged', isMiniplayer);
+  return isMiniplayer;
+});
+
+
 

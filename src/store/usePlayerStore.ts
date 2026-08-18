@@ -13,6 +13,7 @@ interface PlayerState {
   isRightPanelOpen: boolean;
   isSettingsOpen: boolean;
   isCreatePlaylistOpen: boolean;
+  isMiniplayer: boolean;
 
   // ── Library Data ──
   tracks: Track[];
@@ -53,6 +54,8 @@ interface PlayerState {
   toggleSettings: () => void;
   setSettingsOpen: (open: boolean) => void;
   setCreatePlaylistOpen: (open: boolean) => void;
+  toggleMiniplayer: () => void;
+  setMiniplayer: (mini: boolean) => void;
 
   setTracks: (tracks: Track[]) => void;
   setAlbums: (albums: Album[]) => void;
@@ -109,6 +112,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   searchQuery: '',
   isRightPanelOpen: true,
   isSettingsOpen: false,
+  isCreatePlaylistOpen: false,
+  isMiniplayer: false,
 
   tracks: [],
   albums: [],
@@ -119,7 +124,6 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   favorites: new Set<number>(),
   selectedAlbum: null,
   selectedArtist: null,
-  isCreatePlaylistOpen: false,
 
   currentTrack: null,
   isPlaying: false,
@@ -210,6 +214,20 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   toggleSettings: () => set((state) => ({ isSettingsOpen: !state.isSettingsOpen })),
   setSettingsOpen: (isSettingsOpen) => set({ isSettingsOpen }),
   setCreatePlaylistOpen: (isCreatePlaylistOpen) => set({ isCreatePlaylistOpen }),
+  toggleMiniplayer: () => {
+    const { isMiniplayer } = get();
+    const next = !isMiniplayer;
+    if (typeof window !== 'undefined' && window.api?.toggleMiniplayer) {
+      window.api.toggleMiniplayer();
+    }
+    set({ isMiniplayer: next });
+  },
+  setMiniplayer: (isMiniplayer) => {
+    if (typeof window !== 'undefined' && window.api?.setMiniplayer) {
+      window.api.setMiniplayer(isMiniplayer);
+    }
+    set({ isMiniplayer });
+  },
 
   setTracks: (tracks) => set({ tracks }),
   setAlbums: (albums) => set({ albums }),

@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { usePlayerStore } from '../store/usePlayerStore';
 import { AudioEngine } from '../components/AudioEngine';
 import { SettingsModal } from '../components/SettingsModal';
@@ -8,6 +9,7 @@ import { Sidebar } from '../components/Sidebar';
 import { TopHeader } from '../components/TopHeader';
 import { RightPanel } from '../components/RightPanel';
 import { NowPlayingBar } from '../components/NowPlayingBar';
+import { MiniPlayer } from '../components/MiniPlayer';
 
 import { DiscoverView } from '../components/DiscoverView';
 import { SongsView } from '../components/SongsView';
@@ -22,9 +24,31 @@ export default function Home() {
   const theme = usePlayerStore((s) => s.theme);
   const layout = usePlayerStore((s) => s.layout);
   const activeTab = usePlayerStore((s) => s.activeTab);
+  const isMiniplayer = usePlayerStore((s) => s.isMiniplayer);
+  const setMiniplayer = usePlayerStore((s) => s.setMiniplayer);
 
   const isDark = theme === 'dark';
   const isSpotifyLayout = layout === 'spotify';
+
+  // Synchronize miniplayer state with Electron IPC listener
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.api?.onMiniplayerStateChanged) {
+      const cleanup = window.api.onMiniplayerStateChanged((isMini) => {
+        setMiniplayer(isMini);
+      });
+      return cleanup;
+    }
+  }, [setMiniplayer]);
+
+  // Miniplayer Mode View
+  if (isMiniplayer) {
+    return (
+      <div className={`h-screen w-screen overflow-hidden ${isDark ? 'bg-black text-white' : 'bg-white text-gray-900'}`}>
+        <AudioEngine />
+        <MiniPlayer />
+      </div>
+    );
+  }
 
   return (
     <div 
