@@ -40,7 +40,7 @@ export function TopHeader() {
   const cycleAccentColor = () => {
     const accents: AccentColor[] = [
       'orange', 'green', 'purple', 'blue',
-      'retro', 'valentine', 'lofi', 'pastel', 'halloween',
+      'retro', 'valentine', 'pastel', 'halloween',
       'synthwave', 'cyberpunk', 'aqua', 'cupcake', 'coffee'
     ];
     const nextIdx = (accents.indexOf(accentColor) + 1) % accents.length;

@@ -45,7 +45,6 @@ export type AccentColor =
   | 'blue' 
   | 'retro' 
   | 'valentine' 
-  | 'lofi' 
   | 'pastel' 
   | 'halloween' 
   | 'synthwave' 

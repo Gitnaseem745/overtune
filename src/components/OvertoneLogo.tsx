@@ -30,7 +30,7 @@ export function OvertoneLogo({
   const gradientId = useId().replace(/:/g, '-');
 
   // Determine inner glyph color based on background contrast
-  const glyphColor = activeAccent === 'lofi' ? '#ffffff' : '#121212';
+  const glyphColor = '#121212';
 
   const roundedClasses = {
     full: 'rounded-full',

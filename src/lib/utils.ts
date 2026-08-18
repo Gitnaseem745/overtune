@@ -21,8 +21,6 @@ export function getAccentColorHex(accent: AccentColor = 'orange'): string {
       return '#ef9995';
     case 'valentine':
       return '#e96d7b';
-    case 'lofi':
-      return '#0d0d0d';
     case 'pastel':
       return '#d1c1d7';
     case 'halloween':
@@ -55,8 +53,6 @@ export function getAccentHoverHex(accent: AccentColor = 'orange'): string {
       return '#f4b3b0';
     case 'valentine':
       return '#f08e9a';
-    case 'lofi':
-      return '#262626';
     case 'pastel':
       return '#dfd3e4';
     case 'halloween':

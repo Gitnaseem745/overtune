@@ -134,13 +134,19 @@ async function build() {
     const dirsToClean = [
       path.join(rootDir, 'out'),
       path.join(rootDir, 'dist'),
-      path.join(rootDir, '.next')
+      path.join(rootDir, '.next'),
+      path.join(rootDir, 'release', 'win-unpacked'),
+      path.join(rootDir, 'release', `${appName}-Setup-${pkg.version}.exe`),
     ];
 
     for (const dir of dirsToClean) {
       if (fs.existsSync(dir)) {
-        logInfo(`Removing: ${path.relative(rootDir, dir)}`);
-        fs.rmSync(dir, { recursive: true, force: true });
+        try {
+          logInfo(`Removing: ${path.relative(rootDir, dir)}`);
+          fs.rmSync(dir, { recursive: true, force: true, maxRetries: 3 });
+        } catch (cleanErr) {
+          logWarn(`Could not immediately remove ${path.relative(rootDir, dir)}: ${cleanErr.message}`);
+        }
       }
     }
     logSuccess('Cleaned old build output folders.');

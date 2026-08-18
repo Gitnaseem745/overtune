@@ -10,12 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.3] - 2026-08-18
 
 ### Added
-- **Custom Theme-Aware SVG Logo (`OvertoneLogo`)**: Vector-based Overtone brand emblem in Navbar Header, Sidebar (Classic & Spotify layouts), and Preferences Modal that dynamically reacts to active theme colors.
-- **10 DaisyUI-Inspired Color Themes**: Added `Retro`, `Valentine`, `Lo-Fi`, `Pastel`, `Halloween`, `Synthwave`, `Cyberpunk`, `Aqua`, `Cupcake`, and `Coffee` theme palettes with full system-wide support.
+- **Dynamic Spotify-Style Miniplayer**: Floating, resizable always-on-top window (`alwaysOnTop: true`) with auto-layout switching between **Square Card Mode** (large artwork, ambient background, hover playback controls, and scrubbable seekbar) and **Compact Horizontal Bar Mode** (small thumbnail, quick transport controls, and discrete progress fill).
+- **Custom Theme-Aware SVG Logo (`OvertoneLogo`)**: Scalable vector Overtone brand emblem in Navbar Header, Sidebars (Classic & Spotify layouts), and Preferences Modal that dynamically reacts to active theme colors.
+- **DaisyUI-Inspired Color Theme Collection**: Added 9 DaisyUI-curated theme palettes (`Retro`, `Valentine`, `Pastel`, `Halloween`, `Synthwave`, `Cyberpunk`, `Aqua`, `Cupcake`, and `Coffee`) alongside Overtone Signature themes (`Warm Amber`, `Spotify Green`, `Violet Purple`, `Ocean Blue`).
 
 ### Fixed
 - **Timeline Seekbar UI**: Removed glitchy snake wave overlay animation on the now playing seek bar, standardizing it with the clean, smooth progress track fill identical to the volume slider.
-- **Violet & Ocean Theme Application**: Resolved hardcoded color issues across all views (`Sidebar`, `TrackRow`, `SongsView`, `PlaylistDetailView`, `LocalFilesView`, `LikedSongsView`, `DiscoverView`, `DetailView`, `CreatePlaylistModal`, and `RightPanel`), ensuring full palette application for Violet, Ocean, and all DaisyUI themes.
+- **Violet & Ocean Theme Application**: Resolved hardcoded color issues across all views (`Sidebar`, `TrackRow`, `SongsView`, `PlaylistDetailView`, `LocalFilesView`, `LikedSongsView`, `DiscoverView`, `DetailView`, `CreatePlaylistModal`, and `RightPanel`), ensuring full palette application across the app.
+- **Theme Palette Cleanup**: Streamlined theme stack by removing the experimental `lofi` theme in favor of vibrant curated colorways.
 
 ---
 

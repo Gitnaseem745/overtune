@@ -30,10 +30,9 @@ export function SettingsModal() {
     { id: 'green', name: 'Spotify Green', hex: '#1db954', desc: 'Signature Spotify style' },
     { id: 'purple', name: 'Violet Purple', hex: '#a855f7', desc: 'Vibrant modern violet' },
     { id: 'blue', name: 'Ocean Blue', hex: '#3b82f6', desc: 'Crisp minimal ocean' },
-    // DaisyUI Themes (10 New Themes)
+    // DaisyUI Themes
     { id: 'retro', name: 'Retro', hex: '#ef9995', desc: 'Vintage warm coral & sage', isDaisy: true },
     { id: 'valentine', name: 'Valentine', hex: '#e96d7b', desc: 'Soft rose & romance', isDaisy: true },
-    { id: 'lofi', name: 'Lo-Fi', hex: '#0d0d0d', desc: 'Monochrome minimalist', isDaisy: true },
     { id: 'pastel', name: 'Pastel', hex: '#d1c1d7', desc: 'Soft lavender & mint', isDaisy: true },
     { id: 'halloween', name: 'Halloween', hex: '#f28c18', desc: 'Spooky neon pumpkin', isDaisy: true },
     { id: 'synthwave', name: 'Synthwave', hex: '#e779c1', desc: 'Neon 80s hot cyber pink', isDaisy: true },
@@ -53,12 +52,14 @@ export function SettingsModal() {
         }`}
       >
         {/* Header */}
-        <div className={`flex items-center justify-between px-7 py-5 border-b ${isDark ? 'border-neutral-800/80' : 'border-gray-100'}`}>
+        <div className="flex items-center justify-between px-6 py-5 border-b border-neutral-800/40">
           <div className="flex items-center gap-3">
-            <OvertoneLogo size={36} rounded="2xl" />
+            <OvertoneLogo size={36} />
             <div>
-              <h3 className="font-bold text-lg leading-tight">Preferences & Appearance</h3>
-              <p className={`text-xs ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>Customize your accent color, theme, and layout</p>
+              <h2 className="font-extrabold text-base tracking-tight">Overtone Preferences</h2>
+              <p className={`text-xs ${isDark ? 'text-neutral-400' : 'text-gray-400'}`}>
+                Customise your playback workspace & theme
+              </p>
             </div>
           </div>
           <button 
@@ -67,29 +68,32 @@ export function SettingsModal() {
               isDark ? 'hover:bg-neutral-800 text-neutral-400 hover:text-white' : 'hover:bg-gray-100 text-gray-400 hover:text-gray-900'
             }`}
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
 
-        {/* Modal Body */}
-        <div className="p-7 space-y-7 max-h-[75vh] overflow-y-auto">
+        {/* Modal Scrollable Body */}
+        <div className="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
           
-          {/* Section 1: Universal Accent Color */}
+          {/* Section 1: Color Accent Themes */}
           <div>
-            <div className="flex items-center gap-2 mb-3">
-              <Palette size={16} style={{ color: currentAccentHex }} />
-              <label className="text-xs font-bold uppercase tracking-wider text-neutral-400">
-                Universal Accent Color
-              </label>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h3 className="font-bold text-sm">Accent Color Palette</h3>
+                <span className={`text-xs ${isDark ? 'text-neutral-400' : 'text-gray-400'}`}>
+                  Choose from signature styles or DaisyUI curated palettes
+                </span>
+              </div>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
               {ACCENTS.map((item) => {
                 const isSelected = accentColor === item.id;
                 return (
                   <button
                     key={item.id}
                     onClick={() => setAccentColor(item.id)}
-                    className={`flex flex-col items-center p-3 rounded-2xl border transition-all text-center relative ${
+                    className={`flex flex-col items-start p-3 rounded-2xl border text-left transition-all ${
                       isSelected
                         ? isDark
                           ? 'bg-neutral-800/90 ring-2'
@@ -104,12 +108,10 @@ export function SettingsModal() {
                     }}
                   >
                     <div 
-                      className={`w-7 h-7 rounded-full mb-2 flex items-center justify-center font-bold shadow-sm ${
-                        item.id === 'lofi' ? 'text-white' : 'text-black'
-                      }`}
+                      className="w-7 h-7 rounded-full mb-2 flex items-center justify-center font-bold shadow-sm text-black"
                       style={{ backgroundColor: item.hex }}
                     >
-                      {isSelected && <Check size={14} className={item.id === 'lofi' ? 'text-white' : 'text-black'} />}
+                      {isSelected && <Check size={14} className="text-black" />}
                     </div>
                     <span className="font-bold text-xs truncate w-full">{item.name}</span>
                     <span className={`text-[10px] truncate w-full ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
