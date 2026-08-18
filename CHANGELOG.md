@@ -11,10 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Dynamic Spotify-Style Miniplayer**: Floating, resizable always-on-top window (`alwaysOnTop: true`) with auto-layout switching between **Square Card Mode** (large artwork, ambient background, hover playback controls, and scrubbable seekbar) and **Compact Horizontal Bar Mode** (small thumbnail, quick transport controls, and discrete progress fill).
-- **Custom Theme-Aware SVG Logo (`OvertoneLogo`)**: Scalable vector Overtone brand emblem in Navbar Header, Sidebars (Classic & Spotify layouts), and Preferences Modal that dynamically reacts to active theme colors.
+- **Frameless Modern Window & Hardware Drag**: Configured a sleek frameless window (`frame: false`) eliminating default OS titlebars from the Miniplayer, while providing native multi-monitor hardware dragging (`-webkit-app-region: drag`) and custom dashboard window controls (Minimize, Maximize/Restore, Close).
+- **Collapsible & Hideable Left Sidebar**:
+  - Added Spotify-style **Icon-Only Mini Mode** (`w-[72px]`) with centered navigation icons, tooltips, active badges, Liked Songs gradient square, and playlist avatars.
+  - Added a dedicated Left Sidebar Toggle button (`<PanelLeft />`) in the sticky top header navbar to easily hide the sidebar and expand the main view to 100% full width.
+- **Theme-Adaptive Custom Scrollbars**: Replaced default Windows OS white scrollbars and arrow buttons with modern, translucent, rounded custom scrollbars (`8px`) tailored for both Dark and Light themes with full Webkit and Firefox standards support.
+- **Custom Theme-Aware SVG Logo (`OvertoneLogo`)**: Scalable vector brand emblem in Navbar Header, Sidebars (Classic & Spotify layouts), and Preferences Modal that dynamically reacts to active theme colors.
 - **DaisyUI-Inspired Color Theme Collection**: Added 9 DaisyUI-curated theme palettes (`Retro`, `Valentine`, `Pastel`, `Halloween`, `Synthwave`, `Cyberpunk`, `Aqua`, `Cupcake`, and `Coffee`) alongside Overtone Signature themes (`Warm Amber`, `Spotify Green`, `Violet Purple`, `Ocean Blue`).
 
 ### Fixed
+- **Taskbar Pinning Persistence**: Registered Windows `AppUserModelID` (`com.overtone.app`) and static NSIS GUID to prevent Windows from dropping pinned taskbar icons across version updates.
+- **Database & Playlist Migration**: Implemented automatic SQLite database discovery and migration in `main/db.ts`, guaranteeing that existing playlists, songs, and favorites are preserved across all updates and installer upgrades.
 - **Timeline Seekbar UI**: Removed glitchy snake wave overlay animation on the now playing seek bar, standardizing it with the clean, smooth progress track fill identical to the volume slider.
 - **Violet & Ocean Theme Application**: Resolved hardcoded color issues across all views (`Sidebar`, `TrackRow`, `SongsView`, `PlaylistDetailView`, `LocalFilesView`, `LikedSongsView`, `DiscoverView`, `DetailView`, `CreatePlaylistModal`, and `RightPanel`), ensuring full palette application across the app.
 - **Theme Palette Cleanup**: Streamlined theme stack by removing the experimental `lofi` theme in favor of vibrant curated colorways.

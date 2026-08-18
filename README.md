@@ -34,28 +34,33 @@
 ### 🎛️ Dynamic Spotify-Style Miniplayer
 - **Seamless Auto-Layout Switching:** Automatically transitions between **Square Card Mode** (`height >= 185px`) with ambient glow, hover playback controls, and scrubbable seekbar, and **Compact Horizontal Bar / Pill Mode** (`height < 185px`) with small thumbnail, quick actions, and discrete progress fill.
 - **Floating Always-on-Top:** Floats above all other windows, browsers, and applications while working or gaming (`alwaysOnTop: true`).
-- **Drag & Resize Anywhere:** Drag by grabbing the handle (`:::`) or frame across multiple monitors with native Electron resizing and bounds memory.
+- **Frameless Window & Hardware Drag:** Completely frameless window with zero OS titlebars in Miniplayer, featuring full multi-monitor `-webkit-app-region: drag` support.
 - **Uninterrupted Audio Playback:** Zero latency or audio pauses when switching in and out of Miniplayer mode.
 
-### 🎨 13-Theme Visual Architecture & Dynamic SVG Branding
+### 🎨 13-Theme Visual Architecture, Custom Scrollbars & Dynamic SVG Branding
 - **☀️ Overtone Light (Default):** Clean, warm off-white interface with energetic amber accents (`#f9a826`).
 - **🌙 Spotify Dark:** True deep black dark mode (`#121212` / `#181818`) with authentic Spotify Green accents (`#1db954`).
 - **13 Curated & DaisyUI Themes:** Choose from Warm Amber, Spotify Green, Violet Purple, Ocean Blue, Retro, Valentine, Pastel, Halloween, Synthwave, Cyberpunk, Aqua, Cupcake, and Coffee.
+- **Theme-Adaptive Custom Scrollbars:** Sleek, translucent rounded scrollbars tailored for both Dark and Light themes, eliminating default Windows white scrollbars and arrows.
 - **Dynamic Theme-Aware SVG Logo:** Scalable vector brand emblem in the navbar, sidebars, and preferences modal that automatically updates its gradients with the active theme.
 - **Persistent Preferences:** Theme and layout choices are stored in `localStorage` and persist seamlessly across app restarts.
 
-### 📐 Dual Desktop Layouts
+### 📐 Dual Desktop Layouts & Collapsible / Hideable Navigation
 - **Classic 2-Column (Default):** Minimalist layout with Left Navigation Sidebar, Center Main View, and Bottom Transport Player.
 - **Spotify Pro 3-Column:**
   - **Left Panel:** Navigation + Collapsible *"Your Library"* with quick filter pills (Albums/Artists), Liked Songs shortcut, and native playlists.
+  - **Icon-Only Compact Mode:** Collapse the sidebar into a sleek `w-[72px]` icon column with tooltips and active indicators.
+  - **Full Hide / Show Toggle:** One-click toggle button (`<PanelLeft />`) in the top navbar to expand the main view to 100% full width.
   - **Center Panel:** Sticky translucent top bar with history navigation (Back/Forward), live instant search, and dynamic view routers.
   - **Right Panel:** Collapsible **Now Playing Showcase** (high-res cover art, track details) and an **Interactive Live Queue Drawer** with reordering and removal controls.
   - **Bottom Player:** Full transport bar with clean filled seekbar, volume control, Miniplayer toggle, and shuffle/repeat modes.
 
-### 📁 Local-First Music Indexer
+### 📁 Local-First Music Indexer & Update Persistence
 - **Instant Metadata Extraction:** Powered by `music-metadata` to extract high-resolution embedded ID3 cover art, artist names, album titles, track numbers, and genres.
 - **Background File Watcher:** Uses `chokidar` to detect added, modified, or deleted audio files in real time.
 - **High-Performance Database:** Stores library cache in SQLite (`better-sqlite3`) in **WAL mode** for sub-millisecond querying across tens of thousands of tracks.
+- **Automatic Migration Across Updates:** Seamless database migration guarantees your playlists, favorites, and library are preserved permanently when upgrading versions.
+- **Taskbar Pinning Persistence:** Registered Windows AppUserModelID (`com.overtone.app`) and static NSIS upgrade GUID to keep your taskbar pin intact across updates.
 - **Arbitrary Timeline Seeking:** Custom `local://` Electron streaming protocol supporting **HTTP 206 Partial Content Range** headers for instant, gapless scrubbing.
 
 ### 🎶 Playlists & Favorites System
