@@ -10,7 +10,36 @@ function getDbPath() {
   if (!fs.existsSync(userDataPath)) {
     fs.mkdirSync(userDataPath, { recursive: true });
   }
-  return path.join(userDataPath, 'overtone.db');
+  const targetDbPath = path.join(userDataPath, 'overtone.db');
+
+  // Automatic Migration: check if a database exists in legacy or dev paths and migrate seamlessly
+  if (!fs.existsSync(targetDbPath)) {
+    const appData = app.getPath('appData') || process.env.APPDATA || '';
+    const possibleOldPaths = [
+      path.join(appData, 'overtune', 'overtone.db'),
+      path.join(appData, 'Electron', 'overtone.db'),
+      path.join(appData, 'overtune', 'library.db'),
+      path.join(userDataPath, 'library.db'),
+      path.join(process.cwd(), 'overtone.db'),
+      path.join(process.cwd(), 'library.db'),
+    ];
+
+    for (const oldPath of possibleOldPaths) {
+      if (fs.existsSync(oldPath)) {
+        try {
+          console.log(`[DB] Migrating existing database from ${oldPath} to ${targetDbPath}`);
+          fs.copyFileSync(oldPath, targetDbPath);
+          if (fs.existsSync(`${oldPath}-wal`)) fs.copyFileSync(`${oldPath}-wal`, `${targetDbPath}-wal`);
+          if (fs.existsSync(`${oldPath}-shm`)) fs.copyFileSync(`${oldPath}-shm`, `${targetDbPath}-shm`);
+          break;
+        } catch (copyErr) {
+          console.error(`[DB] Failed to copy database from ${oldPath}:`, copyErr);
+        }
+      }
+    }
+  }
+
+  return targetDbPath;
 }
 
 export function initDb() {
@@ -18,6 +47,7 @@ export function initDb() {
 
   try {
     const dbPath = getDbPath();
+    console.log(`[DB] Initializing SQLite database at: ${dbPath}`);
     db = new Database(dbPath);
     db.pragma('journal_mode = WAL');
   } catch (err) {

@@ -53,7 +53,7 @@ export default function Home() {
   return (
     <div 
       className={`flex flex-col h-screen w-screen font-sans overflow-hidden select-none transition-colors duration-200 ${
-        isDark ? 'bg-black text-white' : 'bg-[#f4f5f8] text-gray-900'
+        isDark ? 'dark bg-black text-white' : 'light bg-[#f4f5f8] text-gray-900'
       }`}
     >
       {/* Headless Audio Engine */}

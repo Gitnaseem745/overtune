@@ -2,6 +2,11 @@ import { app, BrowserWindow, dialog, ipcMain, protocol } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { Readable } from 'stream';
+
+// Ensure consistent application name and Windows AppUserModelID for taskbar pinning and persistent userData
+app.setName('Overtone');
+app.setAppUserModelId('com.overtone.app');
+
 import { 
   initDb, getDb, 
   getPlaylists, getPlaylistTracks, createPlaylist, 

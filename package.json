@@ -86,10 +86,14 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Overtone",
+      "uninstallDisplayName": "Overtone",
       "installerIcon": "build/installerIcon.ico",
       "uninstallerIcon": "build/uninstallerIcon.ico",
       "installerHeaderIcon": "build/icon.ico",
-      "artifactName": "Overtone-Setup-${version}.${ext}"
+      "artifactName": "Overtone-Setup-${version}.${ext}",
+      "guid": "b2f8a846-993d-4251-a9f8-b349f57d6052",
+      "deleteAppDataOnUninstall": false,
+      "perMachine": false
     },
     "forceCodeSigning": false
   },
