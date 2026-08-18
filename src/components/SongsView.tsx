@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { usePlayerStore } from '../store/usePlayerStore';
 import { TrackRow } from './TrackRow';
 import { Music, Play, Shuffle } from 'lucide-react';
+import { getAccentColorHex } from '../lib/utils';
 
 export function SongsView() {
   const tracks = usePlayerStore((s) => s.tracks);
@@ -14,7 +15,7 @@ export function SongsView() {
   const setShuffleOn = usePlayerStore((s) => s.setShuffleOn);
 
   const isDark = theme === 'dark';
-  const accentHex = accentColor === 'green' ? '#1db954' : '#f9a826';
+  const accentHex = getAccentColorHex(accentColor);
 
   const filteredTracks = useMemo(() => {
     if (!searchQuery.trim()) return tracks;

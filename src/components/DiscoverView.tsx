@@ -1,7 +1,7 @@
 'use client';
 
 import { usePlayerStore } from '../store/usePlayerStore';
-import { getLocalUrl } from '../lib/utils';
+import { getLocalUrl, getAccentColorHex } from '../lib/utils';
 import { TrackRow } from './TrackRow';
 import { Disc3, Play, Folder } from 'lucide-react';
 
@@ -15,7 +15,7 @@ export function DiscoverView() {
   const setActiveTab = usePlayerStore((s) => s.setActiveTab);
 
   const isDark = theme === 'dark';
-  const accentHex = accentColor === 'green' ? '#1db954' : '#f9a826';
+  const accentHex = getAccentColorHex(accentColor);
   const topTracks = tracks.slice(0, 10);
 
   return (
@@ -89,9 +89,8 @@ export function DiscoverView() {
                       const albumTracks = tracks.filter((t) => t.album === album.title);
                       if (albumTracks.length > 0) playTrack(albumTracks[0], albumTracks);
                     }}
-                    className={`absolute right-2.5 bottom-2.5 w-11 h-11 rounded-full flex items-center justify-center text-black shadow-lg opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all duration-200 ${
-                      isDark ? 'bg-[#1db954] hover:scale-105' : 'bg-[#f9a826] text-white hover:scale-105'
-                    }`}
+                    className="absolute right-2.5 bottom-2.5 w-11 h-11 rounded-full flex items-center justify-center text-black shadow-lg opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all duration-200 hover:scale-105"
+                    style={{ backgroundColor: accentHex }}
                   >
                     <Play fill="currentColor" size={18} className="ml-0.5" />
                   </div>
@@ -112,9 +111,8 @@ export function DiscoverView() {
             <p className="text-sm font-semibold">No albums scanned yet.</p>
             <button
               onClick={() => setActiveTab('Local Files')}
-              className={`mt-3 px-4 py-2 rounded-full text-xs font-bold shadow-sm ${
-                isDark ? 'bg-[#1db954] text-black' : 'bg-[#f9a826] text-white'
-              }`}
+              className="mt-3 px-4 py-2 rounded-full text-xs font-bold shadow-sm text-black"
+              style={{ backgroundColor: accentHex }}
             >
               Choose Music Folder
             </button>
@@ -128,7 +126,8 @@ export function DiscoverView() {
           <h3 className="text-xl font-bold tracking-tight">Recently Indexed Songs</h3>
           <button 
             onClick={() => setActiveTab('Songs')}
-            className={`text-xs font-bold hover:underline ${isDark ? 'text-[#1db954]' : 'text-[#f9a826]'}`}
+            className="text-xs font-bold hover:underline"
+            style={{ color: accentHex }}
           >
             View All ({tracks.length})
           </button>

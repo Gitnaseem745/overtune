@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.3] - 2026-08-18
+
+### Added
+- **Custom Theme-Aware SVG Logo (`OvertoneLogo`)**: Vector-based Overtone brand emblem in Navbar Header, Sidebar (Classic & Spotify layouts), and Preferences Modal that dynamically reacts to active theme colors.
+- **10 DaisyUI-Inspired Color Themes**: Added `Retro`, `Valentine`, `Lo-Fi`, `Pastel`, `Halloween`, `Synthwave`, `Cyberpunk`, `Aqua`, `Cupcake`, and `Coffee` theme palettes with full system-wide support.
+
+### Fixed
+- **Timeline Seekbar UI**: Removed glitchy snake wave overlay animation on the now playing seek bar, standardizing it with the clean, smooth progress track fill identical to the volume slider.
+- **Violet & Ocean Theme Application**: Resolved hardcoded color issues across all views (`Sidebar`, `TrackRow`, `SongsView`, `PlaylistDetailView`, `LocalFilesView`, `LikedSongsView`, `DiscoverView`, `DetailView`, `CreatePlaylistModal`, and `RightPanel`), ensuring full palette application for Violet, Ocean, and all DaisyUI themes.
+
+---
+
 ## [0.1.2] - 2026-08-17
 
 ### Added

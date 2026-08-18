@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { usePlayerStore } from '../store/usePlayerStore';
-import { getLocalUrl } from '../lib/utils';
+import { getLocalUrl, getAccentColorHex } from '../lib/utils';
 import { TrackRow } from './TrackRow';
 import { 
   ListMusic, Play, Shuffle, Download, Trash2, 
@@ -27,7 +27,7 @@ export function PlaylistDetailView() {
   const [exportSuccess, setExportSuccess] = useState(false);
 
   const isDark = theme === 'dark';
-  const accentHex = accentColor === 'green' ? '#1db954' : '#f9a826';
+  const accentHex = getAccentColorHex(accentColor);
 
   const totalDuration = useMemo(() => {
     const sec = playlistTracks.reduce((acc, t) => acc + (t.duration || 0), 0);

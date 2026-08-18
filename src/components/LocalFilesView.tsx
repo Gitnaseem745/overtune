@@ -2,6 +2,7 @@
 
 import { usePlayerStore } from '../store/usePlayerStore';
 import { Folder, CheckCircle2 } from 'lucide-react';
+import { getAccentColorHex } from '../lib/utils';
 
 export function LocalFilesView() {
   const tracks = usePlayerStore((s) => s.tracks);
@@ -12,7 +13,7 @@ export function LocalFilesView() {
   const refreshLibrary = usePlayerStore((s) => s.refreshLibrary);
 
   const isDark = theme === 'dark';
-  const accentHex = accentColor === 'green' ? '#1db954' : '#f9a826';
+  const accentHex = getAccentColorHex(accentColor);
 
   const handleScanFolder = async () => {
     if (typeof window !== 'undefined' && window.api) {

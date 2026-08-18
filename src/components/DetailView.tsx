@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { usePlayerStore } from '../store/usePlayerStore';
-import { getLocalUrl } from '../lib/utils';
+import { getLocalUrl, getAccentColorHex } from '../lib/utils';
 import { TrackRow } from './TrackRow';
 import { Disc3, Mic2, Play, Shuffle, ChevronLeft } from 'lucide-react';
 
@@ -18,7 +18,7 @@ export function DetailView() {
   const navigateBack = usePlayerStore((s) => s.navigateBack);
 
   const isDark = theme === 'dark';
-  const accentHex = accentColor === 'green' ? '#1db954' : '#f9a826';
+  const accentHex = getAccentColorHex(accentColor);
   const isAlbum = activeTab === 'AlbumDetail' && selectedAlbum !== null;
   const isArtist = activeTab === 'ArtistDetail' && selectedArtist !== null;
 

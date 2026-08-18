@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/gitnaseem745/overtune/releases"><img src="https://img.shields.io/badge/version-0.1.2-blue.svg?style=flat-square" alt="Version"></a>
+  <a href="https://github.com/gitnaseem745/overtune/releases"><img src="https://img.shields.io/badge/version-0.1.3-blue.svg?style=flat-square" alt="Version"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg?style=flat-square" alt="License"></a>
   <a href="https://www.electronjs.org/"><img src="https://img.shields.io/badge/Electron-32.0.0-47848F.svg?style=flat-square&logo=electron" alt="Electron"></a>
   <a href="https://nextjs.org/"><img src="https://img.shields.io/badge/Next.js-16.2.10-000000.svg?style=flat-square&logo=next.js" alt="Next.js"></a>
@@ -219,7 +219,7 @@ build-installer.bat
 ```
 
 The generated installer will be placed in the `release/` directory:
-- `release/Overtone-Setup-0.1.2.exe`
+- `release/Overtone-Setup-0.1.3.exe`
 
 ---
 

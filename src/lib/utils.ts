@@ -17,6 +17,26 @@ export function getAccentColorHex(accent: AccentColor = 'orange'): string {
       return '#a855f7';
     case 'blue':
       return '#3b82f6';
+    case 'retro':
+      return '#ef9995';
+    case 'valentine':
+      return '#e96d7b';
+    case 'lofi':
+      return '#0d0d0d';
+    case 'pastel':
+      return '#d1c1d7';
+    case 'halloween':
+      return '#f28c18';
+    case 'synthwave':
+      return '#e779c1';
+    case 'cyberpunk':
+      return '#ff7598';
+    case 'aqua':
+      return '#09ecf3';
+    case 'cupcake':
+      return '#65c3c8';
+    case 'coffee':
+      return '#db924b';
     case 'orange':
     default:
       return '#f9a826';
@@ -31,6 +51,26 @@ export function getAccentHoverHex(accent: AccentColor = 'orange'): string {
       return '#c084fc';
     case 'blue':
       return '#60a5fa';
+    case 'retro':
+      return '#f4b3b0';
+    case 'valentine':
+      return '#f08e9a';
+    case 'lofi':
+      return '#262626';
+    case 'pastel':
+      return '#dfd3e4';
+    case 'halloween':
+      return '#fa9f37';
+    case 'synthwave':
+      return '#ed93cd';
+    case 'cyberpunk':
+      return '#ff94af';
+    case 'aqua':
+      return '#38f2f7';
+    case 'cupcake':
+      return '#7ed0d5';
+    case 'coffee':
+      return '#e4a568';
     case 'orange':
     default:
       return '#ea9719';

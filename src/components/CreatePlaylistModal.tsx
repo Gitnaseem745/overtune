@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { usePlayerStore } from '../store/usePlayerStore';
 import { X, ListMusic, FileUp } from 'lucide-react';
+import { getAccentColorHex } from '../lib/utils';
 
 export function CreatePlaylistModal() {
   const isCreatePlaylistOpen = usePlayerStore((s) => s.isCreatePlaylistOpen);
@@ -15,7 +16,7 @@ export function CreatePlaylistModal() {
 
   const [playlistName, setPlaylistName] = useState('');
   const isDark = theme === 'dark';
-  const accentHex = accentColor === 'green' ? '#1db954' : '#f9a826';
+  const accentHex = getAccentColorHex(accentColor);
 
   if (!isCreatePlaylistOpen) return null;
 

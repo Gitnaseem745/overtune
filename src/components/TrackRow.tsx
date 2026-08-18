@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { usePlayerStore } from '../store/usePlayerStore';
 import { Track } from '../types/music';
-import { getLocalUrl, formatTime } from '../lib/utils';
+import { getLocalUrl, formatTime, getAccentColorHex } from '../lib/utils';
 import { 
   Play, Heart, Music, Plus, 
   MoreHorizontal, ListPlus, Radio, Check 
@@ -39,7 +39,7 @@ export function TrackRow({ track, index, contextQueue }: TrackRowProps) {
   const isDark = theme === 'dark';
   const isActive = currentTrack?.id === track.id;
   const isFav = favorites.has(track.id);
-  const accentHex = accentColor === 'green' ? '#1db954' : '#f9a826';
+  const accentHex = getAccentColorHex(accentColor);
 
   // Close menu on outside click
   useEffect(() => {
@@ -244,8 +244,9 @@ export function TrackRow({ track, index, contextQueue }: TrackRowProps) {
                       setCreatePlaylistOpen(true);
                     }}
                     className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl font-bold ${
-                      isDark ? 'hover:bg-neutral-700/70 text-[#1db954]' : 'hover:bg-gray-100 text-[#f9a826]'
+                      isDark ? 'hover:bg-neutral-700/70' : 'hover:bg-gray-100'
                     }`}
+                    style={{ color: accentHex }}
                   >
                     <Plus size={14} />
                     <span>New Playlist</span>

@@ -7,7 +7,7 @@ import {
   Search, ChevronLeft, ChevronRight, Sun, Moon, 
   Settings, Columns3, LayoutGrid 
 } from 'lucide-react';
-import { OVERTONE_LOGO_SRC } from '../lib/brand';
+import { OvertoneLogo } from './OvertoneLogo';
 
 export function TopHeader() {
   const searchQuery = usePlayerStore((s) => s.searchQuery);
@@ -38,7 +38,11 @@ export function TopHeader() {
   };
 
   const cycleAccentColor = () => {
-    const accents: AccentColor[] = ['orange', 'green', 'purple', 'blue'];
+    const accents: AccentColor[] = [
+      'orange', 'green', 'purple', 'blue',
+      'retro', 'valentine', 'lofi', 'pastel', 'halloween',
+      'synthwave', 'cyberpunk', 'aqua', 'cupcake', 'coffee'
+    ];
     const nextIdx = (accents.indexOf(accentColor) + 1) % accents.length;
     setAccentColor(accents[nextIdx]);
   };
@@ -164,11 +168,7 @@ export function TopHeader() {
         <div className={`flex items-center gap-2.5 pl-1.5 py-1 pr-3 rounded-full border transition-all ${
           isDark ? 'border-neutral-800 bg-neutral-900' : 'border-gray-200/70 bg-white shadow-xs'
         }`}>
-          <img 
-            src={OVERTONE_LOGO_SRC} 
-            alt="Overtone" 
-            className="w-7 h-7 rounded-full object-cover shadow-xs" 
-          />
+          <OvertoneLogo size={28} />
           <div className="hidden sm:flex flex-col">
             <span className="text-xs font-bold leading-none">Overtone</span>
             <span 

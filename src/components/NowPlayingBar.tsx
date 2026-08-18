@@ -193,14 +193,14 @@ export function NowPlayingBar() {
           </button>
         </div>
 
-        {/* ── Seek Bar & Dynamic Wave Animation ── */}
+        {/* ── Seek Bar with Filled Progress Track ── */}
         <div className="flex items-center w-full gap-3 relative group">
           <span className={`text-[11px] font-mono w-10 text-right ${isDark ? 'text-neutral-400' : 'text-gray-400'}`}>
             {formatTime(currentTime)}
           </span>
 
           <div className="relative flex-1 flex items-center h-6">
-            {/* Background Track with Filled Gradient */}
+            {/* Background Track with Filled Gradient matching volume slider */}
             <input
               type="range"
               min={0}
@@ -215,25 +215,6 @@ export function NowPlayingBar() {
               }}
               className="w-full h-1.5 rounded-full appearance-none cursor-pointer focus:outline-none transition-all"
             />
-
-            {/* Smooth Snake Wave Animation overlaid on the active track */}
-            {isPlaying && effectiveDuration > 0 && progressPercent > 2 && (
-              <div 
-                className="absolute left-0 top-1/2 -translate-y-1/2 pointer-events-none flex items-center gap-[2px] overflow-hidden rounded-full h-2.5 opacity-70"
-                style={{ width: `${Math.min(progressPercent, 98)}%` }}
-              >
-                {Array.from({ length: 48 }).map((_, i) => (
-                  <span
-                    key={i}
-                    className="w-[3px] rounded-full bg-white/75 transition-all"
-                    style={{
-                      height: `${15 + Math.sin((i * 0.45) + (currentTime * 4)) * 35 + 25}%`,
-                      opacity: 0.6 + Math.sin(i * 0.3) * 0.4,
-                    }}
-                  />
-                ))}
-              </div>
-            )}
           </div>
 
           <span className={`text-[11px] font-mono w-10 ${isDark ? 'text-neutral-400' : 'text-gray-400'}`}>

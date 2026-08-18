@@ -38,7 +38,21 @@ export interface Playlist {
 
 export type ThemeMode = 'light' | 'dark';
 export type LayoutMode = 'classic' | 'spotify';
-export type AccentColor = 'orange' | 'green' | 'purple' | 'blue';
+export type AccentColor = 
+  | 'orange' 
+  | 'green' 
+  | 'purple' 
+  | 'blue' 
+  | 'retro' 
+  | 'valentine' 
+  | 'lofi' 
+  | 'pastel' 
+  | 'halloween' 
+  | 'synthwave' 
+  | 'cyberpunk' 
+  | 'aqua' 
+  | 'cupcake' 
+  | 'coffee';
 export type RepeatMode = 'off' | 'all' | 'one';
 export type ActiveTab = 
   | 'Discover' 

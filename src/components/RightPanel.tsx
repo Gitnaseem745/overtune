@@ -1,7 +1,7 @@
 'use client';
 
 import { usePlayerStore } from '../store/usePlayerStore';
-import { getLocalUrl, formatTime } from '../lib/utils';
+import { getLocalUrl, formatTime, getAccentColorHex } from '../lib/utils';
 import { 
   X, Music, ListMusic, Trash2, Play, 
   Disc3 
@@ -24,6 +24,7 @@ export function RightPanel() {
   if (layout !== 'spotify' || !isRightPanelOpen) return null;
 
   const isDark = theme === 'dark';
+  const accentHex = getAccentColorHex(accentColor);
   const upcomingQueue = queue.slice(queueIndex + 1);
 
   return (
@@ -38,7 +39,7 @@ export function RightPanel() {
         {/* Header */}
         <div className="flex items-center justify-between px-2 mb-4">
           <div className="flex items-center gap-2">
-            <ListMusic size={18} style={{ color: accentColor === 'green' ? '#1db954' : '#f9a826' }} />
+            <ListMusic size={18} style={{ color: accentHex }} />
             <h3 className="font-bold text-sm">Now Playing & Queue</h3>
           </div>
           <button 

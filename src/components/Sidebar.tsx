@@ -7,7 +7,8 @@ import {
   Compass, Music, Disc3, Mic2, Folder, 
   Library, Plus, Heart, ListMusic 
 } from 'lucide-react';
-import { OVERTONE_LOGO_SRC } from '../lib/brand';
+import { getAccentColorHex } from '../lib/utils';
+import { OvertoneLogo } from './OvertoneLogo';
 
 interface NavItemProps {
   name: string;
@@ -87,7 +88,7 @@ export function Sidebar() {
   const isSpotifyLayout = layout === 'spotify';
   const accentColor = usePlayerStore((s) => s.accentColor);
 
-  const accentHex = accentColor === 'green' ? '#1db954' : '#f9a826';
+  const accentHex = getAccentColorHex(accentColor);
 
   // ── SPOTIFY PRO 3-COLUMN SIDEBAR ──
   if (isSpotifyLayout) {
@@ -98,11 +99,7 @@ export function Sidebar() {
           isDark ? 'bg-[#181818] border border-neutral-800/80' : 'bg-white shadow-xs border border-gray-200/80'
         }`}>
           <div className="flex items-center gap-2.5 px-2 mb-3">
-            <img 
-              src={OVERTONE_LOGO_SRC} 
-              alt="Overtone" 
-              className="w-7 h-7 rounded-xl object-cover shadow-sm" 
-            />
+            <OvertoneLogo size={28} rounded="xl" />
             <span className="font-extrabold text-base tracking-tight">Overtone</span>
           </div>
           <ul className="space-y-1">
@@ -184,9 +181,10 @@ export function Sidebar() {
               onClick={() => setActiveTab('LikedSongs')}
               className={`flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-all ${
                 activeTab === 'LikedSongs'
-                  ? isDark ? 'bg-neutral-800 text-white font-bold' : 'bg-amber-50 text-[#f9a826] font-bold'
+                  ? isDark ? 'bg-neutral-800 text-white font-bold' : 'bg-gray-100 font-bold'
                   : isDark ? 'hover:bg-neutral-800/60' : 'hover:bg-gray-50'
               }`}
+              style={{ color: activeTab === 'LikedSongs' ? accentHex : undefined }}
             >
               <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center text-white flex-shrink-0 shadow-sm">
                 <Heart fill="currentColor" size={18} />
@@ -199,43 +197,49 @@ export function Sidebar() {
               </div>
             </div>
 
-            {/* Native Playlists */}
-            {playlists.map((playlist) => (
-              <div
-                key={playlist.id}
-                onClick={() => selectPlaylist(playlist)}
-                className={`flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-all ${
-                  activeTab === 'PlaylistDetail' && selectedPlaylist?.id === playlist.id
-                    ? isDark ? 'bg-neutral-800 text-white font-bold' : 'bg-amber-50 text-[#f9a826] font-bold'
-                    : isDark ? 'hover:bg-neutral-800/60' : 'hover:bg-gray-50'
-                }`}
-              >
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                  isDark ? 'bg-neutral-800 text-emerald-400' : 'bg-amber-50 text-[#f9a826]'
-                }`}>
-                  <ListMusic size={18} />
+            {playlists.map((playlist) => {
+              const isSelected = activeTab === 'PlaylistDetail' && selectedPlaylist?.id === playlist.id;
+              return (
+                <div
+                  key={playlist.id}
+                  onClick={() => selectPlaylist(playlist)}
+                  className={`flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-all ${
+                    isSelected
+                      ? isDark ? 'bg-neutral-800 text-white font-bold' : 'bg-gray-100 font-bold'
+                      : isDark ? 'hover:bg-neutral-800/60' : 'hover:bg-gray-50'
+                  }`}
+                  style={{ color: isSelected ? accentHex : undefined }}
+                >
+                  <div 
+                    className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                    style={{ backgroundColor: `${accentHex}20`, color: accentHex }}
+                  >
+                    <ListMusic size={18} />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="font-semibold text-xs truncate">{playlist.name}</span>
+                    <span className={`text-[11px] truncate ${isDark ? 'text-neutral-400' : 'text-gray-400'}`}>
+                      Playlist • {playlist.track_count || 0} songs
+                    </span>
+                  </div>
                 </div>
-                <div className="flex flex-col min-w-0">
-                  <span className="font-semibold text-xs truncate">{playlist.name}</span>
-                  <span className={`text-[11px] truncate ${isDark ? 'text-neutral-400' : 'text-gray-400'}`}>
-                    Playlist • {playlist.track_count || 0} songs
-                  </span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
 
             {/* Quick Local Files Entry */}
             <div
               onClick={() => setActiveTab('Local Files')}
               className={`flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-all ${
                 activeTab === 'Local Files'
-                  ? (isDark ? 'bg-neutral-800/80 text-emerald-400' : 'bg-amber-50 text-[#f9a826]')
-                  : (isDark ? 'hover:bg-neutral-800/60' : 'hover:bg-gray-50')
+                  ? isDark ? 'bg-neutral-800/80 font-bold' : 'bg-gray-100 font-bold'
+                  : isDark ? 'hover:bg-neutral-800/60' : 'hover:bg-gray-50'
               }`}
+              style={{ color: activeTab === 'Local Files' ? accentHex : undefined }}
             >
-              <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                isDark ? 'bg-neutral-800 text-emerald-400' : 'bg-amber-100 text-[#f9a826]'
-              }`}>
+              <div 
+                className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{ backgroundColor: `${accentHex}20`, color: accentHex }}
+              >
                 <Folder size={18} />
               </div>
               <div className="flex flex-col min-w-0">
@@ -261,11 +265,7 @@ export function Sidebar() {
       }`}
     >
       <div className="flex items-center gap-3 p-6 mb-2">
-        <img 
-          src={OVERTONE_LOGO_SRC} 
-          alt="Overtone" 
-          className="w-8 h-8 rounded-xl object-cover shadow-sm" 
-        />
+        <OvertoneLogo size={32} rounded="xl" />
         <span className="text-lg font-bold tracking-tight">Overtone</span>
       </div>
 
@@ -359,23 +359,25 @@ export function Sidebar() {
               return (
                 <li key={playlist.id} className="relative" onClick={() => selectPlaylist(playlist)}>
                   {isActive && (
-                    <div className={`absolute inset-y-0 left-0 w-1.5 rounded-r-full ${
-                      isDark ? 'bg-[#1db954]' : 'bg-[#f9a826]'
-                    }`} />
+                    <div 
+                      className="absolute inset-y-0 left-0 w-1.5 rounded-r-full"
+                      style={{ backgroundColor: accentHex }}
+                    />
                   )}
                   <button 
                     className={`w-full flex items-center justify-between px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
                       isActive 
                         ? isDark 
                           ? 'bg-neutral-800 text-white font-bold' 
-                          : 'bg-amber-50/70 text-[#f9a826] font-bold' 
+                          : 'bg-gray-100/90 font-bold' 
                         : isDark
                           ? 'text-neutral-400 hover:text-white hover:bg-neutral-800/40'
                           : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100/70'
                     }`}
+                    style={{ color: isActive ? accentHex : undefined }}
                   >
                     <div className="flex items-center gap-2.5 truncate">
-                      <ListMusic size={15} className={isActive ? (isDark ? 'text-[#1db954]' : 'text-[#f9a826]') : ''} />
+                      <ListMusic size={15} style={{ color: isActive ? accentHex : undefined }} />
                       <span className="truncate">{playlist.name}</span>
                     </div>
                     {playlist.track_count !== undefined && playlist.track_count > 0 && (

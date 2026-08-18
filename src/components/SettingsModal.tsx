@@ -4,7 +4,7 @@ import { usePlayerStore } from '../store/usePlayerStore';
 import { AccentColor } from '../types/music';
 import { getAccentColorHex } from '../lib/utils';
 import { X, Sun, Moon, LayoutGrid, Columns3, ShieldCheck, Palette, Check } from 'lucide-react';
-import { OVERTONE_LOGO_SRC } from '../lib/brand';
+import { OvertoneLogo } from './OvertoneLogo';
 
 export function SettingsModal() {
   const isSettingsOpen = usePlayerStore((s) => s.isSettingsOpen);
@@ -24,11 +24,23 @@ export function SettingsModal() {
   const isDark = theme === 'dark';
   const currentAccentHex = getAccentColorHex(accentColor);
 
-  const ACCENTS: { id: AccentColor; name: string; hex: string; desc: string }[] = [
-    { id: 'orange', name: 'Warm Amber (Orange)', hex: '#f9a826', desc: 'Signature Overtone style' },
+  const ACCENTS: { id: AccentColor; name: string; hex: string; desc: string; isDaisy?: boolean }[] = [
+    // Signature Themes
+    { id: 'orange', name: 'Warm Amber', hex: '#f9a826', desc: 'Signature Overtone style' },
     { id: 'green', name: 'Spotify Green', hex: '#1db954', desc: 'Signature Spotify style' },
-    { id: 'purple', name: 'Violet Purple', hex: '#a855f7', desc: 'Vibrant & modern' },
-    { id: 'blue', name: 'Ocean Blue', hex: '#3b82f6', desc: 'Crisp & minimal' },
+    { id: 'purple', name: 'Violet Purple', hex: '#a855f7', desc: 'Vibrant modern violet' },
+    { id: 'blue', name: 'Ocean Blue', hex: '#3b82f6', desc: 'Crisp minimal ocean' },
+    // DaisyUI Themes (10 New Themes)
+    { id: 'retro', name: 'Retro', hex: '#ef9995', desc: 'Vintage warm coral & sage', isDaisy: true },
+    { id: 'valentine', name: 'Valentine', hex: '#e96d7b', desc: 'Soft rose & romance', isDaisy: true },
+    { id: 'lofi', name: 'Lo-Fi', hex: '#0d0d0d', desc: 'Monochrome minimalist', isDaisy: true },
+    { id: 'pastel', name: 'Pastel', hex: '#d1c1d7', desc: 'Soft lavender & mint', isDaisy: true },
+    { id: 'halloween', name: 'Halloween', hex: '#f28c18', desc: 'Spooky neon pumpkin', isDaisy: true },
+    { id: 'synthwave', name: 'Synthwave', hex: '#e779c1', desc: 'Neon 80s hot cyber pink', isDaisy: true },
+    { id: 'cyberpunk', name: 'Cyberpunk', hex: '#ff7598', desc: 'High-voltage electric neon', isDaisy: true },
+    { id: 'aqua', name: 'Aqua', hex: '#09ecf3', desc: 'Vibrant tropical cyan', isDaisy: true },
+    { id: 'cupcake', name: 'Cupcake', hex: '#65c3c8', desc: 'Sweet pastel teal & berry', isDaisy: true },
+    { id: 'coffee', name: 'Coffee', hex: '#db924b', desc: 'Roasted caramel mocha', isDaisy: true },
   ];
 
   return (
@@ -43,11 +55,7 @@ export function SettingsModal() {
         {/* Header */}
         <div className={`flex items-center justify-between px-7 py-5 border-b ${isDark ? 'border-neutral-800/80' : 'border-gray-100'}`}>
           <div className="flex items-center gap-3">
-            <img 
-              src={OVERTONE_LOGO_SRC} 
-              alt="Overtone" 
-              className="w-9 h-9 rounded-2xl object-cover shadow-md" 
-            />
+            <OvertoneLogo size={36} rounded="2xl" />
             <div>
               <h3 className="font-bold text-lg leading-tight">Preferences & Appearance</h3>
               <p className={`text-xs ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>Customize your accent color, theme, and layout</p>
@@ -96,12 +104,14 @@ export function SettingsModal() {
                     }}
                   >
                     <div 
-                      className="w-7 h-7 rounded-full mb-2 flex items-center justify-center text-black font-bold shadow-sm"
+                      className={`w-7 h-7 rounded-full mb-2 flex items-center justify-center font-bold shadow-sm ${
+                        item.id === 'lofi' ? 'text-white' : 'text-black'
+                      }`}
                       style={{ backgroundColor: item.hex }}
                     >
-                      {isSelected && <Check size={14} className="text-black" />}
+                      {isSelected && <Check size={14} className={item.id === 'lofi' ? 'text-white' : 'text-black'} />}
                     </div>
-                    <span className="font-bold text-xs truncate w-full">{item.name.split(' ')[0]}</span>
+                    <span className="font-bold text-xs truncate w-full">{item.name}</span>
                     <span className={`text-[10px] truncate w-full ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
                       {item.desc}
                     </span>

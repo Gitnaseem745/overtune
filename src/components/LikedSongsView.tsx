@@ -4,16 +4,19 @@ import { useMemo } from 'react';
 import { usePlayerStore } from '../store/usePlayerStore';
 import { TrackRow } from './TrackRow';
 import { Heart, Play, Shuffle, ChevronLeft } from 'lucide-react';
+import { getAccentColorHex } from '../lib/utils';
 
 export function LikedSongsView() {
   const tracks = usePlayerStore((s) => s.tracks);
   const favorites = usePlayerStore((s) => s.favorites);
   const theme = usePlayerStore((s) => s.theme);
+  const accentColor = usePlayerStore((s) => s.accentColor);
   const playTrack = usePlayerStore((s) => s.playTrack);
   const setShuffleOn = usePlayerStore((s) => s.setShuffleOn);
   const navigateBack = usePlayerStore((s) => s.navigateBack);
 
   const isDark = theme === 'dark';
+  const accentHex = getAccentColorHex(accentColor);
 
   const favoriteTracks = useMemo(() => {
     return tracks.filter((t) => favorites.has(t.id));
@@ -78,9 +81,11 @@ export function LikedSongsView() {
           <div className="flex items-center gap-4">
             <button
               onClick={() => handlePlayAll(false)}
-              className={`w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-transform hover:scale-105 active:scale-95 ${
-                isDark ? 'bg-[#1db954] text-black shadow-emerald-500/30' : 'bg-[#f9a826] text-white shadow-amber-500/30'
-              }`}
+              className="w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-transform hover:scale-105 active:scale-95 text-black"
+              style={{
+                backgroundColor: accentHex,
+                boxShadow: `0 4px 14px ${accentHex}40`
+              }}
               title="Play All Liked Songs"
             >
               <Play fill="currentColor" size={20} className="ml-0.5" />
