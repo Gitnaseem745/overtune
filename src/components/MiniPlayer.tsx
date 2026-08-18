@@ -80,7 +80,7 @@ export function MiniPlayer() {
     return (
       <div
         ref={containerRef}
-        className={`w-full h-full flex flex-col justify-between select-none relative overflow-hidden transition-colors ${
+        className={`w-full h-full flex flex-col justify-between select-none relative overflow-hidden transition-colors drag-region ${
           isDark 
             ? 'bg-[#0f0f0f] text-white border border-neutral-800/80 shadow-2xl' 
             : 'bg-white text-gray-900 border border-gray-200/80 shadow-xl'
@@ -90,21 +90,22 @@ export function MiniPlayer() {
         } as React.CSSProperties}
       >
         {/* Main Content Row */}
-        <div className="flex-1 flex items-center justify-between px-3 py-2 gap-3 min-w-0">
+        <div className="flex-1 flex items-center justify-between px-3 py-2 gap-3 min-w-0 drag-region">
           
           {/* Left: Exit & Drag Handle */}
-          <div className="flex items-center gap-1.5 flex-shrink-0" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
             <button
               onClick={toggleMiniplayer}
-              className={`p-1.5 rounded-lg transition-colors ${
+              className={`p-1.5 rounded-lg transition-colors no-drag-region ${
                 isDark ? 'hover:bg-neutral-800 text-neutral-400 hover:text-white' : 'hover:bg-gray-100 text-gray-400 hover:text-black'
               }`}
+              style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
               title="Expand to Full Player"
             >
               <X size={16} />
             </button>
             <div 
-              className="cursor-grab active:cursor-grabbing text-neutral-500 hover:text-neutral-300 p-0.5" 
+              className="cursor-grab active:cursor-grabbing text-neutral-500 hover:text-neutral-300 p-0.5 drag-region" 
               title="Drag Miniplayer"
               style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
             >
@@ -113,15 +114,15 @@ export function MiniPlayer() {
           </div>
 
           {/* Cover Art */}
-          <div className="flex-shrink-0" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+          <div className="flex-shrink-0 drag-region">
             {currentTrack?.cover_art ? (
               <img
                 src={getLocalUrl(currentTrack.cover_art)}
                 alt={currentTrack.title}
-                className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl object-cover shadow-md"
+                className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl object-cover shadow-md pointer-events-none"
               />
             ) : (
-              <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center shadow-md ${
+              <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center shadow-md pointer-events-none ${
                 isDark ? 'bg-neutral-800 text-neutral-500' : 'bg-gray-100 text-gray-400'
               }`}>
                 <Disc3 size={22} />
@@ -130,23 +131,24 @@ export function MiniPlayer() {
           </div>
 
           {/* Title & Artist */}
-          <div className="flex flex-col min-w-0 flex-1 justify-center" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
-            <span className="font-bold text-xs sm:text-sm truncate leading-tight">
+          <div className="flex flex-col min-w-0 flex-1 justify-center drag-region">
+            <span className="font-bold text-xs sm:text-sm truncate leading-tight pointer-events-none">
               {currentTrack?.title || 'No track playing'}
             </span>
-            <span className={`text-[11px] truncate mt-0.5 font-medium ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
+            <span className={`text-[11px] truncate mt-0.5 font-medium pointer-events-none ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
               {currentTrack?.artist || 'Select a song to play'}
             </span>
           </div>
 
           {/* Right Action & Controls */}
-          <div className="flex items-center gap-2 flex-shrink-0" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+          <div className="flex items-center gap-2 flex-shrink-0 no-drag-region" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
             {currentTrack && (
               <button
                 onClick={() => toggleFavorite(currentTrack.id)}
-                className={`p-1.5 rounded-full transition-transform active:scale-90 ${
+                className={`p-1.5 rounded-full transition-transform active:scale-90 no-drag-region ${
                   isLiked ? 'text-rose-500' : isDark ? 'text-neutral-400 hover:text-white' : 'text-gray-400 hover:text-black'
                 }`}
+                style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
                 title={isLiked ? 'Remove from Liked Songs' : 'Save to Liked Songs'}
               >
                 {isLiked ? <Heart fill="currentColor" size={17} /> : <Plus size={18} />}
@@ -157,9 +159,10 @@ export function MiniPlayer() {
             <button
               onClick={handleTogglePlay}
               disabled={!currentTrack}
-              className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shadow-lg transition-transform hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed ${
+              className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shadow-lg transition-transform hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed no-drag-region ${
                 isDark ? 'bg-white text-black hover:bg-neutral-100' : 'bg-black text-white hover:bg-neutral-800'
               }`}
+              style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
               title={isPlaying ? 'Pause' : 'Play'}
             >
               {isPlaying ? (
@@ -173,9 +176,10 @@ export function MiniPlayer() {
             <button
               onClick={handleNext}
               disabled={!currentTrack}
-              className={`p-1.5 rounded-full transition-colors disabled:opacity-30 ${
+              className={`p-1.5 rounded-full transition-colors disabled:opacity-30 no-drag-region ${
                 isDark ? 'hover:bg-neutral-800 text-neutral-300 hover:text-white' : 'hover:bg-gray-100 text-gray-600 hover:text-black'
               }`}
+              style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
               title="Next Track"
             >
               <SkipForward size={16} fill="currentColor" />
@@ -186,10 +190,10 @@ export function MiniPlayer() {
 
         {/* Bottom Progress Line */}
         <div 
-          className="w-full h-1 relative overflow-hidden" 
+          className="w-full h-1 relative overflow-hidden drag-region" 
           style={{ 
             backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
-            WebkitAppRegion: 'no-drag' 
+            WebkitAppRegion: 'drag' 
           } as React.CSSProperties}
         >
           <div 
@@ -212,7 +216,7 @@ export function MiniPlayer() {
       ref={containerRef}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className={`w-full h-full flex flex-col justify-between select-none relative overflow-hidden p-3.5 transition-colors ${
+      className={`w-full h-full flex flex-col justify-between select-none relative overflow-hidden p-3.5 transition-colors drag-region ${
         isDark 
           ? 'bg-[#121212] text-white border border-neutral-800/80 shadow-2xl' 
           : 'bg-white text-gray-900 border border-gray-200/80 shadow-xl'
@@ -222,24 +226,24 @@ export function MiniPlayer() {
       } as React.CSSProperties}
     >
       {/* Top Drag & Action Bar */}
-      <div className="flex items-center justify-between z-20" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
-        <div className="flex items-center gap-1.5">
+      <div className="flex items-center justify-between z-20 drag-region">
+        <div className="flex items-center gap-1.5 no-drag-region" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
           <button
             onClick={handleToggleShuffle}
-            className={`p-1.5 rounded-lg transition-colors ${
+            className={`p-1.5 rounded-lg transition-colors no-drag-region ${
               shuffleOn ? '' : isDark ? 'text-neutral-500 hover:text-neutral-300' : 'text-gray-400 hover:text-gray-600'
             }`}
-            style={{ color: shuffleOn ? accentHex : undefined }}
+            style={{ color: shuffleOn ? accentHex : undefined, WebkitAppRegion: 'no-drag' } as React.CSSProperties}
             title={shuffleOn ? 'Shuffle On' : 'Shuffle Off'}
           >
             <Shuffle size={14} />
           </button>
           <button
             onClick={handleToggleRepeat}
-            className={`p-1.5 rounded-lg transition-colors ${
+            className={`p-1.5 rounded-lg transition-colors no-drag-region ${
               repeatMode !== 'off' ? '' : isDark ? 'text-neutral-500 hover:text-neutral-300' : 'text-gray-400 hover:text-gray-600'
             }`}
-            style={{ color: repeatMode !== 'off' ? accentHex : undefined }}
+            style={{ color: repeatMode !== 'off' ? accentHex : undefined, WebkitAppRegion: 'no-drag' } as React.CSSProperties}
             title={`Repeat: ${repeatMode}`}
           >
             <Repeat size={14} />
@@ -248,7 +252,7 @@ export function MiniPlayer() {
 
         {/* Center Drag Handle */}
         <div 
-          className="cursor-grab active:cursor-grabbing text-neutral-500 hover:text-neutral-300 p-1" 
+          className="cursor-grab active:cursor-grabbing text-neutral-500 hover:text-neutral-300 p-1 drag-region" 
           title="Drag Miniplayer"
           style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
         >
@@ -256,12 +260,13 @@ export function MiniPlayer() {
         </div>
 
         {/* Right Close / Expand */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 no-drag-region" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
           <button
             onClick={toggleMiniplayer}
-            className={`p-1.5 rounded-lg transition-colors ${
+            className={`p-1.5 rounded-lg transition-colors no-drag-region ${
               isDark ? 'hover:bg-neutral-800 text-neutral-400 hover:text-white' : 'hover:bg-gray-100 text-gray-400 hover:text-black'
             }`}
+            style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
             title="Expand to Full Player"
           >
             <X size={16} />
@@ -332,7 +337,7 @@ export function MiniPlayer() {
       </div>
 
       {/* Bottom Track Details & Seekbar */}
-      <div className="z-20 space-y-2 pt-1" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+      <div className="z-20 space-y-2 pt-1 no-drag-region" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
         {/* Track Title, Artist, and Favorite */}
         <div className="flex items-center justify-between gap-2">
           <div className="flex flex-col min-w-0 flex-1">

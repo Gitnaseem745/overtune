@@ -32,6 +32,12 @@ declare global {
       getMiniplayerState: () => Promise<boolean>;
       onMiniplayerStateChanged: (callback: (isMini: boolean) => void) => () => void;
 
+      // Window Controls
+      minimizeWindow: () => Promise<boolean>;
+      maximizeWindow: () => Promise<boolean>;
+      closeWindow: () => Promise<boolean>;
+      isMaximized: () => Promise<boolean>;
+
       onLibraryUpdated: (callback: () => void) => () => void;
     };
   }

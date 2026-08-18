@@ -34,6 +34,12 @@ contextBridge.exposeInMainWorld('api', {
     };
   },
 
+  // Window Controls
+  minimizeWindow: () => ipcRenderer.invoke('window:minimize'),
+  maximizeWindow: () => ipcRenderer.invoke('window:maximize'),
+  closeWindow: () => ipcRenderer.invoke('window:close'),
+  isMaximized: () => ipcRenderer.invoke('window:isMaximized'),
+
   onLibraryUpdated: (callback: () => void) => {
     const handler = () => callback();
     ipcRenderer.on('library-updated', handler);

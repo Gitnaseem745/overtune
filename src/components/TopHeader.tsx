@@ -5,7 +5,7 @@ import { getAccentColorHex } from '../lib/utils';
 import { AccentColor } from '../types/music';
 import { 
   Search, ChevronLeft, ChevronRight, Sun, Moon, 
-  Settings, Columns3, LayoutGrid 
+  Settings, Columns3, LayoutGrid, Minus, Square, X 
 } from 'lucide-react';
 import { OvertoneLogo } from './OvertoneLogo';
 
@@ -47,16 +47,34 @@ export function TopHeader() {
     setAccentColor(accents[nextIdx]);
   };
 
+  const handleMinimize = () => {
+    if (typeof window !== 'undefined' && window.api?.minimizeWindow) {
+      window.api.minimizeWindow();
+    }
+  };
+
+  const handleMaximize = () => {
+    if (typeof window !== 'undefined' && window.api?.maximizeWindow) {
+      window.api.maximizeWindow();
+    }
+  };
+
+  const handleClose = () => {
+    if (typeof window !== 'undefined' && window.api?.closeWindow) {
+      window.api.closeWindow();
+    }
+  };
+
   return (
     <header 
-      className={`h-16 flex items-center justify-between px-6 flex-shrink-0 sticky top-0 z-20 backdrop-blur-md transition-colors duration-200 border-b ${
+      className={`h-16 flex items-center justify-between px-6 flex-shrink-0 sticky top-0 z-20 backdrop-blur-md transition-colors duration-200 border-b drag-region ${
         isDark 
           ? 'bg-[#121212]/90 border-neutral-800/80 text-white' 
           : 'bg-white/90 border-gray-100 text-gray-900'
       }`}
     >
       {/* Left: History navigation & Search */}
-      <div className="flex items-center gap-4 flex-1 max-w-xl">
+      <div className="flex items-center gap-4 flex-1 max-w-xl no-drag-region">
         <div className="flex items-center gap-1.5">
           <button
             onClick={navigateBack}
@@ -110,7 +128,7 @@ export function TopHeader() {
       </div>
 
       {/* Right: Quick Switchers & User Profile */}
-      <div className="flex items-center gap-2.5 pl-4">
+      <div className="flex items-center gap-2.5 pl-4 no-drag-region">
         {/* Quick Accent Color Toggle */}
         <button
           onClick={cycleAccentColor}
@@ -178,6 +196,37 @@ export function TopHeader() {
               {layout === 'spotify' ? 'Spotify Pro' : 'Classic'}
             </span>
           </div>
+        </div>
+
+        {/* Desktop Frameless Window Controls */}
+        <div className="flex items-center gap-1 pl-2 border-l border-neutral-800/40">
+          <button
+            onClick={handleMinimize}
+            className={`p-1.5 rounded-lg transition-colors ${
+              isDark ? 'hover:bg-neutral-800 text-neutral-400 hover:text-white' : 'hover:bg-gray-100 text-gray-500 hover:text-black'
+            }`}
+            title="Minimize"
+          >
+            <Minus size={14} />
+          </button>
+          <button
+            onClick={handleMaximize}
+            className={`p-1.5 rounded-lg transition-colors ${
+              isDark ? 'hover:bg-neutral-800 text-neutral-400 hover:text-white' : 'hover:bg-gray-100 text-gray-500 hover:text-black'
+            }`}
+            title="Maximize / Restore"
+          >
+            <Square size={13} />
+          </button>
+          <button
+            onClick={handleClose}
+            className={`p-1.5 rounded-lg transition-colors ${
+              isDark ? 'hover:bg-red-500 hover:text-white text-neutral-400' : 'hover:bg-red-500 hover:text-white text-gray-500'
+            }`}
+            title="Close"
+          >
+            <X size={14} />
+          </button>
         </div>
       </div>
     </header>

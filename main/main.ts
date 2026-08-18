@@ -79,6 +79,7 @@ function createWindow() {
     height: 800,
     minWidth: 900,
     minHeight: 600,
+    frame: false,
     autoHideMenuBar: true,
     icon: iconPath || undefined,
     webPreferences: {
@@ -415,6 +416,37 @@ ipcMain.handle('window:setMiniplayer', (_event, enable: boolean) => {
 
   mainWindow.webContents.send('window:miniplayerStateChanged', isMiniplayer);
   return isMiniplayer;
+});
+
+// ── Frameless Window Control Handlers ─────────────────────────────────
+
+ipcMain.handle('window:minimize', () => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.minimize();
+  }
+  return true;
+});
+
+ipcMain.handle('window:maximize', () => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    if (mainWindow.isMaximized()) {
+      mainWindow.unmaximize();
+    } else {
+      mainWindow.maximize();
+    }
+  }
+  return mainWindow?.isMaximized() ?? false;
+});
+
+ipcMain.handle('window:close', () => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.close();
+  }
+  return true;
+});
+
+ipcMain.handle('window:isMaximized', () => {
+  return mainWindow?.isMaximized() ?? false;
 });
 
 
