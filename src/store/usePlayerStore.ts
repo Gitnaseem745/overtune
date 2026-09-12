@@ -81,6 +81,7 @@ interface PlayerState {
   removeTrackFromPlaylist: (playlistId: number, trackId: number) => Promise<void>;
   exportPlaylistM3U: (playlistId: number) => Promise<boolean>;
   importPlaylistM3U: () => Promise<void>;
+  importDirectoryPlaylists: (folderPath?: string) => Promise<{ success: boolean; playlistsCreated: number; tracksImported: number } | null>;
 
   setCurrentTrack: (track: Track | null) => void;
   setIsPlaying: (isPlaying: boolean) => void;
@@ -216,7 +217,14 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     }
   },
 
-  setSearchQuery: (searchQuery) => set({ searchQuery }),
+  setSearchQuery: (searchQuery) => {
+    const { activeTab } = get();
+    if (searchQuery.trim() && activeTab !== 'Songs' && activeTab !== 'Albums' && activeTab !== 'Artists') {
+      set({ searchQuery, activeTab: 'Songs' });
+    } else {
+      set({ searchQuery });
+    }
+  },
   toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
   toggleSidebarCollapse: () => set((state) => {
     const next = !state.isSidebarCollapsed;
@@ -445,6 +453,22 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         console.error('Error importing playlist:', err);
       }
     }
+  },
+
+  importDirectoryPlaylists: async (folderPath) => {
+    if (typeof window !== 'undefined' && window.api?.importDirectoryPlaylists) {
+      try {
+        const res = await window.api.importDirectoryPlaylists(folderPath);
+        if (res?.success) {
+          await get().refreshLibrary();
+        }
+        return res;
+      } catch (err) {
+        console.error('Error importing directory playlists:', err);
+        return null;
+      }
+    }
+    return null;
   },
 
   setCurrentTrack: (currentTrack) => set({ currentTrack }),

@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.4] - 2026-09-12
+
+### Added
+- **Directory Playlist Imports with Subdirectory Detection**:
+  - Importing a music directory containing multiple subdirectories automatically creates each subdirectory as an independent, scoped playlist named after the respective folder.
+  - Songs residing directly in the imported root folder are neatly grouped into a parent root playlist.
+  - Directories without subfolders seamlessly import as a single playlist named after the folder.
+- **Strict Playlist Scoping & Global Discovery**:
+  - Opening any playlist view strictly displays its scoped tracks (`playlist_tracks`), preventing leakage of songs from other playlists or directories.
+  - All imported tracks across all directories and playlists remain globally indexed in the SQLite `tracks` catalog, appearing under **All Songs** and responsive to global search queries.
+  - Entering a search query in the top navbar instantly routes to the All Songs search view so users can search across the entire library at any time.
+- **Enhanced Playlist Import Controls in UI**:
+  - Added **"Import Folder as Playlists"** button in `CreatePlaylistModal`.
+  - Added quick folder import buttons (`<FolderDown />`) in both Spotify Pro and Classic sidebar playlist headers.
+  - Added dedicated **"Import as Playlists"** action button in `LocalFilesView`.
+- **Automated Test Suite Integration**:
+  - Added `tests/playlist-import.test.js` covering directory tree import, playlist scoping, all songs catalog, global search, and idempotency.
+  - Configured `npm test` script using Electron's Node runtime.
+
+---
+
 ## [0.1.3] - 2026-08-18
 
 ### Added

@@ -20,6 +20,12 @@ declare global {
       removeTrackFromPlaylist: (playlistId: number, trackId: number) => Promise<boolean>;
       exportPlaylistM3U: (playlistId: number) => Promise<boolean>;
       importPlaylistM3U: () => Promise<Playlist | null>;
+      importDirectoryPlaylists: (folderPath?: string) => Promise<{
+        success: boolean;
+        playlistsCreated: number;
+        tracksImported: number;
+        playlists: Array<{ name: string; trackCount: number }>;
+      }>;
 
       // Favorites & Metadata
       getFavorites: () => Promise<number[]>;

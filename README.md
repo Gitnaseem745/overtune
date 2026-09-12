@@ -64,6 +64,8 @@
 - **Arbitrary Timeline Seeking:** Custom `local://` Electron streaming protocol supporting **HTTP 206 Partial Content Range** headers for instant, gapless scrubbing.
 
 ### 🎶 Playlists & Favorites System
+- **Directory Playlist Import (Subdirectory Detection):** Import a directory containing multiple subfolders to automatically generate individual scoped playlists for each subfolder, while grouping root songs into a parent playlist.
+- **Strict Playlist Scoping & Global Discovery:** Opening a playlist strictly scopes playback to its specific tracks, while all songs remain globally available across All Songs and responsive to global search queries.
 - **Native Playlist CRUD:** Create, rename, delete, and manage playlists directly in the app.
 - **Context Menus:** Add any song to playlists, play next, or append to queue via the `...` track menu.
 - **M3U Import & Export:** Export playlists as standard Extended `.m3u` files or import existing `.m3u`/`.m3u8` files.
@@ -78,8 +80,9 @@
 | **MP3** | `.mp3` | ✅ ID3v1 / ID3v2 | ✅ HTTP 206 Streaming |
 | **FLAC** | `.flac` | ✅ Vorbis Comments | ✅ HTTP 206 Streaming |
 | **WAV** | `.wav` | ✅ RIFF Info | ✅ HTTP 206 Streaming |
-| **M4A / AAC** | `.m4a`, `.aac` | ✅ MP4 Atoms | ✅ HTTP 206 Streaming |
-| **OGG** | `.ogg` | ✅ Vorbis | ✅ HTTP 206 Streaming |
+| **M4A / AAC** | `.m4a`, `.aac` | ✅ iTunes / MP4 Tags | ✅ HTTP 206 Streaming |
+| **OGG** | `.ogg` | ✅ Vorbis Comments | ✅ HTTP 206 Streaming |
+| **WMA** | `.wma` | ✅ ASF Metadata | ✅ HTTP 206 Streaming |
 
 ---
 
@@ -207,10 +210,11 @@ Launch Next.js dev server and Electron concurrently:
 npm run dev
 ```
 
-### 3. Running Linters & Type Checking
+### 3. Running Linters, Type Checking & Tests
 ```bash
 npm run lint
 npm run typecheck
+npm test
 ```
 
 ---
@@ -231,7 +235,7 @@ build-installer.bat
 ```
 
 The generated installer will be placed in the `release/` directory:
-- `release/Overtone-Setup-0.1.3.exe`
+- `release/Overtone-Setup-0.1.4.exe`
 
 ---
 

@@ -81,7 +81,7 @@ export function stopWatching(folderPath: string) {
   }
 }
 
-function isAudioFile(filePath: string) {
+export function isAudioFile(filePath: string) {
   const ext = path.extname(filePath).toLowerCase();
   return supportedExtensions.includes(ext);
 }
@@ -103,9 +103,13 @@ async function saveCoverArt(picture: mm.IPicture, albumId: number): Promise<stri
   }
 }
 
-async function handleFileAdded(filePath: string) {
-  console.log(`File added: ${filePath}`);
+export async function insertOrGetTrack(filePath: string): Promise<number | null> {
   const db = getDb();
+  
+  const existing = db.prepare('SELECT id FROM tracks WHERE path = ?').get(filePath) as { id: number } | undefined;
+  if (existing) {
+    return existing.id;
+  }
 
   try {
     const metadata = await mm.parseFile(filePath);
@@ -129,9 +133,8 @@ async function handleFileAdded(filePath: string) {
     const albumId = albumRow.id;
 
     // Check and save cover art if available
-    let coverArtPath: string | null = null;
     if (metadata.common.picture && metadata.common.picture.length > 0) {
-      coverArtPath = await saveCoverArt(metadata.common.picture[0], albumId);
+      const coverArtPath = await saveCoverArt(metadata.common.picture[0], albumId);
       if (coverArtPath) {
         db.prepare(`UPDATE albums SET cover_art_path = ? WHERE id = ?`).run(coverArtPath, albumId);
       }
@@ -144,8 +147,138 @@ async function handleFileAdded(filePath: string) {
     `);
     
     insertTrack.run(title, albumId, artistId, filePath, duration, trackNumber, genre, fileHash);
-    console.log(`Successfully added track: ${title} by ${artistName}`);
-    notifyLibraryUpdated();
+    
+    const trackRow = db.prepare('SELECT id FROM tracks WHERE path = ?').get(filePath) as { id: number } | undefined;
+    return trackRow ? trackRow.id : null;
+  } catch (error) {
+    console.error(`Error processing track ${filePath}:`, error);
+    return null;
+  }
+}
+
+export function findAudioFilesRecursively(dirPath: string): string[] {
+  const results: string[] = [];
+  try {
+    const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.name.startsWith('.')) continue;
+      const fullPath = path.join(dirPath, entry.name);
+      if (entry.isDirectory()) {
+        results.push(...findAudioFilesRecursively(fullPath));
+      } else if (entry.isFile() && isAudioFile(fullPath)) {
+        results.push(fullPath);
+      }
+    }
+  } catch (err) {
+    console.error(`Error reading directory ${dirPath}:`, err);
+  }
+  return results;
+}
+
+export async function importDirectoryAsPlaylists(rootDir: string): Promise<{
+  success: boolean;
+  playlistsCreated: number;
+  tracksImported: number;
+  playlists: Array<{ name: string; trackCount: number }>;
+}> {
+  const db = getDb();
+  if (!fs.existsSync(rootDir)) {
+    return { success: false, playlistsCreated: 0, tracksImported: 0, playlists: [] };
+  }
+
+  let entries: fs.Dirent[] = [];
+  try {
+    entries = fs.readdirSync(rootDir, { withFileTypes: true });
+  } catch (err) {
+    console.error(`Failed to read directory: ${rootDir}`, err);
+    return { success: false, playlistsCreated: 0, tracksImported: 0, playlists: [] };
+  }
+
+  const subDirs = entries.filter((e) => e.isDirectory() && !e.name.startsWith('.'));
+  const rootAudioFiles = entries
+    .filter((e) => e.isFile() && isAudioFile(path.join(rootDir, e.name)))
+    .map((e) => path.join(rootDir, e.name));
+
+  const playlistMap = new Map<string, string[]>();
+
+  if (subDirs.length > 0) {
+    for (const subDir of subDirs) {
+      const subDirPath = path.join(rootDir, subDir.name);
+      const audioFiles = findAudioFilesRecursively(subDirPath);
+      if (audioFiles.length > 0) {
+        playlistMap.set(subDir.name, audioFiles);
+      }
+    }
+    if (rootAudioFiles.length > 0) {
+      const rootName = path.basename(rootDir) || 'Library';
+      playlistMap.set(rootName, rootAudioFiles);
+    }
+  } else {
+    const audioFiles = findAudioFilesRecursively(rootDir);
+    if (audioFiles.length > 0) {
+      const folderName = path.basename(rootDir) || 'Imported Playlist';
+      playlistMap.set(folderName, audioFiles);
+    }
+  }
+
+  let totalPlaylistsCreated = 0;
+  let totalTracksImported = 0;
+  const resultPlaylists: Array<{ name: string; trackCount: number }> = [];
+
+  for (const [playlistName, filePaths] of playlistMap.entries()) {
+    let playlistRow = db.prepare(`SELECT id, name FROM playlists WHERE name = ?`).get(playlistName) as { id: number; name: string } | undefined;
+    if (!playlistRow) {
+      const info = db.prepare(`INSERT INTO playlists (name) VALUES (?)`).run(playlistName);
+      playlistRow = { id: Number(info.lastInsertRowid), name: playlistName };
+      totalPlaylistsCreated++;
+    }
+
+    const playlistId = playlistRow.id;
+    let addedToPlaylistCount = 0;
+
+    for (const filePath of filePaths) {
+      try {
+        const trackId = await insertOrGetTrack(filePath);
+        if (trackId) {
+          const posRow = db.prepare(`SELECT COALESCE(MAX(position), -1) + 1 AS next_pos FROM playlist_tracks WHERE playlist_id = ?`).get(playlistId) as { next_pos: number };
+          const nextPos = posRow?.next_pos || 0;
+
+          const res = db.prepare(`INSERT OR IGNORE INTO playlist_tracks (playlist_id, track_id, position) VALUES (?, ?, ?)`).run(playlistId, trackId, nextPos);
+          if (res.changes > 0) {
+            addedToPlaylistCount++;
+          }
+          totalTracksImported++;
+        }
+      } catch (err) {
+        console.error(`Error importing track ${filePath} for playlist ${playlistName}:`, err);
+      }
+    }
+
+    resultPlaylists.push({
+      name: playlistName,
+      trackCount: addedToPlaylistCount,
+    });
+  }
+
+  startWatching(rootDir);
+  notifyLibraryUpdated();
+
+  return {
+    success: true,
+    playlistsCreated: totalPlaylistsCreated,
+    tracksImported: totalTracksImported,
+    playlists: resultPlaylists,
+  };
+}
+
+async function handleFileAdded(filePath: string) {
+  console.log(`File added: ${filePath}`);
+  try {
+    const trackId = await insertOrGetTrack(filePath);
+    if (trackId) {
+      console.log(`Successfully indexed track: ${filePath}`);
+      notifyLibraryUpdated();
+    }
   } catch (error) {
     console.error(`Error inserting track: ${filePath}`, error);
   }

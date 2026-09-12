@@ -47,18 +47,36 @@ export function LocalFilesView() {
         Select folders on your local disk. Overtone automatically extracts high-resolution ID3 artwork, tags, and organizes your offline music into albums & artists.
       </p>
 
-      {/* Button */}
-      <button
-        onClick={handleScanFolder}
-        className="px-8 py-3.5 rounded-full font-bold shadow-lg transition-all transform hover:-translate-y-0.5 active:translate-y-0 text-sm flex items-center gap-2.5 text-black hover:scale-105"
-        style={{ 
-          backgroundColor: accentHex,
-          boxShadow: `0 6px 20px ${accentHex}35` 
-        }}
-      >
-        <Folder size={18} className="text-black" />
-        Choose Music Folder
-      </button>
+      {/* Action Buttons */}
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full max-w-md">
+        <button
+          onClick={handleScanFolder}
+          className="w-full sm:w-auto flex-1 px-6 py-3.5 rounded-full font-bold shadow-lg transition-all transform hover:-translate-y-0.5 active:translate-y-0 text-sm flex items-center justify-center gap-2.5 text-black hover:scale-105"
+          style={{ 
+            backgroundColor: accentHex,
+            boxShadow: `0 6px 20px ${accentHex}35` 
+          }}
+        >
+          <Folder size={18} className="text-black" />
+          Choose Music Folder
+        </button>
+
+        <button
+          onClick={async () => {
+            const importDir = usePlayerStore.getState().importDirectoryPlaylists;
+            await importDir();
+          }}
+          className={`w-full sm:w-auto px-5 py-3.5 rounded-full font-bold text-sm border transition-all flex items-center justify-center gap-2 ${
+            isDark
+              ? 'border-neutral-700 bg-neutral-900/80 hover:bg-neutral-800 text-white'
+              : 'border-gray-200 bg-white hover:bg-gray-100 text-gray-800 shadow-xs'
+          }`}
+          title="Import a folder where each subfolder becomes an individual playlist"
+        >
+          <Folder size={18} style={{ color: accentHex }} />
+          Import as Playlists
+        </button>
+      </div>
 
       {/* Supported Formats */}
       <div className="flex flex-wrap items-center justify-center gap-2 mt-8">

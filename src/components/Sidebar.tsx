@@ -4,7 +4,7 @@ import React from 'react';
 import { usePlayerStore } from '../store/usePlayerStore';
 import { ActiveTab, Playlist } from '../types/music';
 import { 
-  Compass, Music, Disc3, Mic2, Folder, 
+  Compass, Music, Disc3, Mic2, Folder, FolderDown,
   Library, Plus, Heart, ListMusic,
   PanelLeftClose, PanelLeftOpen, EyeOff
 } from 'lucide-react';
@@ -259,6 +259,15 @@ export function Sidebar() {
                 <Library size={20} />
               </button>
               <button 
+                onClick={() => usePlayerStore.getState().importDirectoryPlaylists()}
+                className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                  isDark ? 'hover:bg-neutral-800 text-neutral-400 hover:text-white' : 'hover:bg-gray-100 text-gray-600'
+                }`}
+                title="Import Folder as Playlists"
+              >
+                <FolderDown size={15} />
+              </button>
+              <button 
                 onClick={() => setCreatePlaylistOpen(true)}
                 className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
                   isDark ? 'hover:bg-neutral-800 text-neutral-400 hover:text-white' : 'hover:bg-gray-100 text-gray-600'
@@ -279,6 +288,15 @@ export function Sidebar() {
                 <span className="font-bold text-sm">Your Library</span>
               </div>
               <div className="flex items-center gap-1">
+                <button 
+                  onClick={() => usePlayerStore.getState().importDirectoryPlaylists()}
+                  className={`p-1.5 rounded-full transition-colors ${
+                    isDark ? 'hover:bg-neutral-800 text-neutral-400 hover:text-white' : 'hover:bg-gray-100 text-gray-500'
+                  }`}
+                  title="Import Folder as Playlists"
+                >
+                  <FolderDown size={16} />
+                </button>
                 <button 
                   onClick={() => setCreatePlaylistOpen(true)}
                   className={`p-1.5 rounded-full transition-colors ${
@@ -544,15 +562,26 @@ export function Sidebar() {
               }`}>
                 Playlists
               </h3>
-              <button
-                onClick={() => setCreatePlaylistOpen(true)}
-                className={`p-1 rounded-md transition-colors ${
-                  isDark ? 'hover:bg-neutral-800 text-neutral-400 hover:text-white' : 'hover:bg-gray-200 text-gray-500'
-                }`}
-                title="Create Playlist"
-              >
-                <Plus size={14} />
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => usePlayerStore.getState().importDirectoryPlaylists()}
+                  className={`p-1 rounded-md transition-colors ${
+                    isDark ? 'hover:bg-neutral-800 text-neutral-400 hover:text-white' : 'hover:bg-gray-200 text-gray-500'
+                  }`}
+                  title="Import Folder as Playlists"
+                >
+                  <FolderDown size={13} />
+                </button>
+                <button
+                  onClick={() => setCreatePlaylistOpen(true)}
+                  className={`p-1 rounded-md transition-colors ${
+                    isDark ? 'hover:bg-neutral-800 text-neutral-400 hover:text-white' : 'hover:bg-gray-200 text-gray-500'
+                  }`}
+                  title="Create Playlist"
+                >
+                  <Plus size={14} />
+                </button>
+              </div>
             </div>
           )}
 

@@ -15,7 +15,7 @@ import {
   exportPlaylistToM3U, importPlaylistFromM3U,
   updateTrackDuration
 } from './db';
-import { startWatching } from './scanner';
+import { startWatching, importDirectoryAsPlaylists } from './scanner';
 
 const isDev = !app.isPackaged && process.env.NODE_ENV === 'development';
 
@@ -234,11 +234,46 @@ ipcMain.handle('dialog:openDirectory', async () => {
   if (canceled) {
     return [];
   } else {
-    filePaths.forEach((folderPath) => {
-      startWatching(folderPath);
-    });
+    for (const folderPath of filePaths) {
+      await importDirectoryAsPlaylists(folderPath);
+    }
     return filePaths;
   }
+});
+
+// IPC handler specifically for importing a directory with subfolders as playlists
+ipcMain.handle('dialog:importDirectoryPlaylists', async (_event, customPath?: string) => {
+  let targetPaths: string[] = [];
+  if (customPath) {
+    targetPaths = [customPath];
+  } else {
+    const { canceled, filePaths } = await dialog.showOpenDialog({
+      title: 'Import Folder as Playlists',
+      properties: ['openDirectory'],
+    });
+    if (canceled || filePaths.length === 0) {
+      return { success: false, playlistsCreated: 0, tracksImported: 0, playlists: [] };
+    }
+    targetPaths = filePaths;
+  }
+
+  let totalPlaylistsCreated = 0;
+  let totalTracksImported = 0;
+  const allPlaylists: Array<{ name: string; trackCount: number }> = [];
+
+  for (const folderPath of targetPaths) {
+    const res = await importDirectoryAsPlaylists(folderPath);
+    totalPlaylistsCreated += res.playlistsCreated;
+    totalTracksImported += res.tracksImported;
+    allPlaylists.push(...res.playlists);
+  }
+
+  return {
+    success: true,
+    playlistsCreated: totalPlaylistsCreated,
+    tracksImported: totalTracksImported,
+    playlists: allPlaylists,
+  };
 });
 
 // IPC handler for getting tracks with artist & album names

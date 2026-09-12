@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld('api', {
   removeTrackFromPlaylist: (playlistId: number, trackId: number) => ipcRenderer.invoke('db:removeTrackFromPlaylist', playlistId, trackId),
   exportPlaylistM3U: (playlistId: number) => ipcRenderer.invoke('dialog:exportPlaylistM3U', playlistId),
   importPlaylistM3U: () => ipcRenderer.invoke('dialog:importPlaylistM3U'),
+  importDirectoryPlaylists: (folderPath?: string) => ipcRenderer.invoke('dialog:importDirectoryPlaylists', folderPath),
 
   // Favorites
   getFavorites: () => ipcRenderer.invoke('db:getFavorites'),

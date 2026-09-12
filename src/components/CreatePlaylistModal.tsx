@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { usePlayerStore } from '../store/usePlayerStore';
-import { X, ListMusic, FileUp } from 'lucide-react';
+import { X, ListMusic, FileUp, FolderDown } from 'lucide-react';
 import { getAccentColorHex } from '../lib/utils';
 
 export function CreatePlaylistModal() {
@@ -10,6 +10,7 @@ export function CreatePlaylistModal() {
   const setCreatePlaylistOpen = usePlayerStore((s) => s.setCreatePlaylistOpen);
   const createPlaylist = usePlayerStore((s) => s.createPlaylist);
   const importPlaylistM3U = usePlayerStore((s) => s.importPlaylistM3U);
+  const importDirectoryPlaylists = usePlayerStore((s) => s.importDirectoryPlaylists);
   const selectPlaylist = usePlayerStore((s) => s.selectPlaylist);
   const theme = usePlayerStore((s) => s.theme);
   const accentColor = usePlayerStore((s) => s.accentColor);
@@ -34,6 +35,11 @@ export function CreatePlaylistModal() {
   const handleImport = async () => {
     setCreatePlaylistOpen(false);
     await importPlaylistM3U();
+  };
+
+  const handleImportFolder = async () => {
+    setCreatePlaylistOpen(false);
+    await importDirectoryPlaylists();
   };
 
   return (
@@ -114,6 +120,22 @@ export function CreatePlaylistModal() {
             >
               <FileUp size={14} />
               Import .M3U
+            </button>
+          </div>
+
+          <div className="pt-3 border-t border-neutral-800/40">
+            <button
+              type="button"
+              onClick={handleImportFolder}
+              className={`w-full flex items-center justify-center gap-2.5 py-3 rounded-2xl font-bold text-xs border transition-all ${
+                isDark
+                  ? 'bg-neutral-900/60 border-neutral-700/80 hover:bg-neutral-800 text-neutral-200'
+                  : 'bg-gray-50 border-gray-200 hover:bg-gray-100 text-gray-700'
+              }`}
+              title="Select a directory with subdirectories to import each subfolder as a separate playlist"
+            >
+              <FolderDown size={15} style={{ color: accentHex }} />
+              <span>Import Folder as Playlists (Subdirectories)</span>
             </button>
           </div>
         </form>

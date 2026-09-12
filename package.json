@@ -1,6 +1,6 @@
 {
   "name": "overtune",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Overtone - Modern Local Music Player (Spotify Clone, Local-First)",
   "author": "Naseem Ansari",
   "license": "MIT",
@@ -38,7 +38,8 @@
     "dist": "electron-builder --publish never",
     "start": "next start",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "cross-env ELECTRON_RUN_AS_NODE=1 electron --test tests/"
   },
   "build": {
     "appId": "com.overtone.app",
