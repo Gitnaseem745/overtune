@@ -2,11 +2,11 @@
 
 import React from 'react';
 import { usePlayerStore } from '../store/usePlayerStore';
-import { ActiveTab, Playlist } from '../types/music';
+import { ActiveTab } from '../types/music';
 import { 
   Compass, Music, Disc3, Mic2, Folder, FolderDown,
   Library, Plus, Heart, ListMusic,
-  PanelLeftClose, PanelLeftOpen, EyeOff
+  PanelLeftClose, EyeOff
 } from 'lucide-react';
 import { getAccentColorHex } from '../lib/utils';
 import { OvertoneLogo } from './OvertoneLogo';

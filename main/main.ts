@@ -15,7 +15,7 @@ import {
   exportPlaylistToM3U, importPlaylistFromM3U,
   updateTrackDuration
 } from './db';
-import { startWatching, importDirectoryAsPlaylists } from './scanner';
+import { importDirectoryAsPlaylists } from './scanner';
 
 const isDev = !app.isPackaged && process.env.NODE_ENV === 'development';
 

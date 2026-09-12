@@ -3,7 +3,7 @@
 import { usePlayerStore } from '../store/usePlayerStore';
 import { AccentColor } from '../types/music';
 import { getAccentColorHex } from '../lib/utils';
-import { X, Sun, Moon, LayoutGrid, Columns3, ShieldCheck, Palette, Check } from 'lucide-react';
+import { X, Sun, Moon, LayoutGrid, Columns3, ShieldCheck, Check } from 'lucide-react';
 import { OvertoneLogo } from './OvertoneLogo';
 
 export function SettingsModal() {
