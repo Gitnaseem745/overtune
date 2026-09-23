@@ -4,7 +4,7 @@ import { usePlayerStore } from '../store/usePlayerStore';
 import { getLocalUrl, formatTime, getAccentColorHex } from '../lib/utils';
 import { 
   X, Music, ListMusic, Trash2, Play, 
-  Disc3, Mic2 
+  Disc3, Mic2, ListPlus 
 } from 'lucide-react';
 import { LyricsPanel } from './LyricsPanel';
 
@@ -20,6 +20,7 @@ export function RightPanel() {
   const playTrack = usePlayerStore((s) => s.playTrack);
   const removeFromQueue = usePlayerStore((s) => s.removeFromQueue);
   const clearQueue = usePlayerStore((s) => s.clearQueue);
+  const saveQueueAsPlaylist = usePlayerStore((s) => s.saveQueueAsPlaylist);
   const isLyricsPanelOpen = usePlayerStore((s) => s.isLyricsPanelOpen);
   const toggleLyricsPanel = usePlayerStore((s) => s.toggleLyricsPanel);
 
@@ -144,18 +145,35 @@ export function RightPanel() {
               <span className="text-xs font-bold uppercase tracking-wider text-neutral-400">
                 Next in Queue ({upcomingQueue.length})
               </span>
-              {upcomingQueue.length > 0 && (
-                <button
-                  onClick={clearQueue}
-                  className={`text-[11px] font-semibold flex items-center gap-1 transition-colors ${
-                    isDark ? 'text-neutral-400 hover:text-red-400' : 'text-gray-400 hover:text-red-500'
-                  }`}
-                  title="Clear remaining queue"
-                >
-                  <Trash2 size={12} />
-                  Clear
-                </button>
-              )}
+              <div className="flex items-center gap-2">
+                {queue.length > 0 && (
+                  <button
+                    onClick={async () => {
+                      const pl = await saveQueueAsPlaylist();
+                      if (pl) alert(`Saved queue as "${pl.name}"`);
+                    }}
+                    className={`text-[11px] font-semibold flex items-center gap-1 transition-colors ${
+                      isDark ? 'text-neutral-400 hover:text-white' : 'text-gray-400 hover:text-gray-900'
+                    }`}
+                    title="Save queue as a new playlist"
+                  >
+                    <ListPlus size={12} />
+                    Save
+                  </button>
+                )}
+                {upcomingQueue.length > 0 && (
+                  <button
+                    onClick={clearQueue}
+                    className={`text-[11px] font-semibold flex items-center gap-1 transition-colors ${
+                      isDark ? 'text-neutral-400 hover:text-red-400' : 'text-gray-400 hover:text-red-500'
+                    }`}
+                    title="Clear remaining queue"
+                  >
+                    <Trash2 size={12} />
+                    Clear
+                  </button>
+                )}
+              </div>
             </div>
 
             {upcomingQueue.length > 0 ? (

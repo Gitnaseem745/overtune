@@ -6,7 +6,7 @@ import { ActiveTab } from '../types/music';
 import { 
   Compass, Music, Disc3, Mic2, Folder, FolderDown,
   Library, Plus, Heart, ListMusic,
-  PanelLeftClose, EyeOff, ShieldCheck
+  PanelLeftClose, EyeOff, ShieldCheck, History, Sparkles
 } from 'lucide-react';
 import { getAccentColorHex } from '../lib/utils';
 import { OvertoneLogo } from './OvertoneLogo';
@@ -239,6 +239,28 @@ export function Sidebar() {
                   name="Library Care" 
                   tab="LibraryCare" 
                   icon={ShieldCheck} 
+                  activeTab={activeTab}
+                  isDark={isDark}
+                  isSpotifyLayout={isSpotifyLayout}
+                  isCollapsed={isSidebarCollapsed}
+                  accentHex={accentHex}
+                  onClick={setActiveTab}
+                />
+                <NavItem 
+                  name="Recently Played" 
+                  tab="RecentlyPlayed" 
+                  icon={History} 
+                  activeTab={activeTab}
+                  isDark={isDark}
+                  isSpotifyLayout={isSpotifyLayout}
+                  isCollapsed={isSidebarCollapsed}
+                  accentHex={accentHex}
+                  onClick={setActiveTab}
+                />
+                <NavItem 
+                  name="Smart Playlists" 
+                  tab="SmartPlaylists" 
+                  icon={Sparkles} 
                   activeTab={activeTab}
                   isDark={isDark}
                   isSpotifyLayout={isSpotifyLayout}
@@ -565,6 +587,28 @@ export function Sidebar() {
               name="Library Care" 
               tab="LibraryCare" 
               icon={ShieldCheck} 
+              activeTab={activeTab}
+              isDark={isDark}
+              isSpotifyLayout={isSpotifyLayout}
+              isCollapsed={isSidebarCollapsed}
+              accentHex={accentHex}
+              onClick={setActiveTab}
+            />
+            <NavItem 
+              name="Recently Played" 
+              tab="RecentlyPlayed" 
+              icon={History} 
+              activeTab={activeTab}
+              isDark={isDark}
+              isSpotifyLayout={isSpotifyLayout}
+              isCollapsed={isSidebarCollapsed}
+              accentHex={accentHex}
+              onClick={setActiveTab}
+            />
+            <NavItem 
+              name="Smart Playlists" 
+              tab="SmartPlaylists" 
+              icon={Sparkles} 
               activeTab={activeTab}
               isDark={isDark}
               isSpotifyLayout={isSpotifyLayout}

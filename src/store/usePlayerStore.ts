@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { 
   Track, Album, Artist, Playlist, LyricsData, ThemeMode, LayoutMode, AccentColor, RepeatMode, ActiveTab,
-  WatchedFolder, ScanError, DuplicateGroup, MissingFile, HealthReport, TrackMetadataUpdate 
+  WatchedFolder, ScanError, DuplicateGroup, MissingFile, HealthReport, TrackMetadataUpdate,
+  PlayHistoryEntry, SmartPlaylistRule, SmartPlaylist
 } from '../types/music';
 
 interface PlayerState {
@@ -33,6 +34,19 @@ interface PlayerState {
   missingFiles: MissingFile[];
   healthReport: HealthReport | null;
   isLibraryCareLoading: boolean;
+
+  // ── Personal Discovery, Ratings & Smart Playlists ──
+  playHistory: PlayHistoryEntry[];
+  playCounts: Record<number, number>;
+  isPlayHistoryEnabled: boolean;
+  trackRatings: Record<number, number>;
+  trackTags: Record<number, string[]>;
+  smartPlaylists: SmartPlaylist[];
+  selectedSmartPlaylist: SmartPlaylist | null;
+  smartPlaylistTracks: Track[];
+  forgottenFavorites: Track[];
+  recentAdditions: Track[];
+  resumePreference: 'always' | 'ask' | 'off';
 
   // ── Library Data ──
   tracks: Track[];
@@ -101,6 +115,7 @@ interface PlayerState {
   deletePlaylist: (id: number) => Promise<void>;
   addTrackToPlaylist: (playlistId: number, trackId: number) => Promise<void>;
   removeTrackFromPlaylist: (playlistId: number, trackId: number) => Promise<void>;
+  reorderPlaylistTracks: (playlistId: number, trackIds: number[]) => Promise<void>;
   exportPlaylistM3U: (playlistId: number) => Promise<boolean>;
   importPlaylistM3U: () => Promise<void>;
   importDirectoryPlaylists: (folderPath?: string) => Promise<{ success: boolean; playlistsCreated: number; tracksImported: number } | null>;
@@ -151,6 +166,26 @@ interface PlayerState {
     newPath?: string;
     error?: string;
   }>;
+
+  // ── Discovery & Smart Playlist Actions ──
+  recordPlayEvent: (trackId: number, durationPlayed?: number) => Promise<void>;
+  loadPlayHistory: () => Promise<void>;
+  clearPlayHistory: () => Promise<void>;
+  setPlayHistoryEnabled: (enabled: boolean) => Promise<void>;
+  setTrackRating: (trackId: number, rating: number) => Promise<void>;
+  addTrackTag: (trackId: number, tag: string) => Promise<void>;
+  removeTrackTag: (trackId: number, tag: string) => Promise<void>;
+  loadRatingsAndTags: () => Promise<void>;
+  loadSmartPlaylists: () => Promise<void>;
+  createSmartPlaylist: (name: string, rules: SmartPlaylistRule[]) => Promise<SmartPlaylist | null>;
+  updateSmartPlaylist: (id: number, name: string, rules: SmartPlaylistRule[]) => Promise<boolean>;
+  deleteSmartPlaylist: (id: number) => Promise<boolean>;
+  selectSmartPlaylist: (playlist: SmartPlaylist | null) => Promise<void>;
+  loadMixes: () => Promise<void>;
+  saveQueueAsPlaylist: (name?: string) => Promise<Playlist | null>;
+  savePlaybackState: () => Promise<void>;
+  restorePlaybackState: () => Promise<void>;
+  setResumePreference: (pref: 'always' | 'ask' | 'off') => Promise<void>;
 }
 
 export const usePlayerStore = create<PlayerState>((set, get) => ({
@@ -180,6 +215,18 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   missingFiles: [],
   healthReport: null,
   isLibraryCareLoading: false,
+
+  playHistory: [],
+  playCounts: {},
+  isPlayHistoryEnabled: true,
+  trackRatings: {},
+  trackTags: {},
+  smartPlaylists: [],
+  selectedSmartPlaylist: null,
+  smartPlaylistTracks: [],
+  forgottenFavorites: [],
+  recentAdditions: [],
+  resumePreference: 'always',
 
   tracks: [],
   albums: [],
@@ -535,6 +582,18 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     }
   },
 
+  reorderPlaylistTracks: async (playlistId, trackIds) => {
+    if (typeof window !== 'undefined' && window.api) {
+      try {
+        await window.api.reorderPlaylistTracks(playlistId, trackIds);
+        const pTracks = await window.api.getPlaylistTracks(playlistId);
+        set({ playlistTracks: pTracks || [] });
+      } catch (err) {
+        console.error('Error reordering playlist tracks:', err);
+      }
+    }
+  },
+
   exportPlaylistM3U: async (playlistId) => {
     if (typeof window !== 'undefined' && window.api) {
       try {
@@ -869,5 +928,244 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       return result;
     }
     return { success: false };
+  },
+
+  // ── Discovery, Ratings, Smart Playlists & State Actions ──
+  recordPlayEvent: async (trackId, durationPlayed = 0) => {
+    if (typeof window !== 'undefined' && window.api) {
+      await window.api.recordPlayEvent(trackId, durationPlayed);
+      const counts = await window.api.getPlayCounts();
+      set({ playCounts: counts || {} });
+    }
+  },
+
+  loadPlayHistory: async () => {
+    if (typeof window !== 'undefined' && window.api) {
+      try {
+        const [history, counts, enabled] = await Promise.all([
+          window.api.getPlayHistory(100),
+          window.api.getPlayCounts(),
+          window.api.isPlayHistoryEnabled(),
+        ]);
+        set({
+          playHistory: history || [],
+          playCounts: counts || {},
+          isPlayHistoryEnabled: enabled ?? true,
+        });
+      } catch (e) {
+        console.error('Error loading play history:', e);
+      }
+    }
+  },
+
+  clearPlayHistory: async () => {
+    if (typeof window !== 'undefined' && window.api) {
+      await window.api.clearPlayHistory();
+      set({ playHistory: [], playCounts: {} });
+    }
+  },
+
+  setPlayHistoryEnabled: async (enabled) => {
+    if (typeof window !== 'undefined' && window.api) {
+      await window.api.setPlayHistoryEnabled(enabled);
+      set({ isPlayHistoryEnabled: enabled });
+    }
+  },
+
+  setTrackRating: async (trackId, rating) => {
+    if (typeof window !== 'undefined' && window.api) {
+      await window.api.setTrackRating(trackId, rating);
+      const ratings = await window.api.getAllTrackRatings();
+      set({ trackRatings: ratings || {} });
+    }
+  },
+
+  addTrackTag: async (trackId, tag) => {
+    if (typeof window !== 'undefined' && window.api) {
+      await window.api.addTrackTag(trackId, tag);
+      const tagMap = await window.api.getAllTrackTagsMap();
+      set({ trackTags: tagMap || {} });
+    }
+  },
+
+  removeTrackTag: async (trackId, tag) => {
+    if (typeof window !== 'undefined' && window.api) {
+      await window.api.removeTrackTag(trackId, tag);
+      const tagMap = await window.api.getAllTrackTagsMap();
+      set({ trackTags: tagMap || {} });
+    }
+  },
+
+  loadRatingsAndTags: async () => {
+    if (typeof window !== 'undefined' && window.api) {
+      try {
+        const [ratings, tags] = await Promise.all([
+          window.api.getAllTrackRatings(),
+          window.api.getAllTrackTagsMap(),
+        ]);
+        set({
+          trackRatings: ratings || {},
+          trackTags: tags || {},
+        });
+      } catch (e) {
+        console.error('Error loading ratings and tags:', e);
+      }
+    }
+  },
+
+  loadSmartPlaylists: async () => {
+    if (typeof window !== 'undefined' && window.api) {
+      try {
+        const spl = await window.api.getSmartPlaylists();
+        set({ smartPlaylists: spl || [] });
+      } catch (e) {
+        console.error('Error loading smart playlists:', e);
+      }
+    }
+  },
+
+  createSmartPlaylist: async (name, rules) => {
+    if (typeof window !== 'undefined' && window.api) {
+      try {
+        const created = await window.api.createSmartPlaylist(name, rules);
+        await get().loadSmartPlaylists();
+        return created;
+      } catch (e) {
+        console.error('Error creating smart playlist:', e);
+        return null;
+      }
+    }
+    return null;
+  },
+
+  updateSmartPlaylist: async (id, name, rules) => {
+    if (typeof window !== 'undefined' && window.api) {
+      const ok = await window.api.updateSmartPlaylist(id, name, rules);
+      if (ok) {
+        await get().loadSmartPlaylists();
+        const sel = get().selectedSmartPlaylist;
+        if (sel && sel.id === id) {
+          await get().selectSmartPlaylist({ ...sel, name, rules });
+        }
+      }
+      return ok;
+    }
+    return false;
+  },
+
+  deleteSmartPlaylist: async (id) => {
+    if (typeof window !== 'undefined' && window.api) {
+      const ok = await window.api.deleteSmartPlaylist(id);
+      if (ok) {
+        await get().loadSmartPlaylists();
+        if (get().selectedSmartPlaylist?.id === id) {
+          set({ selectedSmartPlaylist: null, smartPlaylistTracks: [] });
+        }
+      }
+      return ok;
+    }
+    return false;
+  },
+
+  selectSmartPlaylist: async (playlist) => {
+    if (!playlist) {
+      set({ selectedSmartPlaylist: null, smartPlaylistTracks: [] });
+      return;
+    }
+    if (typeof window !== 'undefined' && window.api) {
+      try {
+        const evaluated = await window.api.evaluateSmartPlaylist(playlist.rules);
+        set({
+          selectedSmartPlaylist: playlist,
+          smartPlaylistTracks: evaluated || [],
+          activeTab: 'SmartPlaylists',
+        });
+      } catch (e) {
+        console.error('Error evaluating smart playlist:', e);
+      }
+    }
+  },
+
+  loadMixes: async () => {
+    if (typeof window !== 'undefined' && window.api) {
+      try {
+        const [forgotten, recent] = await Promise.all([
+          window.api.getForgottenFavorites(20),
+          window.api.getRecentAdditions(20),
+        ]);
+        set({
+          forgottenFavorites: forgotten || [],
+          recentAdditions: recent || [],
+        });
+      } catch (e) {
+        console.error('Error loading mixes:', e);
+      }
+    }
+  },
+
+  saveQueueAsPlaylist: async (name) => {
+    const queue = get().queue;
+    if (queue.length === 0) return null;
+    const playlistName = name || `Queue Mix ${new Date().toLocaleDateString()}`;
+    const newPlaylist = await get().createPlaylist(playlistName);
+    if (newPlaylist && typeof window !== 'undefined' && window.api) {
+      for (const track of queue) {
+        await window.api.addTrackToPlaylist(newPlaylist.id, track.id);
+      }
+      await get().refreshLibrary();
+      return newPlaylist;
+    }
+    return null;
+  },
+
+  savePlaybackState: async () => {
+    if (typeof window !== 'undefined' && window.api) {
+      const { currentTrack, currentTime, queue, resumePreference } = get();
+      await window.api.savePlaybackState({
+        trackId: currentTrack?.id ?? null,
+        currentTime,
+        queueIds: queue.map((t) => t.id),
+        resumePreference,
+      });
+    }
+  },
+
+  restorePlaybackState: async () => {
+    if (typeof window !== 'undefined' && window.api) {
+      try {
+        const pref = (await window.api.getSetting('resume_preference', 'always')) as 'always' | 'ask' | 'off';
+        set({ resumePreference: pref });
+        if (pref === 'off') return;
+
+        const state = await window.api.getPlaybackState();
+        if (!state || !state.trackId) return;
+
+        const tracks = get().tracks;
+        const savedTrack = tracks.find((t) => t.id === state.trackId);
+        if (savedTrack) {
+          const restoredQueue = state.queueIds
+            .map((id) => tracks.find((t) => t.id === id))
+            .filter((t): t is Track => t !== undefined);
+
+          set({
+            currentTrack: savedTrack,
+            currentTime: state.currentTime || 0,
+            duration: savedTrack.duration || 0,
+            queue: restoredQueue.length > 0 ? restoredQueue : [savedTrack],
+            queueIndex: restoredQueue.findIndex((t) => t.id === savedTrack.id),
+            isPlaying: false, // Do not auto-play audio loudly without listener action
+          });
+        }
+      } catch (e) {
+        console.error('Error restoring playback state:', e);
+      }
+    }
+  },
+
+  setResumePreference: async (pref) => {
+    if (typeof window !== 'undefined' && window.api) {
+      await window.api.setSetting('resume_preference', pref);
+      set({ resumePreference: pref });
+    }
   },
 }));

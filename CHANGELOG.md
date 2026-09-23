@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.8] - 2026-09-24
+
+### Added
+- **Local Listening History & Play Counts**: Full local listening timeline tracking tracks played for at least 30 seconds or to completion. Includes aggregated play counts per track, time-stamped history view, and privacy controls to pause tracking or clear history at any time.
+- **Continue Listening & State Restoration**: Automatically saves playback state (current track, elapsed playback time, and full active queue) with customizable startup restore preferences (`Always Restore`, `Wait for Input`, or `Disabled`). Audio is never played automatically without explicit listener action.
+- **Smart Playlists & Rule Engine**: Create and manage dynamic smart playlists evaluated locally against the SQLite database. Supports flexible criteria matching genre, artist, album, release year, star ratings, minimum play count, unplayed tracks, and personal user tags with live result preview.
+- **5-Star Track Ratings**: Clickable 5-star rating system embedded in track rows and context menus, enabling effortless catalog curation and smart filtering.
+- **Personal Tags & Labeling**: Assign custom mood, genre, and activity tags to individual tracks with tag chip display, enter-to-add editing, and instant removal.
+- **Smart Mixes & Local Rediscovery**: Generated offline mixes including "Forgotten Favorites" (rediscovering loved tracks unplayed in over 30 days), "Recent Additions", and "Deep Catalog Gems". All mixes feature one-click playback, shuffling, and direct conversion into regular playlists.
+- **Playlist Reordering & Sorting**: Drag-free track position reordering with move up/down controls, metadata sorting (by title, artist, album, or duration), and persistent position storage in the database.
+- **Playlist Multi-Selection & Bulk Actions**: Checkbox selection for playlist tracks with floating bulk action bar supporting "Play Selected", "Add to Queue", and bulk removal.
+- **Queue to Playlist Export**: Dedicated one-click action to save the active queue as a new named playlist directly from the Right Panel or Recently Played views.
+- **Automated Test Suite**: Comprehensive unit tests in `tests/discovery.test.js` verifying play history, play count aggregation, rating and tag persistence, smart playlist evaluation, playback state restore, and track reordering.
+
+---
+
 ## [0.1.7] - 2026-09-24
 
 ### Added

@@ -129,6 +129,42 @@ export function initDb() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY(folder_id) REFERENCES watched_folders(id) ON DELETE CASCADE
     );
+
+    CREATE TABLE IF NOT EXISTS play_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      track_id INTEGER NOT NULL,
+      played_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      duration_played REAL DEFAULT 0,
+      FOREIGN KEY(track_id) REFERENCES tracks(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS track_ratings (
+      track_id INTEGER PRIMARY KEY,
+      rating INTEGER NOT NULL CHECK(rating >= 1 AND rating <= 5),
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(track_id) REFERENCES tracks(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS track_tags (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      track_id INTEGER NOT NULL,
+      tag TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(track_id) REFERENCES tracks(id) ON DELETE CASCADE,
+      UNIQUE(track_id, tag)
+    );
+
+    CREATE TABLE IF NOT EXISTS smart_playlists (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      rules_json TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
   `);
 
   return db;
@@ -237,6 +273,21 @@ export function removeTrackFromPlaylist(playlistId: number, trackId: number) {
     WHERE playlist_id = ? AND track_id = ?
   `);
   stmt.run(playlistId, trackId);
+  return true;
+}
+
+export function reorderPlaylistTracks(playlistId: number, trackIds: number[]) {
+  const database = getDb();
+  const updateStmt = database.prepare(`
+    UPDATE playlist_tracks SET position = ? 
+    WHERE playlist_id = ? AND track_id = ?
+  `);
+  const runTransaction = database.transaction((ids: number[]) => {
+    ids.forEach((id, index) => {
+      updateStmt.run(index, playlistId, id);
+    });
+  });
+  runTransaction(trackIds);
   return true;
 }
 
@@ -604,5 +655,433 @@ export function getScanDashboard() {
   const totalTracks = (database.prepare(`SELECT COUNT(*) as c FROM tracks`).get() as { c: number }).c;
   const recentErrors = getScanErrors();
   return { folders, totalTracks, recentErrors };
+}
+
+// ── Personal Discovery & Play History ────────────────────────────────
+
+export function isPlayHistoryEnabled(): boolean {
+  try {
+    const database = getDb();
+    const row = database.prepare(`SELECT value FROM settings WHERE key = 'play_history_enabled'`).get() as { value: string } | undefined;
+    return row ? row.value !== 'false' : true;
+  } catch {
+    return true;
+  }
+}
+
+export function setPlayHistoryEnabled(enabled: boolean): boolean {
+  try {
+    const database = getDb();
+    database.prepare(`
+      INSERT INTO settings (key, value) VALUES ('play_history_enabled', ?)
+      ON CONFLICT(key) DO UPDATE SET value=excluded.value
+    `).run(enabled ? 'true' : 'false');
+    return true;
+  } catch (e) {
+    console.error('Error setting play history preference:', e);
+    return false;
+  }
+}
+
+export function recordPlayEvent(trackId: number, durationPlayed: number = 0): boolean {
+  try {
+    if (!isPlayHistoryEnabled()) return false;
+    const database = getDb();
+    database.prepare(`
+      INSERT INTO play_history (track_id, duration_played) VALUES (?, ?)
+    `).run(trackId, durationPlayed);
+    return true;
+  } catch (e) {
+    console.error('Error recording play event:', e);
+    return false;
+  }
+}
+
+export function getPlayHistory(limit: number = 50) {
+  const database = getDb();
+  return database.prepare(`
+    SELECT 
+      ph.id AS history_id,
+      ph.played_at,
+      ph.duration_played,
+      t.id, t.title, t.duration, t.track_number, t.genre, t.path,
+      COALESCE(a.name, 'Unknown Artist') AS artist,
+      COALESCE(al.title, 'Unknown Album') AS album,
+      al.cover_art_path AS cover_art
+    FROM play_history ph
+    JOIN tracks t ON ph.track_id = t.id
+    LEFT JOIN artists a ON t.artist_id = a.id
+    LEFT JOIN albums al ON t.album_id = al.id
+    ORDER BY ph.played_at DESC
+    LIMIT ?
+  `).all(limit);
+}
+
+export function getPlayCounts(): Record<number, number> {
+  const database = getDb();
+  const rows = database.prepare(`
+    SELECT track_id, COUNT(*) as count FROM play_history GROUP BY track_id
+  `).all() as Array<{ track_id: number; count: number }>;
+  const counts: Record<number, number> = {};
+  for (const r of rows) {
+    counts[r.track_id] = r.count;
+  }
+  return counts;
+}
+
+export function clearPlayHistory(): boolean {
+  try {
+    const database = getDb();
+    database.prepare(`DELETE FROM play_history`).run();
+    return true;
+  } catch (e) {
+    console.error('Error clearing play history:', e);
+    return false;
+  }
+}
+
+// ── Track Ratings ────────────────────────────────────────────────────
+
+export function setTrackRating(trackId: number, rating: number): boolean {
+  try {
+    const database = getDb();
+    if (rating <= 0) {
+      database.prepare(`DELETE FROM track_ratings WHERE track_id = ?`).run(trackId);
+    } else {
+      const clamped = Math.max(1, Math.min(5, Math.round(rating)));
+      database.prepare(`
+        INSERT INTO track_ratings (track_id, rating) VALUES (?, ?)
+        ON CONFLICT(track_id) DO UPDATE SET rating=excluded.rating
+      `).run(trackId, clamped);
+    }
+    return true;
+  } catch (e) {
+    console.error('Error setting track rating:', e);
+    return false;
+  }
+}
+
+export function getTrackRating(trackId: number): number {
+  try {
+    const database = getDb();
+    const row = database.prepare(`SELECT rating FROM track_ratings WHERE track_id = ?`).get(trackId) as { rating: number } | undefined;
+    return row?.rating ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
+export function getAllTrackRatings(): Record<number, number> {
+  const database = getDb();
+  const rows = database.prepare(`SELECT track_id, rating FROM track_ratings`).all() as Array<{ track_id: number; rating: number }>;
+  const ratings: Record<number, number> = {};
+  for (const r of rows) {
+    ratings[r.track_id] = r.rating;
+  }
+  return ratings;
+}
+
+// ── Track Tags ───────────────────────────────────────────────────────
+
+export function addTrackTag(trackId: number, tag: string): boolean {
+  try {
+    const cleanTag = tag.trim().toLowerCase();
+    if (!cleanTag) return false;
+    const database = getDb();
+    database.prepare(`
+      INSERT OR IGNORE INTO track_tags (track_id, tag) VALUES (?, ?)
+    `).run(trackId, cleanTag);
+    return true;
+  } catch (e) {
+    console.error('Error adding track tag:', e);
+    return false;
+  }
+}
+
+export function removeTrackTag(trackId: number, tag: string): boolean {
+  try {
+    const database = getDb();
+    database.prepare(`DELETE FROM track_tags WHERE track_id = ? AND tag = ?`).run(trackId, tag.trim().toLowerCase());
+    return true;
+  } catch (e) {
+    console.error('Error removing track tag:', e);
+    return false;
+  }
+}
+
+export function getTrackTags(trackId: number): string[] {
+  const database = getDb();
+  const rows = database.prepare(`SELECT tag FROM track_tags WHERE track_id = ? ORDER BY tag ASC`).all(trackId) as Array<{ tag: string }>;
+  return rows.map((r) => r.tag);
+}
+
+export function getAllTrackTagsMap(): Record<number, string[]> {
+  const database = getDb();
+  const rows = database.prepare(`SELECT track_id, tag FROM track_tags ORDER BY tag ASC`).all() as Array<{ track_id: number; tag: string }>;
+  const map: Record<number, string[]> = {};
+  for (const r of rows) {
+    if (!map[r.track_id]) map[r.track_id] = [];
+    map[r.track_id].push(r.tag);
+  }
+  return map;
+}
+
+// ── Smart Playlists ──────────────────────────────────────────────────
+
+export interface SmartPlaylistRule {
+  field: 'genre' | 'artist' | 'album' | 'year' | 'rating' | 'min_rating' | 'min_plays' | 'unplayed' | 'tag';
+  operator: 'contains' | 'equals' | 'gte' | 'lte' | 'is';
+  value: string | number;
+}
+
+export interface SmartPlaylistRecord {
+  id: number;
+  name: string;
+  rules: SmartPlaylistRule[];
+  created_at: string;
+}
+
+export function createSmartPlaylist(name: string, rules: SmartPlaylistRule[]): SmartPlaylistRecord {
+  const database = getDb();
+  const rulesJson = JSON.stringify(rules);
+  const result = database.prepare(`
+    INSERT INTO smart_playlists (name, rules_json) VALUES (?, ?)
+  `).run(name, rulesJson);
+
+  return {
+    id: Number(result.lastInsertRowid),
+    name,
+    rules,
+    created_at: new Date().toISOString(),
+  };
+}
+
+export function getSmartPlaylists(): SmartPlaylistRecord[] {
+  const database = getDb();
+  const rows = database.prepare(`SELECT * FROM smart_playlists ORDER BY id ASC`).all() as Array<{
+    id: number;
+    name: string;
+    rules_json: string;
+    created_at: string;
+  }>;
+
+  return rows.map((r) => {
+    let rules: SmartPlaylistRule[] = [];
+    try {
+      rules = JSON.parse(r.rules_json);
+    } catch {
+      rules = [];
+    }
+    return {
+      id: r.id,
+      name: r.name,
+      rules,
+      created_at: r.created_at,
+    };
+  });
+}
+
+export function updateSmartPlaylist(id: number, name: string, rules: SmartPlaylistRule[]): boolean {
+  try {
+    const database = getDb();
+    database.prepare(`UPDATE smart_playlists SET name = ?, rules_json = ? WHERE id = ?`).run(name, JSON.stringify(rules), id);
+    return true;
+  } catch (e) {
+    console.error('Error updating smart playlist:', e);
+    return false;
+  }
+}
+
+export function deleteSmartPlaylist(id: number): boolean {
+  try {
+    const database = getDb();
+    database.prepare(`DELETE FROM smart_playlists WHERE id = ?`).run(id);
+    return true;
+  } catch (e) {
+    console.error('Error deleting smart playlist:', e);
+    return false;
+  }
+}
+
+export function evaluateSmartPlaylist(rules: SmartPlaylistRule[]) {
+  const database = getDb();
+  let query = `
+    SELECT
+      t.id, t.title, t.path, t.duration, t.track_number, t.genre, t.file_hash,
+      COALESCE(a.name, 'Unknown Artist') AS artist,
+      COALESCE(al.title, 'Unknown Album') AS album,
+      al.year,
+      al.cover_art_path AS cover_art,
+      COALESCE(tr.rating, 0) AS rating,
+      COALESCE(pc.play_count, 0) AS play_count
+    FROM tracks t
+    LEFT JOIN artists a ON t.artist_id = a.id
+    LEFT JOIN albums al ON t.album_id = al.id
+    LEFT JOIN track_ratings tr ON t.id = tr.track_id
+    LEFT JOIN (
+      SELECT track_id, COUNT(*) as play_count FROM play_history GROUP BY track_id
+    ) pc ON t.id = pc.track_id
+    WHERE 1=1
+  `;
+
+  const params: unknown[] = [];
+
+  for (const rule of rules) {
+    if (rule.field === 'genre') {
+      if (rule.operator === 'equals') {
+        query += ` AND LOWER(t.genre) = LOWER(?)`;
+        params.push(String(rule.value));
+      } else {
+        query += ` AND LOWER(t.genre) LIKE LOWER(?)`;
+        params.push(`%${rule.value}%`);
+      }
+    } else if (rule.field === 'artist') {
+      if (rule.operator === 'equals') {
+        query += ` AND LOWER(a.name) = LOWER(?)`;
+        params.push(String(rule.value));
+      } else {
+        query += ` AND LOWER(a.name) LIKE LOWER(?)`;
+        params.push(`%${rule.value}%`);
+      }
+    } else if (rule.field === 'album') {
+      if (rule.operator === 'equals') {
+        query += ` AND LOWER(al.title) = LOWER(?)`;
+        params.push(String(rule.value));
+      } else {
+        query += ` AND LOWER(al.title) LIKE LOWER(?)`;
+        params.push(`%${rule.value}%`);
+      }
+    } else if (rule.field === 'year') {
+      if (rule.operator === 'gte') {
+        query += ` AND al.year >= ?`;
+        params.push(Number(rule.value));
+      } else if (rule.operator === 'lte') {
+        query += ` AND al.year <= ?`;
+        params.push(Number(rule.value));
+      } else {
+        query += ` AND al.year = ?`;
+        params.push(Number(rule.value));
+      }
+    } else if (rule.field === 'rating' || rule.field === 'min_rating') {
+      query += ` AND COALESCE(tr.rating, 0) >= ?`;
+      params.push(Number(rule.value));
+    } else if (rule.field === 'min_plays') {
+      query += ` AND COALESCE(pc.play_count, 0) >= ?`;
+      params.push(Number(rule.value));
+    } else if (rule.field === 'unplayed') {
+      query += ` AND COALESCE(pc.play_count, 0) = 0`;
+    } else if (rule.field === 'tag') {
+      query += ` AND t.id IN (SELECT track_id FROM track_tags WHERE LOWER(tag) = LOWER(?))`;
+      params.push(String(rule.value));
+    }
+  }
+
+  query += ` ORDER BY t.title ASC LIMIT 200`;
+  return database.prepare(query).all(...params);
+}
+
+// ── Mix Tools ────────────────────────────────────────────────────────
+
+export function getForgottenFavorites(limit: number = 25) {
+  const database = getDb();
+  // Tracks with rating >= 3 or plays >= 2, that have not been played in the last 15 play events
+  return database.prepare(`
+    SELECT
+      t.id, t.title, t.path, t.duration, t.track_number, t.genre, t.file_hash,
+      COALESCE(a.name, 'Unknown Artist') AS artist,
+      COALESCE(al.title, 'Unknown Album') AS album,
+      al.cover_art_path AS cover_art
+    FROM tracks t
+    LEFT JOIN artists a ON t.artist_id = a.id
+    LEFT JOIN albums al ON t.album_id = al.id
+    LEFT JOIN track_ratings tr ON t.id = tr.track_id
+    LEFT JOIN (SELECT track_id, COUNT(*) as pc FROM play_history GROUP BY track_id) ph ON t.id = ph.track_id
+    WHERE (COALESCE(tr.rating, 0) >= 3 OR COALESCE(ph.pc, 0) >= 2)
+      AND t.id NOT IN (
+        SELECT track_id FROM play_history ORDER BY played_at DESC LIMIT 15
+      )
+    ORDER BY RANDOM()
+    LIMIT ?
+  `).all(limit);
+}
+
+export function getRecentAdditions(limit: number = 25) {
+  const database = getDb();
+  return database.prepare(`
+    SELECT
+      t.id, t.title, t.path, t.duration, t.track_number, t.genre, t.file_hash,
+      COALESCE(a.name, 'Unknown Artist') AS artist,
+      COALESCE(al.title, 'Unknown Album') AS album,
+      al.cover_art_path AS cover_art
+    FROM tracks t
+    LEFT JOIN artists a ON t.artist_id = a.id
+    LEFT JOIN albums al ON t.album_id = al.id
+    ORDER BY t.id DESC
+    LIMIT ?
+  `).all(limit);
+}
+
+export function getMoreFromArtist(artistId: number, limit: number = 25) {
+  const database = getDb();
+  return database.prepare(`
+    SELECT
+      t.id, t.title, t.path, t.duration, t.track_number, t.genre, t.file_hash,
+      COALESCE(a.name, 'Unknown Artist') AS artist,
+      COALESCE(al.title, 'Unknown Album') AS album,
+      al.cover_art_path AS cover_art
+    FROM tracks t
+    LEFT JOIN artists a ON t.artist_id = a.id
+    LEFT JOIN albums al ON t.album_id = al.id
+    WHERE t.artist_id = ?
+    ORDER BY RANDOM()
+    LIMIT ?
+  `).all(artistId, limit);
+}
+
+// ── Settings & Playback State ─────────────────────────────────────────
+
+export function getSetting(key: string, defaultValue: string = ''): string {
+  try {
+    const database = getDb();
+    const row = database.prepare(`SELECT value FROM settings WHERE key = ?`).get(key) as { value: string } | undefined;
+    return row ? row.value : defaultValue;
+  } catch {
+    return defaultValue;
+  }
+}
+
+export function setSetting(key: string, value: string): boolean {
+  try {
+    const database = getDb();
+    database.prepare(`
+      INSERT INTO settings (key, value) VALUES (?, ?)
+      ON CONFLICT(key) DO UPDATE SET value=excluded.value
+    `).run(key, value);
+    return true;
+  } catch (e) {
+    console.error(`Error saving setting ${key}:`, e);
+    return false;
+  }
+}
+
+export interface PlaybackState {
+  trackId: number | null;
+  currentTime: number;
+  queueIds: number[];
+  resumePreference: 'always' | 'ask' | 'off';
+}
+
+export function saveLastPlaybackState(state: PlaybackState): boolean {
+  return setSetting('last_playback_state', JSON.stringify(state));
+}
+
+export function getLastPlaybackState(): PlaybackState | null {
+  try {
+    const val = getSetting('last_playback_state', '');
+    if (!val) return null;
+    return JSON.parse(val);
+  } catch {
+    return null;
+  }
 }
 

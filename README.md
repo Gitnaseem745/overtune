@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/gitnaseem745/overtune/releases"><img src="https://img.shields.io/badge/version-0.1.7-blue.svg?style=flat-square" alt="Version"></a>
+  <a href="https://github.com/gitnaseem745/overtune/releases"><img src="https://img.shields.io/badge/version-0.1.8-blue.svg?style=flat-square" alt="Version"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg?style=flat-square" alt="License"></a>
   <a href="https://www.electronjs.org/"><img src="https://img.shields.io/badge/Electron-32.0.0-47848F.svg?style=flat-square&logo=electron" alt="Electron"></a>
   <a href="https://nextjs.org/"><img src="https://img.shields.io/badge/Next.js-16.2.10-000000.svg?style=flat-square&logo=next.js" alt="Next.js"></a>
@@ -87,6 +87,15 @@
 - **Deduplication Review:** SHA-256 cryptographic file hashing detects identical audio tracks. Inspect paths, open directly in Explorer, and cleanly remove duplicates from the library without touching disk files.
 - **Missing File Recovery:** Flags tracks whose disk paths are broken (moved or renamed files) with an interactive relink dialog.
 - **Library Health Diagnostics:** High-level dashboard highlighting untagged tracks, missing artwork, and broken links with direct jump links to fix issues.
+
+### 🔮 Personal Discovery, Ratings & Smart Playlists (v0.1.8)
+- **Local Listening History & Play Counts:** 100% private, offline timeline of played tracks with play counts. Pause tracking or clear history with a single click.
+- **Continue Listening on Startup:** Automatically restores the last active track, elapsed position, and queue. Fully configurable (`Always Restore`, `Wait for Input`, `Disabled`).
+- **Smart Playlists with Rule Engine:** Build dynamic playlists matching genres, artists, albums, release years, star ratings, minimum play counts, unplayed tracks, or personal tags with real-time matching preview.
+- **5-Star Track Ratings & Personal Tags:** Star rating widget integrated into track rows and menus. Add custom mood/activity labels with instant tag chips.
+- **Offline Smart Mixes:** Automatically generates "Forgotten Favorites" (beloved tracks unplayed in over 30 days), "Recent Additions", and "Deep Catalog Gems", playable, shuffleable, and exportable to regular playlists.
+- **Playlist Reordering & Multi-Selection:** Move tracks up/down, sort by metadata, and perform bulk actions (play, add to queue, remove) with multi-track selection.
+- **Queue to Playlist Export:** Convert your current playing queue into a permanent playlist with one click.
 
 ---
 

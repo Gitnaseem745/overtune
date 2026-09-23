@@ -6,8 +6,11 @@ import { getLocalUrl, getAccentColorHex } from '../lib/utils';
 import { TrackRow } from './TrackRow';
 import { 
   ListMusic, Play, Shuffle, Download, Trash2, 
-  Edit3, ChevronLeft, Check, X, Music 
+  Edit3, ChevronLeft, Check, X, Music, ChevronUp, ChevronDown,
+  ArrowUpDown, CheckSquare, Square, ListPlus
 } from 'lucide-react';
+
+type SortField = 'default' | 'title' | 'artist' | 'album' | 'duration';
 
 export function PlaylistDetailView() {
   const selectedPlaylist = usePlayerStore((s) => s.selectedPlaylist);
@@ -15,16 +18,21 @@ export function PlaylistDetailView() {
   const theme = usePlayerStore((s) => s.theme);
   const accentColor = usePlayerStore((s) => s.accentColor);
   const playTrack = usePlayerStore((s) => s.playTrack);
+  const addToQueue = usePlayerStore((s) => s.addToQueue);
   const setShuffleOn = usePlayerStore((s) => s.setShuffleOn);
   const navigateBack = usePlayerStore((s) => s.navigateBack);
   const renamePlaylist = usePlayerStore((s) => s.renamePlaylist);
   const deletePlaylist = usePlayerStore((s) => s.deletePlaylist);
   const exportPlaylistM3U = usePlayerStore((s) => s.exportPlaylistM3U);
   const removeTrackFromPlaylist = usePlayerStore((s) => s.removeTrackFromPlaylist);
+  const reorderPlaylistTracks = usePlayerStore((s) => s.reorderPlaylistTracks);
 
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState('');
   const [exportSuccess, setExportSuccess] = useState(false);
+  const [sortField, setSortField] = useState<SortField>('default');
+  const [sortAsc, setSortAsc] = useState(true);
+  const [selectedTrackIds, setSelectedTrackIds] = useState<Set<number>>(new Set());
 
   const isDark = theme === 'dark';
   const accentHex = getAccentColorHex(accentColor);
@@ -35,13 +43,26 @@ export function PlaylistDetailView() {
     return `${mins} min`;
   }, [playlistTracks]);
 
+  // Sorted tracks view
+  const displayTracks = useMemo(() => {
+    if (sortField === 'default') return playlistTracks;
+    return [...playlistTracks].sort((a, b) => {
+      let cmp = 0;
+      if (sortField === 'title') cmp = a.title.localeCompare(b.title);
+      else if (sortField === 'artist') cmp = a.artist.localeCompare(b.artist);
+      else if (sortField === 'album') cmp = a.album.localeCompare(b.album);
+      else if (sortField === 'duration') cmp = (a.duration || 0) - (b.duration || 0);
+      return sortAsc ? cmp : -cmp;
+    });
+  }, [playlistTracks, sortField, sortAsc]);
+
   if (!selectedPlaylist) return null;
 
   const handlePlayAll = (shuffle: boolean = false) => {
-    if (playlistTracks.length === 0) return;
+    if (displayTracks.length === 0) return;
     setShuffleOn(shuffle);
-    const startIdx = shuffle ? Math.floor(Math.random() * playlistTracks.length) : 0;
-    playTrack(playlistTracks[startIdx], playlistTracks);
+    const startIdx = shuffle ? Math.floor(Math.random() * displayTracks.length) : 0;
+    playTrack(displayTracks[startIdx], displayTracks);
   };
 
   const handleStartEdit = () => {
@@ -67,6 +88,59 @@ export function PlaylistDetailView() {
     if (success) {
       setExportSuccess(true);
       setTimeout(() => setExportSuccess(false), 3000);
+    }
+  };
+
+  // Reorder up / down
+  const handleMoveTrack = async (index: number, direction: 'up' | 'down') => {
+    const targetIdx = direction === 'up' ? index - 1 : index + 1;
+    if (targetIdx < 0 || targetIdx >= playlistTracks.length) return;
+
+    const newTracks = [...playlistTracks];
+    const [moved] = newTracks.splice(index, 1);
+    newTracks.splice(targetIdx, 0, moved);
+
+    const trackIds = newTracks.map((t) => t.id);
+    await reorderPlaylistTracks(selectedPlaylist.id, trackIds);
+  };
+
+  // Multi-select handlers
+  const toggleSelectTrack = (trackId: number) => {
+    setSelectedTrackIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(trackId)) next.delete(trackId);
+      else next.add(trackId);
+      return next;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedTrackIds.size === playlistTracks.length) {
+      setSelectedTrackIds(new Set());
+    } else {
+      setSelectedTrackIds(new Set(playlistTracks.map((t) => t.id)));
+    }
+  };
+
+  const handlePlaySelected = () => {
+    const selected = displayTracks.filter((t) => selectedTrackIds.has(t.id));
+    if (selected.length > 0) {
+      playTrack(selected[0], selected);
+    }
+  };
+
+  const handleQueueSelected = () => {
+    const selected = displayTracks.filter((t) => selectedTrackIds.has(t.id));
+    selected.forEach((t) => addToQueue(t));
+    setSelectedTrackIds(new Set());
+  };
+
+  const handleBulkRemove = async () => {
+    if (confirm(`Remove ${selectedTrackIds.size} selected tracks from "${selectedPlaylist.name}"?`)) {
+      for (const trackId of selectedTrackIds) {
+        await removeTrackFromPlaylist(selectedPlaylist.id, trackId);
+      }
+      setSelectedTrackIds(new Set());
     }
   };
 
@@ -123,7 +197,7 @@ export function PlaylistDetailView() {
                     if (e.key === 'Enter') handleSaveRename();
                     if (e.key === 'Escape') setIsEditing(false);
                   }}
-                  className={`text-2xl sm:text-3xl font-black rounded-xl px-3 py-1 outline-none border ${
+                  className={`text-2xl sm:text-3xl font-black rounded-xl px-3 py-1 outline-hidden border ${
                     isDark ? 'bg-neutral-800 border-neutral-600 text-white' : 'bg-white border-gray-300 text-gray-900'
                   }`}
                 />
@@ -199,8 +273,35 @@ export function PlaylistDetailView() {
             )}
           </div>
 
-          {/* Secondary Actions: Export M3U & Delete */}
-          <div className="flex items-center gap-2.5">
+          {/* Secondary Actions: Sort, Export M3U & Delete */}
+          <div className="flex items-center gap-2.5 flex-wrap">
+            {/* Sort Selector */}
+            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs ${
+              isDark ? 'border-neutral-800 bg-neutral-900 text-neutral-300' : 'border-gray-200 bg-white text-gray-700 shadow-xs'
+            }`}>
+              <ArrowUpDown size={13} className="text-neutral-400" />
+              <select
+                value={sortField}
+                onChange={(e) => setSortField(e.target.value as SortField)}
+                className="bg-transparent outline-hidden font-medium text-xs cursor-pointer"
+              >
+                <option value="default" className={isDark ? 'bg-neutral-900' : 'bg-white'}>Custom Order</option>
+                <option value="title" className={isDark ? 'bg-neutral-900' : 'bg-white'}>Title</option>
+                <option value="artist" className={isDark ? 'bg-neutral-900' : 'bg-white'}>Artist</option>
+                <option value="album" className={isDark ? 'bg-neutral-900' : 'bg-white'}>Album</option>
+                <option value="duration" className={isDark ? 'bg-neutral-900' : 'bg-white'}>Duration</option>
+              </select>
+              {sortField !== 'default' && (
+                <button
+                  onClick={() => setSortAsc(!sortAsc)}
+                  className="font-bold text-[10px] px-1 hover:text-white"
+                  title={sortAsc ? 'Ascending' : 'Descending'}
+                >
+                  {sortAsc ? '▲' : '▼'}
+                </button>
+              )}
+            </div>
+
             <button
               onClick={handleExport}
               disabled={playlistTracks.length === 0}
@@ -225,41 +326,160 @@ export function PlaylistDetailView() {
           </div>
         </div>
 
+        {/* ── Multi-select Bulk Action Bar ── */}
+        {selectedTrackIds.size > 0 && (
+          <div className={`p-3 rounded-2xl border flex items-center justify-between gap-4 animate-fadeIn ${
+            isDark ? 'bg-neutral-900 border-neutral-700 text-white' : 'bg-gray-50 border-gray-200 text-gray-900 shadow-md'
+          }`}>
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-neutral-800 text-white">
+                {selectedTrackIds.size} selected
+              </span>
+              <button
+                onClick={handleSelectAll}
+                className="text-xs text-neutral-400 hover:text-white underline"
+              >
+                {selectedTrackIds.size === playlistTracks.length ? 'Deselect all' : 'Select all'}
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handlePlaySelected}
+                style={{ backgroundColor: `${accentHex}20`, color: accentHex }}
+                className="px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition hover:opacity-90"
+              >
+                <Play size={13} fill="currentColor" />
+                Play Selected
+              </button>
+              <button
+                onClick={handleQueueSelected}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 border transition ${
+                  isDark ? 'bg-neutral-800 border-neutral-700 hover:bg-neutral-700 text-neutral-200' : 'bg-white border-gray-300 hover:bg-gray-100 text-gray-800'
+                }`}
+              >
+                <ListPlus size={13} />
+                Add to Queue
+              </button>
+              <button
+                onClick={handleBulkRemove}
+                className="px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 bg-red-500/10 text-red-400 hover:bg-red-500/20 transition"
+              >
+                <Trash2 size={13} />
+                Remove
+              </button>
+              <button
+                onClick={() => setSelectedTrackIds(new Set())}
+                className="p-1.5 rounded-lg text-neutral-400 hover:text-white"
+                title="Clear selection"
+              >
+                <X size={15} />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Tracks List */}
-        {playlistTracks.length > 0 ? (
+        {displayTracks.length > 0 ? (
           <div className="w-full text-sm">
-            <div className={`grid grid-cols-[auto_1fr_1.2fr_90px_60px_70px] gap-4 text-[11px] uppercase font-bold pb-2.5 px-3 border-b ${
+            <div className={`grid grid-cols-[36px_auto_1fr_1.2fr_90px_60px_110px] gap-3 text-[11px] uppercase font-bold pb-2.5 px-3 border-b ${
               isDark ? 'border-neutral-800 text-neutral-400' : 'border-gray-100 text-gray-400'
             }`}>
+              <div className="flex items-center justify-center">
+                <button 
+                  onClick={handleSelectAll} 
+                  className="text-neutral-400 hover:text-white"
+                  title="Select all"
+                >
+                  {selectedTrackIds.size === playlistTracks.length ? <CheckSquare size={14} /> : <Square size={14} />}
+                </button>
+              </div>
               <div className="w-7 text-center">#</div>
               <div>Title / Artist</div>
               <div>Album</div>
               <div>Genre</div>
               <div>Time</div>
-              <div className="text-right">Manage</div>
+              <div className="text-right">Order / Manage</div>
             </div>
 
             <div className="mt-2 space-y-1">
-              {playlistTracks.map((track, idx) => (
-                <div key={`${track.id}-${idx}`} className="relative group">
-                  <TrackRow
-                    track={track}
-                    index={idx}
-                    contextQueue={playlistTracks}
-                  />
-                  {/* Remove Track Button */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeTrackFromPlaylist(selectedPlaylist.id, track.id);
-                    }}
-                    className="absolute right-12 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1.5 rounded-lg bg-neutral-800/80 text-neutral-400 hover:text-red-400 transition"
-                    title="Remove from playlist"
+              {displayTracks.map((track, idx) => {
+                const isSelected = selectedTrackIds.has(track.id);
+                return (
+                  <div 
+                    key={`${track.id}-${idx}`} 
+                    className={`relative group flex items-center rounded-xl transition-colors ${
+                      isSelected 
+                        ? (isDark ? 'bg-neutral-800/60' : 'bg-gray-100')
+                        : ''
+                    }`}
                   >
-                    <X size={14} />
-                  </button>
-                </div>
-              ))}
+                    {/* Checkbox */}
+                    <div className="pl-3 py-2 flex items-center justify-center shrink-0">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleSelectTrack(track.id);
+                        }}
+                        className={`p-1 rounded text-neutral-400 hover:text-white transition ${
+                          isSelected ? 'text-white' : 'opacity-0 group-hover:opacity-100'
+                        }`}
+                      >
+                        {isSelected ? <CheckSquare size={14} style={{ color: accentHex }} /> : <Square size={14} />}
+                      </button>
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <TrackRow
+                        track={track}
+                        index={idx}
+                        contextQueue={displayTracks}
+                      />
+                    </div>
+
+                    {/* Order & Remove Track Buttons */}
+                    <div className="absolute right-12 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+                      {sortField === 'default' && (
+                        <>
+                          <button
+                            disabled={idx === 0}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleMoveTrack(idx, 'up');
+                            }}
+                            className="p-1 rounded-md bg-neutral-800 text-neutral-400 hover:text-white disabled:opacity-30"
+                            title="Move track up"
+                          >
+                            <ChevronUp size={13} />
+                          </button>
+                          <button
+                            disabled={idx === playlistTracks.length - 1}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleMoveTrack(idx, 'down');
+                            }}
+                            className="p-1 rounded-md bg-neutral-800 text-neutral-400 hover:text-white disabled:opacity-30"
+                            title="Move track down"
+                          >
+                            <ChevronDown size={13} />
+                          </button>
+                        </>
+                      )}
+
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeTrackFromPlaylist(selectedPlaylist.id, track.id);
+                        }}
+                        className="p-1.5 rounded-lg bg-neutral-800/80 text-neutral-400 hover:text-red-400 transition ml-1"
+                        title="Remove from playlist"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         ) : (

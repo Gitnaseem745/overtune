@@ -7,6 +7,8 @@ import { getLocalUrl } from '../lib/utils';
 export function AudioEngine() {
   const audioRef = useRef<HTMLAudioElement>(null);
   const loadedTrackIdRef = useRef<number | null>(null);
+  const hasRecordedPlayRef = useRef<boolean>(false);
+  const playStartTimeRef = useRef<number>(0);
 
   const currentTrack = usePlayerStore((s) => s.currentTrack);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
@@ -21,18 +23,34 @@ export function AudioEngine() {
   const handleNext = usePlayerStore((s) => s.handleNext);
   const refreshLibrary = usePlayerStore((s) => s.refreshLibrary);
   const updateTrackDurationInStore = usePlayerStore((s) => s.updateTrackDurationInStore);
+  const recordPlayEvent = usePlayerStore((s) => s.recordPlayEvent);
+  const savePlaybackState = usePlayerStore((s) => s.savePlaybackState);
+  const restorePlaybackState = usePlayerStore((s) => s.restorePlaybackState);
+  const loadRatingsAndTags = usePlayerStore((s) => s.loadRatingsAndTags);
+  const loadSmartPlaylists = usePlayerStore((s) => s.loadSmartPlaylists);
+  const loadMixes = usePlayerStore((s) => s.loadMixes);
 
-  // Initial load of library + real-time IPC watcher listener
+  // Initial load of library, ratings, mixes, and playback state restore
   useEffect(() => {
-    refreshLibrary();
+    const init = async () => {
+      await refreshLibrary();
+      await Promise.all([
+        loadRatingsAndTags(),
+        loadSmartPlaylists(),
+        loadMixes(),
+        restorePlaybackState(),
+      ]);
+    };
+    init();
 
     if (typeof window !== 'undefined' && window.api?.onLibraryUpdated) {
       const cleanup = window.api.onLibraryUpdated(() => {
         refreshLibrary();
+        loadMixes();
       });
       return cleanup;
     }
-  }, [refreshLibrary]);
+  }, [refreshLibrary, loadRatingsAndTags, loadSmartPlaylists, loadMixes, restorePlaybackState]);
 
   // Safe play helper to prevent unhandled AbortErrors from interruptions
   const safePlay = () => {
@@ -63,6 +81,8 @@ export function AudioEngine() {
       // Only reload if the track ID actually changed
       if (loadedTrackIdRef.current !== currentTrack.id) {
         loadedTrackIdRef.current = currentTrack.id;
+        hasRecordedPlayRef.current = false;
+        playStartTimeRef.current = Date.now();
         setAudioError(null);
 
         const url = getLocalUrl(currentTrack.path);
@@ -72,13 +92,16 @@ export function AudioEngine() {
         if (isPlaying) {
           safePlay();
         }
+
+        savePlaybackState();
       }
     } else {
       loadedTrackIdRef.current = null;
+      hasRecordedPlayRef.current = false;
       audio.removeAttribute('src');
       audio.load();
     }
-  }, [currentTrack?.id]);
+  }, [currentTrack, isPlaying, savePlaybackState]);
 
   // 2. Handle Play / Pause State Toggle
   useEffect(() => {
@@ -92,9 +115,10 @@ export function AudioEngine() {
     } else {
       if (!audio.paused) {
         audio.pause();
+        savePlaybackState();
       }
     }
-  }, [isPlaying]);
+  }, [isPlaying, currentTrack, savePlaybackState]);
 
   // 3. Handle Volume & Mute Change
   useEffect(() => {
@@ -105,10 +129,26 @@ export function AudioEngine() {
     }
   }, [volume, isMuted]);
 
+  // Save playback state before window closes
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      savePlaybackState();
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [savePlaybackState]);
+
   // Audio element event listeners
   const onTimeUpdate = () => {
     if (audioRef.current) {
-      setCurrentTime(audioRef.current.currentTime);
+      const cur = audioRef.current.currentTime;
+      setCurrentTime(cur);
+
+      // Record play event if listened for at least 30 seconds
+      if (cur >= 30 && !hasRecordedPlayRef.current && currentTrack) {
+        hasRecordedPlayRef.current = true;
+        recordPlayEvent(currentTrack.id, Math.round(cur));
+      }
     }
   };
 
@@ -128,6 +168,12 @@ export function AudioEngine() {
   };
 
   const onEnded = () => {
+    // Record play event upon track completion if not recorded yet
+    if (!hasRecordedPlayRef.current && currentTrack && audioRef.current) {
+      hasRecordedPlayRef.current = true;
+      recordPlayEvent(currentTrack.id, Math.round(audioRef.current.currentTime));
+    }
+
     if (repeatMode === 'one') {
       if (audioRef.current) {
         audioRef.current.currentTime = 0;

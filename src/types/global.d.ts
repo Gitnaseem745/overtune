@@ -1,6 +1,7 @@
 import { 
   Track, Album, Artist, Playlist, LyricsData,
-  WatchedFolder, ScanError, DuplicateGroup, MissingFile, HealthReport, ScanDashboard, TrackMetadataUpdate
+  WatchedFolder, ScanError, DuplicateGroup, MissingFile, HealthReport, ScanDashboard, TrackMetadataUpdate,
+  PlayHistoryEntry, SmartPlaylistRule, SmartPlaylist, PlaybackState
 } from './music';
 
 export {};
@@ -21,6 +22,7 @@ declare global {
       deletePlaylist: (id: number) => Promise<boolean>;
       addTrackToPlaylist: (playlistId: number, trackId: number) => Promise<boolean>;
       removeTrackFromPlaylist: (playlistId: number, trackId: number) => Promise<boolean>;
+      reorderPlaylistTracks: (playlistId: number, trackIds: number[]) => Promise<boolean>;
       exportPlaylistM3U: (playlistId: number) => Promise<boolean>;
       importPlaylistM3U: () => Promise<Playlist | null>;
       importDirectoryPlaylists: (folderPath?: string) => Promise<{
@@ -64,6 +66,33 @@ declare global {
       revealInExplorer: (filePath: string) => Promise<boolean>;
       getLibraryHealthReport: () => Promise<HealthReport>;
       getScanDashboard: () => Promise<ScanDashboard>;
+
+      // Personal Discovery, Ratings, Tags, Smart Playlists & Settings
+      recordPlayEvent: (trackId: number, durationPlayed?: number) => Promise<boolean>;
+      getPlayHistory: (limit?: number) => Promise<PlayHistoryEntry[]>;
+      getPlayCounts: () => Promise<Record<number, number>>;
+      clearPlayHistory: () => Promise<boolean>;
+      setPlayHistoryEnabled: (enabled: boolean) => Promise<boolean>;
+      isPlayHistoryEnabled: () => Promise<boolean>;
+      setTrackRating: (trackId: number, rating: number) => Promise<boolean>;
+      getTrackRating: (trackId: number) => Promise<number>;
+      getAllTrackRatings: () => Promise<Record<number, number>>;
+      addTrackTag: (trackId: number, tag: string) => Promise<boolean>;
+      removeTrackTag: (trackId: number, tag: string) => Promise<boolean>;
+      getTrackTags: (trackId: number) => Promise<string[]>;
+      getAllTrackTagsMap: () => Promise<Record<number, string[]>>;
+      createSmartPlaylist: (name: string, rules: SmartPlaylistRule[]) => Promise<SmartPlaylist>;
+      getSmartPlaylists: () => Promise<SmartPlaylist[]>;
+      updateSmartPlaylist: (id: number, name: string, rules: SmartPlaylistRule[]) => Promise<boolean>;
+      deleteSmartPlaylist: (id: number) => Promise<boolean>;
+      evaluateSmartPlaylist: (rules: SmartPlaylistRule[]) => Promise<Track[]>;
+      getForgottenFavorites: (limit?: number) => Promise<Track[]>;
+      getRecentAdditions: (limit?: number) => Promise<Track[]>;
+      getMoreFromArtist: (artistId: number, limit?: number) => Promise<Track[]>;
+      getSetting: (key: string, defaultValue?: string) => Promise<string>;
+      setSetting: (key: string, value: string) => Promise<boolean>;
+      savePlaybackState: (state: PlaybackState) => Promise<boolean>;
+      getPlaybackState: () => Promise<PlaybackState | null>;
 
       // Miniplayer
       toggleMiniplayer: () => Promise<boolean>;

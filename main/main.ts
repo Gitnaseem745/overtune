@@ -11,7 +11,7 @@ import {
   initDb, getDb, 
   getPlaylists, getPlaylistTracks, createPlaylist, 
   renamePlaylist, deletePlaylist, addTrackToPlaylist, 
-  removeTrackFromPlaylist, getFavorites, toggleFavorite, 
+  removeTrackFromPlaylist, reorderPlaylistTracks, getFavorites, toggleFavorite, 
   exportPlaylistToM3U, importPlaylistFromM3U,
   updateTrackDuration,
   getLyricOffset, setLyricOffset,
@@ -19,7 +19,15 @@ import {
   getScanErrors, clearScanErrors, getTrackDetails,
   findDuplicates, removeTrackFromLibrary,
   getLibraryHealthReport, getScanDashboard,
-  type TrackMetadataUpdate
+  type TrackMetadataUpdate,
+  recordPlayEvent, getPlayHistory, getPlayCounts, clearPlayHistory,
+  setPlayHistoryEnabled, isPlayHistoryEnabled,
+  setTrackRating, getTrackRating, getAllTrackRatings,
+  addTrackTag, removeTrackTag, getTrackTags, getAllTrackTagsMap,
+  createSmartPlaylist, getSmartPlaylists, updateSmartPlaylist, deleteSmartPlaylist, evaluateSmartPlaylist,
+  getForgottenFavorites, getRecentAdditions, getMoreFromArtist,
+  getSetting, setSetting, saveLastPlaybackState, getLastPlaybackState,
+  type SmartPlaylistRule, type PlaybackState
 } from './db';
 import { importDirectoryAsPlaylists, rescanFolder, removeFolderFromLibrary } from './scanner';
 import { findLyricsForTrack } from './lyrics';
@@ -376,6 +384,10 @@ ipcMain.handle('db:removeTrackFromPlaylist', (_event, playlistId: number, trackI
   return removeTrackFromPlaylist(playlistId, trackId);
 });
 
+ipcMain.handle('db:reorderPlaylistTracks', (_event, playlistId: number, trackIds: number[]) => {
+  return reorderPlaylistTracks(playlistId, trackIds);
+});
+
 // ── Favorites IPC Handlers ────────────────────────────────────────────
 
 ipcMain.handle('db:getFavorites', () => {
@@ -501,6 +513,108 @@ ipcMain.handle('library:getHealthReport', () => {
 
 ipcMain.handle('library:getScanDashboard', () => {
   return getScanDashboard();
+});
+
+// ── Personal Discovery, Ratings, Smart Playlists & Settings Handlers ──
+
+ipcMain.handle('db:recordPlayEvent', (_event, trackId: number, durationPlayed?: number) => {
+  return recordPlayEvent(trackId, durationPlayed ?? 0);
+});
+
+ipcMain.handle('db:getPlayHistory', (_event, limit?: number) => {
+  return getPlayHistory(limit ?? 50);
+});
+
+ipcMain.handle('db:getPlayCounts', () => {
+  return getPlayCounts();
+});
+
+ipcMain.handle('db:clearPlayHistory', () => {
+  return clearPlayHistory();
+});
+
+ipcMain.handle('db:setPlayHistoryEnabled', (_event, enabled: boolean) => {
+  return setPlayHistoryEnabled(enabled);
+});
+
+ipcMain.handle('db:isPlayHistoryEnabled', () => {
+  return isPlayHistoryEnabled();
+});
+
+ipcMain.handle('db:setTrackRating', (_event, trackId: number, rating: number) => {
+  return setTrackRating(trackId, rating);
+});
+
+ipcMain.handle('db:getTrackRating', (_event, trackId: number) => {
+  return getTrackRating(trackId);
+});
+
+ipcMain.handle('db:getAllTrackRatings', () => {
+  return getAllTrackRatings();
+});
+
+ipcMain.handle('db:addTrackTag', (_event, trackId: number, tag: string) => {
+  return addTrackTag(trackId, tag);
+});
+
+ipcMain.handle('db:removeTrackTag', (_event, trackId: number, tag: string) => {
+  return removeTrackTag(trackId, tag);
+});
+
+ipcMain.handle('db:getTrackTags', (_event, trackId: number) => {
+  return getTrackTags(trackId);
+});
+
+ipcMain.handle('db:getAllTrackTagsMap', () => {
+  return getAllTrackTagsMap();
+});
+
+ipcMain.handle('db:createSmartPlaylist', (_event, name: string, rules: SmartPlaylistRule[]) => {
+  return createSmartPlaylist(name, rules);
+});
+
+ipcMain.handle('db:getSmartPlaylists', () => {
+  return getSmartPlaylists();
+});
+
+ipcMain.handle('db:updateSmartPlaylist', (_event, id: number, name: string, rules: SmartPlaylistRule[]) => {
+  return updateSmartPlaylist(id, name, rules);
+});
+
+ipcMain.handle('db:deleteSmartPlaylist', (_event, id: number) => {
+  return deleteSmartPlaylist(id);
+});
+
+ipcMain.handle('db:evaluateSmartPlaylist', (_event, rules: SmartPlaylistRule[]) => {
+  return evaluateSmartPlaylist(rules);
+});
+
+ipcMain.handle('db:getForgottenFavorites', (_event, limit?: number) => {
+  return getForgottenFavorites(limit ?? 25);
+});
+
+ipcMain.handle('db:getRecentAdditions', (_event, limit?: number) => {
+  return getRecentAdditions(limit ?? 25);
+});
+
+ipcMain.handle('db:getMoreFromArtist', (_event, artistId: number, limit?: number) => {
+  return getMoreFromArtist(artistId, limit ?? 25);
+});
+
+ipcMain.handle('db:getSetting', (_event, key: string, defaultValue?: string) => {
+  return getSetting(key, defaultValue ?? '');
+});
+
+ipcMain.handle('db:setSetting', (_event, key: string, value: string) => {
+  return setSetting(key, value);
+});
+
+ipcMain.handle('db:savePlaybackState', (_event, state: PlaybackState) => {
+  return saveLastPlaybackState(state);
+});
+
+ipcMain.handle('db:getPlaybackState', () => {
+  return getLastPlaybackState();
 });
 
 // ── Miniplayer IPC Handlers ───────────────────────────────────────────

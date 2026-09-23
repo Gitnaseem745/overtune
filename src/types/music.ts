@@ -107,6 +107,32 @@ export interface TrackMetadataUpdate {
   year?: number | null;
 }
 
+export interface PlayHistoryEntry extends Track {
+  history_id: number;
+  played_at: string;
+  duration_played: number;
+}
+
+export interface SmartPlaylistRule {
+  field: 'genre' | 'artist' | 'album' | 'year' | 'rating' | 'min_rating' | 'min_plays' | 'unplayed' | 'tag';
+  operator: 'contains' | 'equals' | 'gte' | 'lte' | 'is';
+  value: string | number;
+}
+
+export interface SmartPlaylist {
+  id: number;
+  name: string;
+  rules: SmartPlaylistRule[];
+  created_at: string;
+}
+
+export interface PlaybackState {
+  trackId: number | null;
+  currentTime: number;
+  queueIds: number[];
+  resumePreference: 'always' | 'ask' | 'off';
+}
+
 export type ThemeMode = 'light' | 'dark';
 export type LayoutMode = 'classic' | 'spotify';
 export type AccentColor = 
@@ -134,4 +160,6 @@ export type ActiveTab =
   | 'ArtistDetail' 
   | 'PlaylistDetail' 
   | 'LikedSongs'
-  | 'LibraryCare';
+  | 'LibraryCare'
+  | 'RecentlyPlayed'
+  | 'SmartPlaylists';

@@ -6,7 +6,7 @@ import { Track } from '../types/music';
 import { getLocalUrl, formatTime, getAccentColorHex } from '../lib/utils';
 import { 
   Play, Heart, Music, Plus, 
-  MoreHorizontal, ListPlus, Radio, Check 
+  MoreHorizontal, ListPlus, Radio, Check, Star, X
 } from 'lucide-react';
 
 interface TrackRowProps {
@@ -28,18 +28,26 @@ export function TrackRow({ track, index, contextQueue }: TrackRowProps) {
   const playNextInQueue = usePlayerStore((s) => s.playNextInQueue);
   const addTrackToPlaylist = usePlayerStore((s) => s.addTrackToPlaylist);
   const setCreatePlaylistOpen = usePlayerStore((s) => s.setCreatePlaylistOpen);
+  const trackRatings = usePlayerStore((s) => s.trackRatings);
+  const trackTags = usePlayerStore((s) => s.trackTags);
+  const setTrackRating = usePlayerStore((s) => s.setTrackRating);
+  const addTrackTag = usePlayerStore((s) => s.addTrackTag);
+  const removeTrackTag = usePlayerStore((s) => s.removeTrackTag);
 
   const setIsPlaying = usePlayerStore((s) => s.setIsPlaying);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [playlistSubmenu, setPlaylistSubmenu] = useState(false);
   const [addedToast, setAddedToast] = useState<string | null>(null);
+  const [newTagInput, setNewTagInput] = useState('');
   const menuRef = useRef<HTMLDivElement>(null);
 
   const isDark = theme === 'dark';
   const isActive = currentTrack?.id === track.id;
   const isFav = favorites.has(track.id);
   const accentHex = getAccentColorHex(accentColor);
+  const currentRating = trackRatings[track.id] || 0;
+  const currentTags = trackTags[track.id] || [];
 
   // Close menu on outside click
   useEffect(() => {
@@ -147,9 +155,14 @@ export function TrackRow({ track, index, contextQueue }: TrackRowProps) {
         {track.genre || 'Audio'}
       </div>
 
-      {/* Duration */}
-      <div className={`text-xs font-mono ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>
-        {formatTime(track.duration)}
+      {/* Duration & Rating */}
+      <div className={`text-xs font-mono flex items-center gap-1.5 ${isDark ? 'text-neutral-400' : 'text-gray-600'}`}>
+        <span>{formatTime(track.duration)}</span>
+        {currentRating > 0 && (
+          <span className="flex items-center text-[10px] text-amber-400 font-bold" title={`Rating: ${currentRating}/5`}>
+            ★{currentRating}
+          </span>
+        )}
       </div>
 
       {/* Action: Like & More Menu */}
@@ -267,6 +280,69 @@ export function TrackRow({ track, index, contextQueue }: TrackRowProps) {
                   ))}
                 </div>
               )}
+            </div>
+
+            {/* Rating Section */}
+            <div className={`mt-1 pt-1.5 border-t px-2.5 py-1.5 ${isDark ? 'border-neutral-700' : 'border-gray-100'}`}>
+              <span className="text-[10px] text-neutral-400 block mb-1 font-semibold uppercase tracking-wider">Rating</span>
+              <div className="flex items-center gap-1">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    onClick={() => setTrackRating(track.id, star === currentRating ? 0 : star)}
+                    className="p-0.5 hover:scale-110 transition-transform"
+                    title={`Rate ${star} star${star > 1 ? 's' : ''}`}
+                  >
+                    <Star
+                      size={14}
+                      className={star <= currentRating ? 'text-amber-400 fill-amber-400' : 'text-neutral-500'}
+                    />
+                  </button>
+                ))}
+                {currentRating > 0 && (
+                  <button
+                    onClick={() => setTrackRating(track.id, 0)}
+                    className="text-[10px] text-neutral-400 hover:text-red-400 ml-1"
+                    title="Clear rating"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Tags Section */}
+            <div className={`mt-1 pt-1.5 border-t px-2.5 py-1.5 ${isDark ? 'border-neutral-700' : 'border-gray-100'}`}>
+              <span className="text-[10px] text-neutral-400 block mb-1 font-semibold uppercase tracking-wider">Personal Tags</span>
+              {currentTags.length > 0 && (
+                <div className="flex flex-wrap gap-1 mb-1.5">
+                  {currentTags.map((tag) => (
+                    <span key={tag} className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-medium ${
+                      isDark ? 'bg-neutral-700/60 text-neutral-200' : 'bg-gray-100 text-gray-800'
+                    }`}>
+                      #{tag}
+                      <button onClick={() => removeTrackTag(track.id, tag)} className="hover:text-red-400 ml-0.5">
+                        <X size={9} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <input
+                type="text"
+                value={newTagInput}
+                onChange={(e) => setNewTagInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && newTagInput.trim()) {
+                    addTrackTag(track.id, newTagInput.trim());
+                    setNewTagInput('');
+                  }
+                }}
+                placeholder="Type tag & press Enter..."
+                className={`w-full px-2 py-1 rounded-lg text-[11px] outline-hidden ${
+                  isDark ? 'bg-neutral-800 text-white' : 'bg-gray-100 text-gray-900'
+                }`}
+              />
             </div>
           </div>
         )}

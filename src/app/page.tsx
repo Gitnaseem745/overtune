@@ -21,6 +21,8 @@ import { LikedSongsView } from '../components/LikedSongsView';
 import { LocalFilesView } from '../components/LocalFilesView';
 import { LyricsPanel } from '../components/LyricsPanel';
 import { LibraryCareView } from '../components/LibraryCareView';
+import { RecentlyPlayedView } from '../components/RecentlyPlayedView';
+import { SmartPlaylistView } from '../components/SmartPlaylistView';
 
 export default function Home() {
   const theme = usePlayerStore((s) => s.theme);
@@ -100,6 +102,8 @@ export default function Home() {
             {activeTab === 'LikedSongs' && <LikedSongsView />}
             {activeTab === 'Local Files' && <LocalFilesView />}
             {activeTab === 'LibraryCare' && <LibraryCareView />}
+            {activeTab === 'RecentlyPlayed' && <RecentlyPlayedView />}
+            {activeTab === 'SmartPlaylists' && <SmartPlaylistView />}
           </div>
         </main>
 

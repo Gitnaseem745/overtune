@@ -3,7 +3,7 @@
 import { usePlayerStore } from '../store/usePlayerStore';
 import { AccentColor } from '../types/music';
 import { getAccentColorHex } from '../lib/utils';
-import { X, Sun, Moon, LayoutGrid, Columns3, ShieldCheck, Check } from 'lucide-react';
+import { X, Sun, Moon, LayoutGrid, Columns3, ShieldCheck, Check, History, RotateCcw, Trash2 } from 'lucide-react';
 import { OvertoneLogo } from './OvertoneLogo';
 
 export function SettingsModal() {
@@ -18,6 +18,11 @@ export function SettingsModal() {
   const tracks = usePlayerStore((s) => s.tracks);
   const albums = usePlayerStore((s) => s.albums);
   const artists = usePlayerStore((s) => s.artists);
+  const isPlayHistoryEnabled = usePlayerStore((s) => s.isPlayHistoryEnabled);
+  const setPlayHistoryEnabled = usePlayerStore((s) => s.setPlayHistoryEnabled);
+  const clearPlayHistory = usePlayerStore((s) => s.clearPlayHistory);
+  const resumePreference = usePlayerStore((s) => s.resumePreference);
+  const setResumePreference = usePlayerStore((s) => s.setResumePreference);
 
   if (!isSettingsOpen) return null;
 
@@ -285,7 +290,88 @@ export function SettingsModal() {
             </div>
           </div>
 
-          {/* Section 4: Library Status */}
+          {/* Section 4: Continue Listening & Playback State */}
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <RotateCcw size={16} style={{ color: currentAccentHex }} />
+              <h3 className="font-bold text-sm">Continue Listening on Launch</h3>
+            </div>
+            <p className={`text-xs mb-3 ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
+              Choose how Overtone restores your previous playback session when opened
+            </p>
+            <div className="grid grid-cols-3 gap-2.5">
+              {[
+                { id: 'always', label: 'Always Restore', desc: 'Restore track & queue paused' },
+                { id: 'ask', label: 'Wait for Input', desc: 'Show resume card in Home' },
+                { id: 'off', label: 'Disabled', desc: 'Start with an empty queue' },
+              ].map((opt) => (
+                <button
+                  key={opt.id}
+                  onClick={() => setResumePreference(opt.id as 'always' | 'ask' | 'off')}
+                  className={`p-3 rounded-2xl border text-left transition-all ${
+                    resumePreference === opt.id
+                      ? isDark
+                        ? 'bg-neutral-800/90 ring-2'
+                        : 'bg-gray-50 ring-2'
+                      : isDark
+                        ? 'border-neutral-800 bg-neutral-900 hover:border-neutral-700'
+                        : 'border-gray-200 hover:border-gray-300 bg-white'
+                  }`}
+                  style={{
+                    borderColor: resumePreference === opt.id ? currentAccentHex : undefined,
+                    boxShadow: resumePreference === opt.id ? `0 0 0 2px ${currentAccentHex}40` : undefined,
+                  }}
+                >
+                  <span className="font-bold text-xs block">{opt.label}</span>
+                  <span className={`text-[10px] mt-0.5 block ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
+                    {opt.desc}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Section 5: Listening History Privacy */}
+          <div className={`p-4 rounded-2xl border ${isDark ? 'bg-neutral-900/60 border-neutral-800' : 'bg-gray-50 border-gray-100'}`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <History size={16} style={{ color: currentAccentHex }} />
+                <div>
+                  <h4 className="font-bold text-xs">Local Listening History</h4>
+                  <p className={`text-[11px] ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
+                    {isPlayHistoryEnabled ? 'Currently recording played tracks locally' : 'History recording is paused'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setPlayHistoryEnabled(!isPlayHistoryEnabled)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition ${
+                    isPlayHistoryEnabled
+                      ? isDark
+                        ? 'bg-neutral-800 text-neutral-300 border-neutral-700 hover:bg-neutral-700'
+                        : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-100'
+                      : 'bg-amber-500/20 text-amber-400 border-amber-500/40'
+                  }`}
+                >
+                  {isPlayHistoryEnabled ? 'Pause' : 'Resume'}
+                </button>
+                <button
+                  onClick={() => {
+                    if (confirm('Clear all local listening history? (Play counts and timeline will be reset)')) {
+                      clearPlayHistory();
+                    }
+                  }}
+                  className="p-1.5 rounded-xl text-neutral-400 hover:text-red-400 hover:bg-red-500/10 transition"
+                  title="Clear listening history"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 6: Library Status */}
           <div className={`p-4 rounded-2xl border ${isDark ? 'bg-neutral-900/60 border-neutral-800' : 'bg-gray-50 border-gray-100'}`}>
             <div className="flex items-center gap-2 mb-3">
               <ShieldCheck size={16} style={{ color: currentAccentHex }} />
