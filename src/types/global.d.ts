@@ -1,4 +1,4 @@
-import { Track, Album, Artist, Playlist } from './music';
+import { Track, Album, Artist, Playlist, LyricsData } from './music';
 
 export {};
 
@@ -31,6 +31,11 @@ declare global {
       getFavorites: () => Promise<number[]>;
       toggleFavorite: (trackId: number) => Promise<boolean>;
       updateTrackDuration: (trackId: number, duration: number) => Promise<boolean>;
+
+      // Lyrics
+      getLyricsForTrack: (trackPath: string, trackId: number) => Promise<LyricsData>;
+      getLyricOffset: (trackId: number) => Promise<number>;
+      setLyricOffset: (trackId: number, offsetMs: number) => Promise<boolean>;
 
       // Miniplayer
       toggleMiniplayer: () => Promise<boolean>;

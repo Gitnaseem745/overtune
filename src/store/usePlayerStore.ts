@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Track, Album, Artist, Playlist, ThemeMode, LayoutMode, AccentColor, RepeatMode, ActiveTab } from '../types/music';
+import { Track, Album, Artist, Playlist, LyricsData, ThemeMode, LayoutMode, AccentColor, RepeatMode, ActiveTab } from '../types/music';
 
 interface PlayerState {
   // ── Appearance & UI Preferences ──
@@ -16,6 +16,11 @@ interface PlayerState {
   isSettingsOpen: boolean;
   isCreatePlaylistOpen: boolean;
   isMiniplayer: boolean;
+  isLyricsPanelOpen: boolean;
+
+  // ── Lyrics ──
+  lyrics: LyricsData | null;
+  lyricOffset: number;
 
   // ── Library Data ──
   tracks: Track[];
@@ -62,6 +67,11 @@ interface PlayerState {
   setCreatePlaylistOpen: (open: boolean) => void;
   toggleMiniplayer: () => void;
   setMiniplayer: (mini: boolean) => void;
+  toggleLyricsPanel: () => void;
+  setLyricsPanelOpen: (open: boolean) => void;
+  fetchLyrics: (trackPath: string, trackId: number) => Promise<void>;
+  adjustLyricOffset: (trackId: number, deltaMs: number) => Promise<void>;
+  resetLyricOffset: (trackId: number) => Promise<void>;
 
   setTracks: (tracks: Track[]) => void;
   setAlbums: (albums: Album[]) => void;
@@ -123,6 +133,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   isSettingsOpen: false,
   isCreatePlaylistOpen: false,
   isMiniplayer: false,
+  isLyricsPanelOpen: (typeof window !== 'undefined' && localStorage.getItem('overtone_lyrics_panel') === 'true') || false,
+
+  lyrics: null,
+  lyricOffset: 0,
 
   tracks: [],
   albums: [],
@@ -258,6 +272,56 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       window.api.setMiniplayer(isMiniplayer);
     }
     set({ isMiniplayer });
+  },
+  toggleLyricsPanel: () => {
+    set((state) => {
+      const next = !state.isLyricsPanelOpen;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('overtone_lyrics_panel', String(next));
+      }
+      return { isLyricsPanelOpen: next };
+    });
+  },
+  setLyricsPanelOpen: (isLyricsPanelOpen) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('overtone_lyrics_panel', String(isLyricsPanelOpen));
+    }
+    set({ isLyricsPanelOpen });
+  },
+  fetchLyrics: async (trackPath, trackId) => {
+    if (typeof window !== 'undefined' && window.api?.getLyricsForTrack) {
+      try {
+        const lyricsData = await window.api.getLyricsForTrack(trackPath, trackId);
+        set({ lyrics: lyricsData, lyricOffset: lyricsData?.offset ?? 0 });
+      } catch (err) {
+        console.error('Error fetching lyrics:', err);
+        set({ lyrics: null, lyricOffset: 0 });
+      }
+    } else {
+      set({ lyrics: null, lyricOffset: 0 });
+    }
+  },
+  adjustLyricOffset: async (trackId, deltaMs) => {
+    const { lyricOffset } = get();
+    const newOffset = lyricOffset + deltaMs;
+    set({ lyricOffset: newOffset });
+    if (typeof window !== 'undefined' && window.api?.setLyricOffset) {
+      try {
+        await window.api.setLyricOffset(trackId, newOffset);
+      } catch (err) {
+        console.error('Error saving lyric offset:', err);
+      }
+    }
+  },
+  resetLyricOffset: async (trackId) => {
+    set({ lyricOffset: 0 });
+    if (typeof window !== 'undefined' && window.api?.setLyricOffset) {
+      try {
+        await window.api.setLyricOffset(trackId, 0);
+      } catch (err) {
+        console.error('Error resetting lyric offset:', err);
+      }
+    }
   },
 
   setTracks: (tracks) => set({ tracks }),

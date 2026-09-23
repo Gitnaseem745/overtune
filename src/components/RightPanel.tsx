@@ -4,8 +4,9 @@ import { usePlayerStore } from '../store/usePlayerStore';
 import { getLocalUrl, formatTime, getAccentColorHex } from '../lib/utils';
 import { 
   X, Music, ListMusic, Trash2, Play, 
-  Disc3 
+  Disc3, Mic2 
 } from 'lucide-react';
+import { LyricsPanel } from './LyricsPanel';
 
 export function RightPanel() {
   const isRightPanelOpen = usePlayerStore((s) => s.isRightPanelOpen);
@@ -19,6 +20,8 @@ export function RightPanel() {
   const playTrack = usePlayerStore((s) => s.playTrack);
   const removeFromQueue = usePlayerStore((s) => s.removeFromQueue);
   const clearQueue = usePlayerStore((s) => s.clearQueue);
+  const isLyricsPanelOpen = usePlayerStore((s) => s.isLyricsPanelOpen);
+  const toggleLyricsPanel = usePlayerStore((s) => s.toggleLyricsPanel);
 
   // Only active in Spotify layout mode and when toggled open
   if (layout !== 'spotify' || !isRightPanelOpen) return null;
@@ -53,8 +56,40 @@ export function RightPanel() {
           </button>
         </div>
 
+        {/* Lyrics/Queue Tab Switcher */}
+        <div className={`flex items-center gap-1 mb-3 px-2`}>
+          <button
+            onClick={() => { if (isLyricsPanelOpen) toggleLyricsPanel(); }}
+            className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition-colors ${
+              !isLyricsPanelOpen 
+                ? `${isDark ? 'bg-neutral-800 text-white' : 'bg-gray-100 text-gray-900'}`
+                : `${isDark ? 'text-neutral-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}`
+            }`}
+          >
+            <ListMusic size={12} className="inline mr-1" />
+            Queue
+          </button>
+          <button
+            onClick={() => { if (!isLyricsPanelOpen) toggleLyricsPanel(); }}
+            className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition-colors ${
+              isLyricsPanelOpen 
+                ? `${isDark ? 'bg-neutral-800 text-white' : 'bg-gray-100 text-gray-900'}`
+                : `${isDark ? 'text-neutral-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}`
+            }`}
+          >
+            <Mic2 size={12} className="inline mr-1" />
+            Lyrics
+          </button>
+        </div>
+
         {/* Content Container */}
-        <div className="flex-1 overflow-y-auto space-y-6 pr-1">
+        <div className="flex-1 overflow-y-auto pr-1">
+          {isLyricsPanelOpen ? (
+            /* Lyrics Tab */
+            <LyricsPanel />
+          ) : (
+            /* Queue Tab */
+            <div className="space-y-6">
           {/* 1. Track Showcase Card */}
           {currentTrack ? (
             <div className="space-y-3">
@@ -174,6 +209,8 @@ export function RightPanel() {
             )}
           </div>
 
+            </div>
+          )}
         </div>
       </div>
     </aside>

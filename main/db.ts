@@ -106,6 +106,12 @@ export function initDb() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY(track_id) REFERENCES tracks(id) ON DELETE CASCADE
     );
+
+    CREATE TABLE IF NOT EXISTS lyric_offsets (
+      track_id INTEGER PRIMARY KEY,
+      offset_ms INTEGER DEFAULT 0,
+      FOREIGN KEY(track_id) REFERENCES tracks(id) ON DELETE CASCADE
+    );
   `);
 
   return db;
@@ -299,6 +305,28 @@ export function updateTrackDuration(trackId: number, duration: number): boolean 
     return true;
   } catch (e) {
     console.error('Error updating track duration in DB:', e);
+    return false;
+  }
+}
+
+// ── Lyric Offset Operations ──────────────────────────────────────────
+
+export function getLyricOffset(trackId: number): number {
+  const database = getDb();
+  const row = database.prepare(`SELECT offset_ms FROM lyric_offsets WHERE track_id = ?`).get(trackId) as { offset_ms: number } | undefined;
+  return row?.offset_ms ?? 0;
+}
+
+export function setLyricOffset(trackId: number, offsetMs: number): boolean {
+  try {
+    const database = getDb();
+    database.prepare(`
+      INSERT INTO lyric_offsets (track_id, offset_ms) VALUES (?, ?)
+      ON CONFLICT(track_id) DO UPDATE SET offset_ms = excluded.offset_ms
+    `).run(trackId, offsetMs);
+    return true;
+  } catch (e) {
+    console.error('Error setting lyric offset in DB:', e);
     return false;
   }
 }

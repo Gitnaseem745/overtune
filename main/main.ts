@@ -13,9 +13,11 @@ import {
   renamePlaylist, deletePlaylist, addTrackToPlaylist, 
   removeTrackFromPlaylist, getFavorites, toggleFavorite, 
   exportPlaylistToM3U, importPlaylistFromM3U,
-  updateTrackDuration
+  updateTrackDuration,
+  getLyricOffset, setLyricOffset
 } from './db';
 import { importDirectoryAsPlaylists } from './scanner';
+import { findLyricsForTrack } from './lyrics';
 
 const isDev = !app.isPackaged && process.env.NODE_ENV === 'development';
 
@@ -397,6 +399,20 @@ ipcMain.handle('dialog:importPlaylistM3U', async () => {
 
 ipcMain.handle('db:updateTrackDuration', (_event, trackId: number, duration: number) => {
   return updateTrackDuration(trackId, duration);
+});
+
+// ── Lyrics IPC Handlers ───────────────────────────────────────────────
+
+ipcMain.handle('lyrics:getForTrack', async (_event, trackPath: string, trackId: number) => {
+  return await findLyricsForTrack(trackPath, trackId);
+});
+
+ipcMain.handle('lyrics:getOffset', (_event, trackId: number) => {
+  return getLyricOffset(trackId);
+});
+
+ipcMain.handle('lyrics:setOffset', (_event, trackId: number, offsetMs: number) => {
+  return setLyricOffset(trackId, offsetMs);
 });
 
 // ── Miniplayer IPC Handlers ───────────────────────────────────────────

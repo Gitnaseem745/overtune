@@ -11,6 +11,18 @@ export interface Track {
   cover_art?: string | null;
 }
 
+export interface LyricLine {
+  time: number;  // seconds (-1 for unsynced lines)
+  text: string;
+}
+
+export interface LyricsData {
+  lines: LyricLine[];
+  isSynced: boolean;
+  source: 'lrc' | 'txt' | 'embedded' | 'none';
+  offset: number; // ms offset stored in DB
+}
+
 export interface Album {
   id: number;
   title: string;

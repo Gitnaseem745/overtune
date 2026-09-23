@@ -19,6 +19,7 @@ import { DetailView } from '../components/DetailView';
 import { PlaylistDetailView } from '../components/PlaylistDetailView';
 import { LikedSongsView } from '../components/LikedSongsView';
 import { LocalFilesView } from '../components/LocalFilesView';
+import { LyricsPanel } from '../components/LyricsPanel';
 
 export default function Home() {
   const theme = usePlayerStore((s) => s.theme);
@@ -26,6 +27,7 @@ export default function Home() {
   const activeTab = usePlayerStore((s) => s.activeTab);
   const isMiniplayer = usePlayerStore((s) => s.isMiniplayer);
   const setMiniplayer = usePlayerStore((s) => s.setMiniplayer);
+  const isLyricsPanelOpen = usePlayerStore((s) => s.isLyricsPanelOpen);
 
   const isDark = theme === 'dark';
   const isSpotifyLayout = layout === 'spotify';
@@ -99,8 +101,17 @@ export default function Home() {
           </div>
         </main>
 
-        {/* Right Panel (Spotify 3-Column: Now Playing Showcase + Live Queue) */}
+        {/* Right Panel (Spotify 3-Column: Now Playing Showcase + Live Queue + Lyrics) */}
         {isSpotifyLayout && <RightPanel />}
+
+        {/* Floating Lyrics Panel (Classic Layout) */}
+        {!isSpotifyLayout && isLyricsPanelOpen && (
+          <div className={`w-80 flex-shrink-0 border-l transition-colors overflow-hidden ${
+            isDark ? 'border-neutral-800 bg-[#1a1a1a]' : 'border-gray-200 bg-gray-50'
+          }`}>
+            <LyricsPanel />
+          </div>
+        )}
       </div>
 
       {/* ── Bottom Persistent Transport Bar ── */}

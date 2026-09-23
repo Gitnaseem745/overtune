@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.6] - 2026-09-24
+
+### Added
+- **Lyrics Panel**: Dedicated lyrics display panel accessible from the Now Playing bar and the Spotify-layout Right Panel with Queue/Lyrics tab switcher.
+- **Local LRC Support**: Read and display synchronized `.lrc` sidecar files placed adjacent to audio files, with automatic base-name matching.
+- **Synchronized LRC Playback**: Follow timestamps during playback with current-line emphasis, smooth auto-scroll, and click-to-seek on any lyric line.
+- **Plain-Text Lyrics**: Display `.txt` sidecar files and embedded lyric tags as unsynced scrollable text with clear visual distinction from synced mode.
+- **Embedded Lyrics**: Read lyrics from ID3 USLT, Vorbis, and M4A metadata tags when no sidecar file is found.
+- **Manual Offset Controls**: Adjust lyric timing offset per-track in 100ms increments, persisted in Overtune's database without modifying audio files.
+- **Keyboard & Accessibility**: Lyrics panel supports keyboard navigation, focus states, ARIA labels, screen-reader names, and respects `prefers-reduced-motion`.
+- **Lyric Offsets Database Table**: New `lyric_offsets` table for storing per-track timing adjustments.
+- **Lyrics Test Suite**: 28 automated tests covering LRC parsing, TXT parsing, sidecar matching, offset persistence, and graceful failure handling.
+
+### Changed
+- Added `focus-visible` outline styles and `prefers-reduced-motion` support to global CSS for improved accessibility across the entire app.
+- Right Panel (Spotify layout) now features a Queue/Lyrics tab switcher for seamless toggling between the queue view and lyrics.
+- Classic layout gains a collapsible lyrics side panel (320px) alongside the main content area.
+
+---
+
 ## [0.1.5] - 2026-09-23
 
 ### Fixed

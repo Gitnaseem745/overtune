@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/gitnaseem745/overtune/releases"><img src="https://img.shields.io/badge/version-0.1.5-blue.svg?style=flat-square" alt="Version"></a>
+  <a href="https://github.com/gitnaseem745/overtune/releases"><img src="https://img.shields.io/badge/version-0.1.6-blue.svg?style=flat-square" alt="Version"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg?style=flat-square" alt="License"></a>
   <a href="https://www.electronjs.org/"><img src="https://img.shields.io/badge/Electron-32.0.0-47848F.svg?style=flat-square&logo=electron" alt="Electron"></a>
   <a href="https://nextjs.org/"><img src="https://img.shields.io/badge/Next.js-16.2.10-000000.svg?style=flat-square&logo=next.js" alt="Next.js"></a>
@@ -70,6 +70,14 @@
 - **Context Menus:** Add any song to playlists, play next, or append to queue via the `...` track menu.
 - **M3U Import & Export:** Export playlists as standard Extended `.m3u` files or import existing `.m3u`/`.m3u8` files.
 - **Liked Songs:** Persistent SQLite-backed favorites with dedicated Spotify-style purple gradient hero view.
+
+### 🎤 Lyrics & Listening Focus
+- **Lyrics Panel:** Dedicated lyrics panel accessible from the transport bar and the Spotify-layout Right Panel with Queue/Lyrics tab switcher.
+- **Local LRC Support:** Read and display synchronized `.lrc` sidecar files with automatic base-name matching to audio files.
+- **Synchronized Playback:** Follow timestamps with current-line emphasis, smooth auto-scroll, and click-to-seek on any lyric line.
+- **Plain-Text & Embedded Lyrics:** Display `.txt` sidecars and embedded ID3/Vorbis/M4A lyric tags as scrollable text.
+- **Manual Offset Controls:** Adjust per-track lyric timing in 100ms increments, persisted in the database without modifying audio files.
+- **Keyboard & Accessibility:** Full keyboard navigation, ARIA labels, focus states, and `prefers-reduced-motion` support.
 
 ---
 
@@ -148,6 +156,7 @@ overtune/
 ├── main/                       # Electron Main Process
 │   ├── db.ts                   # SQLite schema, queries, favorites, playlist CRUD & M3U
 │   ├── scanner.ts              # ID3 scanner, folder watcher & artwork cache
+│   ├── lyrics.ts               # LRC/TXT parser, sidecar matching & embedded lyrics reader
 │   ├── preload.ts              # Secure IPC ContextBridge API
 │   └── main.ts                 # Window management, custom protocol & IPC handlers
 │
@@ -171,6 +180,7 @@ overtune/
 │   │   ├── DetailView.tsx      # Album & Artist detail pages with hero banner
 │   │   ├── PlaylistDetailView.tsx # Playlist detail page with rename & export
 │   │   ├── LikedSongsView.tsx  # Liked songs view with purple gradient banner
+│   │   ├── LyricsPanel.tsx     # Synced LRC & plain-text lyrics with offset controls
 │   │   └── LocalFilesView.tsx  # Music folder importer & indexing stats
 │   ├── store/
 │   │   └── usePlayerStore.ts   # Zustand central store for playback & UI state
@@ -235,7 +245,7 @@ build-installer.bat
 ```
 
 The generated installer will be placed in the `release/` directory:
-- `release/Overtone-Setup-0.1.5.exe`
+- `release/Overtone-Setup-0.1.6.exe`
 
 ---
 

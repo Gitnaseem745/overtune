@@ -23,6 +23,11 @@ contextBridge.exposeInMainWorld('api', {
   toggleFavorite: (trackId: number) => ipcRenderer.invoke('db:toggleFavorite', trackId),
   updateTrackDuration: (trackId: number, duration: number) => ipcRenderer.invoke('db:updateTrackDuration', trackId, duration),
 
+  // Lyrics
+  getLyricsForTrack: (trackPath: string, trackId: number) => ipcRenderer.invoke('lyrics:getForTrack', trackPath, trackId),
+  getLyricOffset: (trackId: number) => ipcRenderer.invoke('lyrics:getOffset', trackId),
+  setLyricOffset: (trackId: number, offsetMs: number) => ipcRenderer.invoke('lyrics:setOffset', trackId, offsetMs),
+
   // Miniplayer
   toggleMiniplayer: () => ipcRenderer.invoke('window:toggleMiniplayer'),
   setMiniplayer: (enable: boolean) => ipcRenderer.invoke('window:setMiniplayer', enable),
