@@ -205,3 +205,99 @@ export type ActiveTab =
   | 'LibraryCare'
   | 'RecentlyPlayed'
   | 'SmartPlaylists';
+
+// ── 0.2.0 Personal Music Hub Types ──
+
+export interface MigrationStatus {
+  currentVersion: number;
+  latestVersion: number;
+  appliedMigrations: Array<{ version: number; name: string; applied_at: string }>;
+  backupAvailable: boolean;
+  latestBackupPath: string | null;
+}
+
+export interface BackupPreview {
+  valid: boolean;
+  error?: string;
+  schemaVersion: string;
+  exportedAt: string;
+  counts: {
+    playlists: number;
+    existingPlaylists: number;
+    smartPlaylists: number;
+    ratings: number;
+    tags: number;
+    history: number;
+    offsets: number;
+    matchedTracks: number;
+    unmatchedTracks: number;
+  };
+  samplePlaylists: string[];
+}
+
+export interface RestoreResult {
+  success: boolean;
+  error?: string;
+  imported: {
+    playlists: number;
+    smartPlaylists: number;
+    ratings: number;
+    tags: number;
+    history: number;
+    offsets: number;
+    settings: number;
+  };
+  backupPath?: string | null;
+}
+
+export interface RelocateResult {
+  success: boolean;
+  matchedTracks: number;
+  updatedTracks: number;
+  verifiedOnDisk: number;
+  updatedFolders: number;
+}
+
+export interface PairedDevice {
+  id: string;
+  name: string;
+  ip: string;
+  paired_at: string;
+  last_seen_at: string;
+}
+
+export interface PendingSharedPlaylist {
+  id: string;
+  fromDeviceName: string;
+  playlistName: string;
+  trackCount: number;
+  tracks: Array<{
+    title: string;
+    artist: string;
+    album: string;
+    duration: number;
+    genre?: string;
+  }>;
+  receivedAt: string;
+}
+
+export interface DeviceSyncStatus {
+  enabled: boolean;
+  deviceName: string;
+  localIp: string;
+  port: number;
+  activePairingPin: string | null;
+  pinExpiresInSeconds: number;
+  pairedDevices: PairedDevice[];
+  pendingPlaylists: PendingSharedPlaylist[];
+}
+
+export interface AppInfo {
+  name: string;
+  version: string;
+  electron: string;
+  node: string;
+  chrome: string;
+  platform: string;
+  arch: string;
+}

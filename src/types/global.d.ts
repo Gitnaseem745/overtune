@@ -125,6 +125,30 @@ declare global {
       onShortcutToggleLyrics: (callback: () => void) => () => void;
       onShortcutToggleMiniplayer: (callback: () => void) => () => void;
       onOpenSettings: (callback: () => void) => () => void;
+
+      // ── 0.2.0: Migration, Backup, Device Sync & App Info ──
+      getMigrationStatus: () => Promise<import('./music').MigrationStatus>;
+      runMigrations: () => Promise<{ success: boolean; applied: number; error?: string }>;
+
+      exportBackup: () => Promise<{ success: boolean; filePath?: string; canceled?: boolean }>;
+      selectBackupForPreview: () => Promise<{ canceled: boolean; filePath?: string; preview?: import('./music').BackupPreview }>;
+      previewBackup: (filePath: string) => Promise<import('./music').BackupPreview>;
+      restoreBackup: (filePath: string, mode: 'skip' | 'overwrite' | 'merge', restoreSettings: boolean) => Promise<import('./music').RestoreResult>;
+      relocateLibrary: (oldPrefix: string, newPrefix: string) => Promise<import('./music').RelocateResult>;
+
+      getDeviceSyncStatus: () => Promise<import('./music').DeviceSyncStatus>;
+      toggleDeviceSyncServer: (enabled: boolean) => Promise<import('./music').DeviceSyncStatus>;
+      generatePairingPin: () => Promise<{ pin: string; expiresInSeconds: number }>;
+      pairWithPeer: (targetIp: string, pin: string, targetPort?: number) => Promise<{ success: boolean; hostDeviceName?: string; error?: string }>;
+      sendPlaylistToPeer: (deviceId: string, playlistId: number, targetPort?: number) => Promise<{ success: boolean; error?: string }>;
+      acceptIncomingPlaylist: (pendingId: string) => Promise<{ success: boolean; playlistId?: number; matchedTracks?: number; error?: string }>;
+      declineIncomingPlaylist: (pendingId: string) => Promise<boolean>;
+      revokePairedDevice: (deviceId: string) => Promise<boolean>;
+
+      onDevicePaired: (callback: (device: { id: string; name: string; ip: string }) => void) => () => void;
+      onPlaylistReceived: (callback: (playlist: import('./music').PendingSharedPlaylist) => void) => () => void;
+
+      getAppInfo: () => Promise<import('./music').AppInfo>;
     };
   }
 }

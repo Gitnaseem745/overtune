@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/gitnaseem745/overtune/releases"><img src="https://img.shields.io/badge/version-0.1.9-blue.svg?style=flat-square" alt="Version"></a>
+  <a href="https://github.com/gitnaseem745/overtune/releases"><img src="https://img.shields.io/badge/version-0.2.0-blue.svg?style=flat-square" alt="Version"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg?style=flat-square" alt="License"></a>
   <a href="https://www.electronjs.org/"><img src="https://img.shields.io/badge/Electron-32.0.0-47848F.svg?style=flat-square&logo=electron" alt="Electron"></a>
   <a href="https://nextjs.org/"><img src="https://img.shields.io/badge/Next.js-16.2.10-000000.svg?style=flat-square&logo=next.js" alt="Next.js"></a>
@@ -105,6 +105,15 @@
 - **Privacy-Sanitized Support Diagnostics:** Generate and export privacy-sanitized diagnostic bundles (system specs, library stats, masked error paths) for easy bug reporting without credential leakage.
 - **Accessibility & Scalable Text:** Preferences for Reduced Motion animation suppression and customizable text scaling (Small, Normal, Large) with real-time CSS synchronization.
 - **Organized Tabbed Preferences:** Redesigned preferences modal categorized into Appearance, Playback & History, Hotkeys, Desktop & Tray, Accessibility, and Diagnostics.
+
+### 🌐 Personal Music Hub & Portability (v0.2.0 Milestone)
+- **Library Backup & Portable JSON Archive:** Export full library state (playlists, smart playlists, 5-star ratings, custom tags, listening history, lyric offsets, preferences) into a documented, open `overtone-backup v1.0` JSON archive.
+- **Archive Preview & Conflict Policy Handling:** Inspect backup contents and track matches prior to restoring. Choose between `Skip Existing`, `Merge`, or `Overwrite` conflict resolution.
+- **Automatic Pre-Restore Rollback Backups:** Creates instant timestamped database snapshots before any restoration or migration to guarantee zero data-loss risk.
+- **Music Library Relocation Wizard:** Effortlessly map and update base path prefixes across the database when migrating music collections between external drives, partitions, or new computers.
+- **Local-Network Device Sync (100% Cloud-Free):** Private peer-to-peer playlist sharing over local Wi-Fi / LAN with 6-digit numeric PIN pairing, explicit authorization management, and recipient confirmation prompts.
+- **Versioned Migration Architecture:** Transactional schema migrations tracked via `schema_migrations` ensuring safe database upgrades.
+- **In-App Release Quality Baseline & Community Feedback:** Integrated About view with runtime specs (Electron, Node.js, Chromium, SQLite WAL) and direct, privacy-respecting GitHub feedback link.
 
 ---
 

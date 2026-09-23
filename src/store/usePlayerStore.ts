@@ -3,7 +3,8 @@ import {
   Track, Album, Artist, Playlist, LyricsData, ThemeMode, LayoutMode, AccentColor, RepeatMode, ActiveTab,
   WatchedFolder, ScanError, DuplicateGroup, MissingFile, HealthReport, TrackMetadataUpdate,
   PlayHistoryEntry, SmartPlaylistRule, SmartPlaylist,
-  ShortcutMap, DiagnosticBundle
+  ShortcutMap, DiagnosticBundle,
+  MigrationStatus, BackupPreview, RestoreResult, RelocateResult, DeviceSyncStatus, AppInfo
 } from '../types/music';
 
 interface PlayerState {
@@ -57,6 +58,14 @@ interface PlayerState {
   reducedMotion: boolean;
   textScale: 'small' | 'normal' | 'large';
   diagnosticBundle: DiagnosticBundle | null;
+
+  // ── 0.2.0 Personal Music Hub State ──
+  migrationStatus: MigrationStatus | null;
+  backupPreview: BackupPreview | null;
+  selectedBackupPath: string | null;
+  restoreResult: RestoreResult | null;
+  syncStatus: DeviceSyncStatus | null;
+  appInfo: AppInfo | null;
 
   // ── Library Data ──
   tracks: Track[];
@@ -208,6 +217,23 @@ interface PlayerState {
   setTextScale: (scale: 'small' | 'normal' | 'large') => void;
   loadDiagnosticReport: () => Promise<void>;
   exportDiagnostics: () => Promise<boolean>;
+
+  // ── 0.2.0 Personal Music Hub Actions ──
+  loadMigrationStatus: () => Promise<void>;
+  triggerMigrations: () => Promise<void>;
+  exportLibraryBackup: () => Promise<{ success: boolean; filePath?: string }>;
+  selectBackupFile: () => Promise<void>;
+  executeRestore: (mode: 'skip' | 'overwrite' | 'merge', restoreSettings: boolean) => Promise<boolean>;
+  relocatePaths: (oldPrefix: string, newPrefix: string) => Promise<RelocateResult | null>;
+  loadSyncStatus: () => Promise<void>;
+  toggleDeviceSync: (enabled: boolean) => Promise<void>;
+  generateSyncPin: () => Promise<{ pin: string; expiresInSeconds: number } | null>;
+  pairWithPeerDevice: (ip: string, pin: string) => Promise<{ success: boolean; hostDeviceName?: string; error?: string }>;
+  sendPlaylistToPeerDevice: (deviceId: string, playlistId: number) => Promise<{ success: boolean; error?: string }>;
+  acceptSharedPlaylist: (pendingId: string) => Promise<boolean>;
+  declineSharedPlaylist: (pendingId: string) => Promise<boolean>;
+  revokeDevice: (deviceId: string) => Promise<boolean>;
+  loadAppInfo: () => Promise<void>;
 }
 
 export const usePlayerStore = create<PlayerState>((set, get) => ({
@@ -265,6 +291,12 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   reducedMotion: (typeof window !== 'undefined' && localStorage.getItem('overtone_reduced_motion') === 'true') || false,
   textScale: (typeof window !== 'undefined' && (localStorage.getItem('overtone_text_scale') as 'small' | 'normal' | 'large')) || 'normal',
   diagnosticBundle: null,
+  migrationStatus: null,
+  backupPreview: null,
+  selectedBackupPath: null,
+  restoreResult: null,
+  syncStatus: null,
+  appInfo: null,
 
   tracks: [],
   albums: [],
@@ -1308,5 +1340,180 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       return await window.api.exportDiagnosticReport();
     }
     return false;
+  },
+
+  // ── 0.2.0 Personal Music Hub Actions ──
+  loadMigrationStatus: async () => {
+    if (typeof window !== 'undefined' && window.api?.getMigrationStatus) {
+      try {
+        const status = await window.api.getMigrationStatus();
+        set({ migrationStatus: status });
+      } catch (err) {
+        console.error('Error getting migration status:', err);
+      }
+    }
+  },
+
+  triggerMigrations: async () => {
+    if (typeof window !== 'undefined' && window.api?.runMigrations) {
+      try {
+        await window.api.runMigrations();
+        const status = await window.api.getMigrationStatus();
+        set({ migrationStatus: status });
+      } catch (err) {
+        console.error('Error running migrations:', err);
+      }
+    }
+  },
+
+  exportLibraryBackup: async () => {
+    if (typeof window !== 'undefined' && window.api?.exportBackup) {
+      return await window.api.exportBackup();
+    }
+    return { success: false };
+  },
+
+  selectBackupFile: async () => {
+    if (typeof window !== 'undefined' && window.api?.selectBackupForPreview) {
+      const res = await window.api.selectBackupForPreview();
+      if (!res.canceled && res.preview && res.filePath) {
+        set({ backupPreview: res.preview, selectedBackupPath: res.filePath, restoreResult: null });
+      }
+    }
+  },
+
+  executeRestore: async (mode, restoreSettings) => {
+    const { selectedBackupPath } = get();
+    if (!selectedBackupPath || typeof window === 'undefined' || !window.api?.restoreBackup) {
+      return false;
+    }
+    try {
+      const result = await window.api.restoreBackup(selectedBackupPath, mode, restoreSettings);
+      set({ restoreResult: result });
+      if (result.success) {
+        await get().refreshLibrary();
+        await get().loadSmartPlaylists();
+        await get().loadRatingsAndTags();
+      }
+      return result.success;
+    } catch (err) {
+      console.error('Error restoring backup:', err);
+      return false;
+    }
+  },
+
+  relocatePaths: async (oldPrefix, newPrefix) => {
+    if (typeof window !== 'undefined' && window.api?.relocateLibrary) {
+      try {
+        const res = await window.api.relocateLibrary(oldPrefix, newPrefix);
+        if (res.success) {
+          await get().refreshLibrary();
+        }
+        return res;
+      } catch (err) {
+        console.error('Error relocating paths:', err);
+        return null;
+      }
+    }
+    return null;
+  },
+
+  loadSyncStatus: async () => {
+    if (typeof window !== 'undefined' && window.api?.getDeviceSyncStatus) {
+      try {
+        const status = await window.api.getDeviceSyncStatus();
+        set({ syncStatus: status });
+      } catch (err) {
+        console.error('Error getting device sync status:', err);
+      }
+    }
+  },
+
+  toggleDeviceSync: async (enabled) => {
+    if (typeof window !== 'undefined' && window.api?.toggleDeviceSyncServer) {
+      try {
+        const status = await window.api.toggleDeviceSyncServer(enabled);
+        set({ syncStatus: status });
+      } catch (err) {
+        console.error('Error toggling device sync server:', err);
+      }
+    }
+  },
+
+  generateSyncPin: async () => {
+    if (typeof window !== 'undefined' && window.api?.generatePairingPin) {
+      try {
+        const res = await window.api.generatePairingPin();
+        await get().loadSyncStatus();
+        return res;
+      } catch (err) {
+        console.error('Error generating sync pin:', err);
+        return null;
+      }
+    }
+    return null;
+  },
+
+  pairWithPeerDevice: async (ip, pin) => {
+    if (typeof window !== 'undefined' && window.api?.pairWithPeer) {
+      const res = await window.api.pairWithPeer(ip, pin);
+      if (res.success) {
+        await get().loadSyncStatus();
+      }
+      return res;
+    }
+    return { success: false, error: 'API unavailable' };
+  },
+
+  sendPlaylistToPeerDevice: async (deviceId, playlistId) => {
+    if (typeof window !== 'undefined' && window.api?.sendPlaylistToPeer) {
+      return await window.api.sendPlaylistToPeer(deviceId, playlistId);
+    }
+    return { success: false, error: 'API unavailable' };
+  },
+
+  acceptSharedPlaylist: async (pendingId) => {
+    if (typeof window !== 'undefined' && window.api?.acceptIncomingPlaylist) {
+      const res = await window.api.acceptIncomingPlaylist(pendingId);
+      if (res.success) {
+        await get().loadSyncStatus();
+        await get().refreshLibrary();
+        return true;
+      }
+    }
+    return false;
+  },
+
+  declineSharedPlaylist: async (pendingId) => {
+    if (typeof window !== 'undefined' && window.api?.declineIncomingPlaylist) {
+      const res = await window.api.declineIncomingPlaylist(pendingId);
+      if (res) {
+        await get().loadSyncStatus();
+      }
+      return res;
+    }
+    return false;
+  },
+
+  revokeDevice: async (deviceId) => {
+    if (typeof window !== 'undefined' && window.api?.revokePairedDevice) {
+      const res = await window.api.revokePairedDevice(deviceId);
+      if (res) {
+        await get().loadSyncStatus();
+      }
+      return res;
+    }
+    return false;
+  },
+
+  loadAppInfo: async () => {
+    if (typeof window !== 'undefined' && window.api?.getAppInfo) {
+      try {
+        const info = await window.api.getAppInfo();
+        set({ appInfo: info });
+      } catch (err) {
+        console.error('Error loading app info:', err);
+      }
+    }
   },
 }));

@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.2.0] - 2026-09-24 — Milestone: Personal Music Hub
+
+### Added
+- **Major Milestone: Personal Music Hub**: Unifies library care, playback stability, smart organization, portability, and local sync into a cohesive, production-ready desktop experience.
+- **Library Backup & Portable JSON Archive**: Export complete library state (playlists, smart playlists, 5-star ratings, custom tags, listening history, lyric offsets, and preferences) into a documented, human-readable `overtone-backup v1.0` JSON archive. Excludes machine-specific runtime data (window bounds) for true portability.
+- **Archive Preview & Safe Conflict Resolution**: Interactive archive inspector displaying matched tracks, existing playlists, and total items before applying changes. Supports three conflict resolution policies:
+  - `Skip Existing`: Preserves existing playlists and ratings untouched (recommended).
+  - `Merge`: Combines playlist tracks without creating duplicate track entries.
+  - `Overwrite`: Replaces matching playlists, ratings, and tags with backup versions.
+- **Automatic Pre-Restore Rollback Backups**: Automatically creates a timestamped copy of the database (`overtone-pre-migration-<timestamp>.db`) before executing any restore or migration, providing an instant recovery pathway.
+- **Library Path Relocation Wizard**: Effortlessly relocate track paths when moving music collections across drives, new user profiles, or different computers. Batch updates file paths across `tracks` and `watched_folders` tables while preserving ratings, play history, and playlist linkages.
+- **Local-Network Device Sync (100% Cloud-Free)**: Private, local-area network synchronization protocol operating over native Node.js HTTP. Features 6-digit time-limited numeric PIN pairing, authorized paired device management with instant revocation, and peer-to-peer playlist transmission requiring explicit recipient approval before library import.
+- **Versioned Database Migration Engine**: Safe schema evolution via `schema_migrations` tracking table. Applies incremental migrations in isolated database transactions with pre-migration backup safeguards.
+- **In-App Release Quality Baseline & Community Feedback**: Added About & Feedback tab displaying runtime specifications (Electron 32, Node 20, Next.js 16, React 19, SQLite WAL), schema health, and direct GitHub bug reporting / feature requests via `<FeedbackLink />` with zero telemetry and no account requirements.
+- **Automated Test Suite**: Added `tests/backup.test.js` verifying migrations, backup JSON schema, preview inspection, conflict handling modes, catalog relocation, and device pairing (87/87 automated tests passing across 19 suites).
+
+---
+
 ## [0.1.9] - 2026-09-24
 
 ### Added

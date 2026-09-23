@@ -94,8 +94,16 @@ Feature suggestions are tracked as GitHub issues. When creating a feature reques
 ```
 overtune/
 ├── main/                       # Electron Main Process (Node.js runtime)
-│   ├── db.ts                   # SQLite schema, queries, favorites, playlist CRUD & M3U
+│   ├── db.ts                   # SQLite schema, queries, favorites, playlist CRUD, ratings & tags
 │   ├── scanner.ts              # ID3 scanner, folder watcher (chokidar) & artwork cache
+│   ├── lyrics.ts               # LRC/TXT lyrics parser, sidecar matching & offset persistence
+│   ├── metadata-editor.ts      # Tag writing (node-id3), duplicate review & library health
+│   ├── shortcuts.ts            # Global keyboard shortcuts & conflict validation
+│   ├── tray.ts                 # System tray icon, playback controls & background minimize
+│   ├── diagnostics.ts          # Privacy-sanitized diagnostics & support bundle generation
+│   ├── migration.ts            # Versioned database migrations & pre-migration backups
+│   ├── backup.ts               # Full portable library JSON backup, restore & path relocation
+│   ├── device-sync.ts          # Local-network PIN pairing & P2P playlist sync server
 │   ├── preload.ts              # Secure IPC ContextBridge API definition
 │   └── main.ts                 # Window management, custom local:// protocol & IPC handlers
 │

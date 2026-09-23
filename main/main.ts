@@ -5,6 +5,13 @@ import { Readable } from 'stream';
 import { initTray, updateTrayTrack, destroyTray } from './tray';
 import { registerShortcuts, unregisterShortcuts, validateShortcuts, DEFAULT_SHORTCUTS, type ShortcutMap } from './shortcuts';
 import { generateDiagnosticReport, exportDiagnosticReport } from './diagnostics';
+import { runMigrations, getMigrationStatus } from './migration';
+import { exportBackupToFile, previewBackupData, restoreBackupData, relocateLibraryPaths } from './backup';
+import { 
+  startDeviceSyncServer, stopDeviceSyncServer, generatePairingPin, 
+  pairWithPeer, sendPlaylistToPeer, acceptIncomingPlaylist, 
+  declineIncomingPlaylist, revokePairedDevice, getDeviceSyncStatus 
+} from './device-sync';
 
 // Ensure consistent application name and Windows AppUserModelID for taskbar pinning and persistent userData
 app.setName('Overtone');
@@ -319,8 +326,12 @@ if (!gotTheLock) {
 
     try {
       initDb();
+      runMigrations();
+      if (getSetting('device_sync_enabled') === 'true') {
+        startDeviceSyncServer(() => mainWindow);
+      }
     } catch (e) {
-      console.error('[Main] initDb error:', e);
+      console.error('[Main] initDb / runMigrations error:', e);
     }
     createWindow();
 
@@ -338,6 +349,7 @@ if (!gotTheLock) {
     saveWindowBounds();
     unregisterShortcuts();
     destroyTray();
+    stopDeviceSyncServer();
   });
 }
 
@@ -879,6 +891,120 @@ ipcMain.handle('diagnostics:export', async () => {
   if (canceled || !filePath) return false;
   return await exportDiagnosticReport(filePath);
 });
+
+// ── Migration IPC Handlers ───────────────────────────────────────────
+
+ipcMain.handle('migration:getStatus', () => {
+  return getMigrationStatus();
+});
+
+ipcMain.handle('migration:run', () => {
+  return runMigrations();
+});
+
+// ── Backup & Restore IPC Handlers ────────────────────────────────────
+
+ipcMain.handle('backup:export', async () => {
+  const { canceled, filePath } = await dialog.showSaveDialog({
+    title: 'Export Overtone Library Backup',
+    defaultPath: `overtone-backup-${new Date().toISOString().slice(0, 10)}.json`,
+    filters: [{ name: 'Overtone Backup (*.json)', extensions: ['json'] }],
+  });
+  if (canceled || !filePath) return { success: false, canceled: true };
+  const success = await exportBackupToFile(filePath);
+  return { success, filePath };
+});
+
+ipcMain.handle('backup:selectFileForPreview', async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog({
+    title: 'Select Backup File to Restore',
+    filters: [{ name: 'JSON Backup (*.json)', extensions: ['json'] }],
+    properties: ['openFile'],
+  });
+  if (canceled || filePaths.length === 0) return { canceled: true };
+  const filePath = filePaths[0];
+  const preview = previewBackupData(filePath, true);
+  return { canceled: false, filePath, preview };
+});
+
+ipcMain.handle('backup:preview', (_event, filePath: string) => {
+  return previewBackupData(filePath, true);
+});
+
+ipcMain.handle('backup:restore', (_event, filePath: string, mode: 'skip' | 'overwrite' | 'merge', restoreSettings: boolean) => {
+  const res = restoreBackupData(filePath, true, { mode, restoreSettings });
+  if (res.success && mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('db:libraryUpdated');
+  }
+  return res;
+});
+
+ipcMain.handle('backup:relocate', (_event, oldPrefix: string, newPrefix: string) => {
+  const res = relocateLibraryPaths(oldPrefix, newPrefix);
+  if (res.success && mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('db:libraryUpdated');
+  }
+  return res;
+});
+
+// ── Device Sync IPC Handlers ─────────────────────────────────────────
+
+ipcMain.handle('sync:getStatus', () => {
+  return getDeviceSyncStatus();
+});
+
+ipcMain.handle('sync:toggleServer', async (_event, enabled: boolean) => {
+  setSetting('device_sync_enabled', String(enabled));
+  if (enabled) {
+    await startDeviceSyncServer(() => mainWindow);
+  } else {
+    stopDeviceSyncServer();
+  }
+  return getDeviceSyncStatus();
+});
+
+ipcMain.handle('sync:generatePin', () => {
+  return generatePairingPin();
+});
+
+ipcMain.handle('sync:pairWithPeer', async (_event, targetIp: string, pin: string, targetPort?: number) => {
+  return await pairWithPeer(targetIp, pin, targetPort);
+});
+
+ipcMain.handle('sync:sendPlaylist', async (_event, deviceId: string, playlistId: number, targetPort?: number) => {
+  return await sendPlaylistToPeer(deviceId, playlistId, targetPort);
+});
+
+ipcMain.handle('sync:acceptPlaylist', (_event, pendingId: string) => {
+  const res = acceptIncomingPlaylist(pendingId);
+  if (res.success && mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('db:libraryUpdated');
+  }
+  return res;
+});
+
+ipcMain.handle('sync:declinePlaylist', (_event, pendingId: string) => {
+  return declineIncomingPlaylist(pendingId);
+});
+
+ipcMain.handle('sync:revokeDevice', (_event, deviceId: string) => {
+  return revokePairedDevice(deviceId);
+});
+
+// ── App & Update Status IPC Handlers ─────────────────────────────────
+
+ipcMain.handle('app:getInfo', () => {
+  return {
+    name: app.getName(),
+    version: app.getVersion(),
+    electron: process.versions.electron,
+    node: process.versions.node,
+    chrome: process.versions.chrome,
+    platform: process.platform,
+    arch: process.arch,
+  };
+});
+
 
 
 

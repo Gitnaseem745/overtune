@@ -151,4 +151,43 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.on('ui:openSettings', handler);
     return () => { ipcRenderer.removeListener('ui:openSettings', handler); };
   },
+
+  // ── 0.2.0: Migration, Backup, Device Sync & App Info ──
+  getMigrationStatus: () => ipcRenderer.invoke('migration:getStatus'),
+  runMigrations: () => ipcRenderer.invoke('migration:run'),
+
+  exportBackup: () => ipcRenderer.invoke('backup:export'),
+  selectBackupForPreview: () => ipcRenderer.invoke('backup:selectFileForPreview'),
+  previewBackup: (filePath: string) => ipcRenderer.invoke('backup:preview', filePath),
+  restoreBackup: (filePath: string, mode: 'skip' | 'overwrite' | 'merge', restoreSettings: boolean) =>
+    ipcRenderer.invoke('backup:restore', filePath, mode, restoreSettings),
+  relocateLibrary: (oldPrefix: string, newPrefix: string) =>
+    ipcRenderer.invoke('backup:relocate', oldPrefix, newPrefix),
+
+  getDeviceSyncStatus: () => ipcRenderer.invoke('sync:getStatus'),
+  toggleDeviceSyncServer: (enabled: boolean) => ipcRenderer.invoke('sync:toggleServer', enabled),
+  generatePairingPin: () => ipcRenderer.invoke('sync:generatePin'),
+  pairWithPeer: (targetIp: string, pin: string, targetPort?: number) =>
+    ipcRenderer.invoke('sync:pairWithPeer', targetIp, pin, targetPort),
+  sendPlaylistToPeer: (deviceId: string, playlistId: number, targetPort?: number) =>
+    ipcRenderer.invoke('sync:sendPlaylist', deviceId, playlistId, targetPort),
+  acceptIncomingPlaylist: (pendingId: string) =>
+    ipcRenderer.invoke('sync:acceptPlaylist', pendingId),
+  declineIncomingPlaylist: (pendingId: string) =>
+    ipcRenderer.invoke('sync:declinePlaylist', pendingId),
+  revokePairedDevice: (deviceId: string) =>
+    ipcRenderer.invoke('sync:revokeDevice', deviceId),
+
+  onDevicePaired: (callback: (device: { id: string; name: string; ip: string }) => void) => {
+    const handler = (_event: unknown, device: { id: string; name: string; ip: string }) => callback(device);
+    ipcRenderer.on('sync:devicePaired', handler);
+    return () => { ipcRenderer.removeListener('sync:devicePaired', handler); };
+  },
+  onPlaylistReceived: (callback: (playlist: unknown) => void) => {
+    const handler = (_event: unknown, playlist: unknown) => callback(playlist);
+    ipcRenderer.on('sync:playlistReceived', handler);
+    return () => { ipcRenderer.removeListener('sync:playlistReceived', handler); };
+  },
+
+  getAppInfo: () => ipcRenderer.invoke('app:getInfo'),
 });

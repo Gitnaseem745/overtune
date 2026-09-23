@@ -7,11 +7,13 @@ import { getAccentColorHex } from '../lib/utils';
 import { 
   X, Sun, Moon, LayoutGrid, Columns3, ShieldCheck, Check, 
   History, RotateCcw, Trash2, Keyboard, Bell, Download, 
-  Monitor, Sliders, Palette
+  Monitor, Sliders, Palette, Archive, Wifi, Info, Upload, 
+  FolderSync, RefreshCw, Smartphone
 } from 'lucide-react';
 import { OvertoneLogo } from './OvertoneLogo';
+import { FeedbackLink } from './FeedbackLink';
 
-type SettingsTab = 'appearance' | 'playback' | 'shortcuts' | 'desktop' | 'accessibility' | 'diagnostics';
+type SettingsTab = 'appearance' | 'playback' | 'shortcuts' | 'desktop' | 'backup' | 'devicesync' | 'accessibility' | 'diagnostics' | 'about';
 
 export function SettingsModal() {
   const isSettingsOpen = usePlayerStore((s) => s.isSettingsOpen);
@@ -51,12 +53,53 @@ export function SettingsModal() {
   const loadDiagnosticReport = usePlayerStore((s) => s.loadDiagnosticReport);
   const exportDiagnostics = usePlayerStore((s) => s.exportDiagnostics);
 
+  // ── 0.2.0 Personal Music Hub Selectors ──
+  const exportLibraryBackup = usePlayerStore((s) => s.exportLibraryBackup);
+  const selectBackupFile = usePlayerStore((s) => s.selectBackupFile);
+  const backupPreview = usePlayerStore((s) => s.backupPreview);
+  const selectedBackupPath = usePlayerStore((s) => s.selectedBackupPath);
+  const executeRestore = usePlayerStore((s) => s.executeRestore);
+  const restoreResult = usePlayerStore((s) => s.restoreResult);
+  const relocatePaths = usePlayerStore((s) => s.relocatePaths);
+
+  const syncStatus = usePlayerStore((s) => s.syncStatus);
+  const loadSyncStatus = usePlayerStore((s) => s.loadSyncStatus);
+  const toggleDeviceSync = usePlayerStore((s) => s.toggleDeviceSync);
+  const generateSyncPin = usePlayerStore((s) => s.generateSyncPin);
+  const pairWithPeerDevice = usePlayerStore((s) => s.pairWithPeerDevice);
+  const acceptSharedPlaylist = usePlayerStore((s) => s.acceptSharedPlaylist);
+  const declineSharedPlaylist = usePlayerStore((s) => s.declineSharedPlaylist);
+  const revokeDevice = usePlayerStore((s) => s.revokeDevice);
+
+  const migrationStatus = usePlayerStore((s) => s.migrationStatus);
+  const loadMigrationStatus = usePlayerStore((s) => s.loadMigrationStatus);
+  const appInfo = usePlayerStore((s) => s.appInfo);
+  const loadAppInfo = usePlayerStore((s) => s.loadAppInfo);
+
   const [activeTab, setActiveTab] = useState<SettingsTab>('appearance');
   const [editingShortcuts, setEditingShortcuts] = useState<ShortcutMap>(shortcuts);
   const [prevShortcuts, setPrevShortcuts] = useState<ShortcutMap>(shortcuts);
   const [shortcutConflicts, setShortcutConflicts] = useState<string[]>([]);
   const [shortcutSaved, setShortcutSaved] = useState(false);
   const [exportingReport, setExportingReport] = useState(false);
+
+  // Backup & Relocation local state
+  const [restoreMode, setRestoreMode] = useState<'skip' | 'overwrite' | 'merge'>('skip');
+  const [restoreSettings, setRestoreSettings] = useState(true);
+  const [isExportingBackup, setIsExportingBackup] = useState(false);
+  const [isRestoringBackup, setIsRestoringBackup] = useState(false);
+  const [backupExportMsg, setBackupExportMsg] = useState<string | null>(null);
+
+  const [oldPrefix, setOldPrefix] = useState('');
+  const [newPrefix, setNewPrefix] = useState('');
+  const [relocateMsg, setRelocateMsg] = useState<string | null>(null);
+  const [isRelocating, setIsRelocating] = useState(false);
+
+  // Device sync local state
+  const [peerIp, setPeerIp] = useState('');
+  const [peerPin, setPeerPin] = useState('');
+  const [pairingMsg, setPairingMsg] = useState<string | null>(null);
+  const [isPairing, setIsPairing] = useState(false);
 
   if (shortcuts !== prevShortcuts) {
     setPrevShortcuts(shortcuts);
@@ -66,8 +109,15 @@ export function SettingsModal() {
   useEffect(() => {
     if (activeTab === 'diagnostics') {
       loadDiagnosticReport();
+    } else if (activeTab === 'backup') {
+      loadMigrationStatus();
+    } else if (activeTab === 'devicesync') {
+      loadSyncStatus();
+    } else if (activeTab === 'about') {
+      loadAppInfo();
+      loadMigrationStatus();
     }
-  }, [activeTab, loadDiagnosticReport]);
+  }, [activeTab, loadDiagnosticReport, loadMigrationStatus, loadSyncStatus, loadAppInfo]);
 
   if (!isSettingsOpen) return null;
 
@@ -156,8 +206,11 @@ export function SettingsModal() {
             { id: 'playback', label: 'Playback & History', icon: History },
             { id: 'shortcuts', label: 'Hotkeys', icon: Keyboard },
             { id: 'desktop', label: 'Desktop & Tray', icon: Monitor },
+            { id: 'backup', label: 'Backup & Relocate', icon: Archive },
+            { id: 'devicesync', label: 'Device Sync', icon: Wifi },
             { id: 'accessibility', label: 'Accessibility', icon: Sliders },
             { id: 'diagnostics', label: 'Diagnostics', icon: ShieldCheck },
+            { id: 'about', label: 'About & Feedback', icon: Info },
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -707,6 +760,531 @@ export function SettingsModal() {
                   Loading diagnostics report...
                 </div>
               )}
+            </div>
+          )}
+
+          {/* TAB 5: BACKUP & RELOCATE */}
+          {activeTab === 'backup' && (
+            <div className="space-y-6">
+              {/* Export Card */}
+              <div className={`p-4 rounded-2xl border ${isDark ? 'bg-neutral-900/50 border-neutral-800' : 'bg-gray-50 border-gray-200'}`}>
+                <h3 className="text-sm font-bold flex items-center gap-2 mb-1.5">
+                  <Archive size={16} className="text-amber-500" />
+                  <span>Export Full Library Archive</span>
+                </h3>
+                <p className={`text-xs ${isDark ? 'text-neutral-400' : 'text-gray-600'} leading-relaxed mb-4`}>
+                  Exports all playlists, smart playlists, 5-star ratings, custom tags, play history, lyric offsets, and preferences into a standardized, portable JSON archive. Audio files are never moved or modified.
+                </p>
+
+                <button
+                  onClick={async () => {
+                    setIsExportingBackup(true);
+                    setBackupExportMsg(null);
+                    try {
+                      const res = await exportLibraryBackup();
+                      if (res.success && res.filePath) {
+                        setBackupExportMsg(`Backup saved successfully to: ${res.filePath}`);
+                      }
+                    } finally {
+                      setIsExportingBackup(false);
+                    }
+                  }}
+                  disabled={isExportingBackup}
+                  className="w-full py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-black font-bold text-xs flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+                >
+                  {isExportingBackup ? <RefreshCw size={14} className="animate-spin" /> : <Download size={14} />}
+                  <span>Export Backup Archive (JSON)...</span>
+                </button>
+
+                {backupExportMsg && (
+                  <div className="mt-3 p-3 rounded-xl bg-green-500/10 border border-green-500/20 text-green-400 text-xs flex items-center gap-2 break-all">
+                    <Check size={14} className="shrink-0" />
+                    <span>{backupExportMsg}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Restore Card */}
+              <div className={`p-4 rounded-2xl border ${isDark ? 'bg-neutral-900/50 border-neutral-800' : 'bg-gray-50 border-gray-200'}`}>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm font-bold flex items-center gap-2">
+                    <Upload size={16} className="text-amber-500" />
+                    <span>Restore Library Archive</span>
+                  </h3>
+                  <button
+                    onClick={async () => {
+                      await selectBackupFile();
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-white text-xs font-semibold transition-colors flex items-center gap-1.5"
+                  >
+                    <Upload size={13} />
+                    <span>Choose File...</span>
+                  </button>
+                </div>
+
+                {selectedBackupPath ? (
+                  <p className="text-[11px] text-neutral-400 font-mono truncate bg-black/30 p-2 rounded-lg mb-3">
+                    {selectedBackupPath}
+                  </p>
+                ) : (
+                  <p className={`text-xs ${isDark ? 'text-neutral-400' : 'text-gray-500'} italic mb-3`}>
+                    Select an Overtone backup JSON file to inspect and preview its contents.
+                  </p>
+                )}
+
+                {backupPreview && backupPreview.valid && (
+                  <div className="space-y-4 pt-3 border-t border-neutral-800/40">
+                    <div className="grid grid-cols-4 gap-2 text-center text-xs">
+                      <div className="p-2 rounded-lg bg-neutral-800/40">
+                        <span className="text-[10px] text-neutral-400 block">Playlists</span>
+                        <span className="font-bold text-white">{backupPreview.counts.playlists}</span>
+                        {backupPreview.counts.existingPlaylists > 0 && (
+                          <span className="text-[9px] text-amber-500 block">({backupPreview.counts.existingPlaylists} existing)</span>
+                        )}
+                      </div>
+                      <div className="p-2 rounded-lg bg-neutral-800/40">
+                        <span className="text-[10px] text-neutral-400 block">Smart Playlists</span>
+                        <span className="font-bold text-white">{backupPreview.counts.smartPlaylists}</span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-neutral-800/40">
+                        <span className="text-[10px] text-neutral-400 block">Ratings & Tags</span>
+                        <span className="font-bold text-white">{backupPreview.counts.ratings + backupPreview.counts.tags}</span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-neutral-800/40">
+                        <span className="text-[10px] text-neutral-400 block">Matched Tracks</span>
+                        <span className="font-bold text-green-400">{backupPreview.counts.matchedTracks}</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider block mb-1.5">
+                        Conflict Policy
+                      </label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          { id: 'skip', name: 'Skip Existing', desc: 'Preserves existing playlists untouched (recommended)' },
+                          { id: 'merge', name: 'Merge', desc: 'Adds new tracks into playlists without duplicates' },
+                          { id: 'overwrite', name: 'Overwrite', desc: 'Replaces matching playlists and ratings' },
+                        ].map((opt) => (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            onClick={() => setRestoreMode(opt.id as 'skip' | 'overwrite' | 'merge')}
+                            className={`p-2 rounded-xl text-left border transition-all ${
+                              restoreMode === opt.id
+                                ? 'border-amber-500 bg-amber-500/10 text-white'
+                                : 'border-neutral-800 bg-neutral-900/30 text-neutral-400 hover:text-white'
+                            }`}
+                          >
+                            <span className="text-xs font-bold block">{opt.name}</span>
+                            <span className="text-[10px] text-neutral-400 leading-tight block">{opt.desc}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="modal_restore_settings"
+                        checked={restoreSettings}
+                        onChange={(e) => setRestoreSettings(e.target.checked)}
+                        className="rounded accent-amber-500"
+                      />
+                      <label htmlFor="modal_restore_settings" className="text-xs text-neutral-300">
+                        Restore preferences and theme settings
+                      </label>
+                    </div>
+
+                    <button
+                      onClick={async () => {
+                        setIsRestoringBackup(true);
+                        try {
+                          await executeRestore(restoreMode, restoreSettings);
+                        } finally {
+                          setIsRestoringBackup(false);
+                        }
+                      }}
+                      disabled={isRestoringBackup}
+                      className="w-full py-2.5 px-4 rounded-xl bg-green-500 hover:bg-green-600 text-black font-bold text-xs flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+                    >
+                      {isRestoringBackup ? <RefreshCw size={14} className="animate-spin" /> : <ShieldCheck size={14} />}
+                      <span>Execute Restore</span>
+                    </button>
+                  </div>
+                )}
+
+                {restoreResult && (
+                  <div className={`mt-3 p-3 rounded-xl border text-xs ${
+                    restoreResult.success ? 'bg-green-500/10 border-green-500/30 text-green-400' : 'bg-red-500/10 border-red-500/30 text-red-400'
+                  }`}>
+                    {restoreResult.success ? (
+                      <div>
+                        <p className="font-bold text-white mb-0.5">Restore Complete</p>
+                        <p className="text-[11px] text-neutral-400">
+                          Restored {restoreResult.imported.playlists} playlists, {restoreResult.imported.ratings} ratings, and {restoreResult.imported.tags} tags.
+                        </p>
+                      </div>
+                    ) : (
+                      <p>{restoreResult.error || 'Restore failed'}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Path Relocation Wizard */}
+              <div className={`p-4 rounded-2xl border ${isDark ? 'bg-neutral-900/50 border-neutral-800' : 'bg-gray-50 border-gray-200'}`}>
+                <h3 className="text-sm font-bold flex items-center gap-2 mb-1.5">
+                  <FolderSync size={16} className="text-amber-500" />
+                  <span>Library Relocation Wizard</span>
+                </h3>
+                <p className={`text-xs ${isDark ? 'text-neutral-400' : 'text-gray-600'} leading-relaxed mb-3`}>
+                  Relocate track paths after moving music files to another drive or directory.
+                </p>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-[11px] font-bold text-neutral-400 block mb-1">
+                      Current / Old Path Prefix
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. D:\Music or /Users/name/Music"
+                      value={oldPrefix}
+                      onChange={(e) => setOldPrefix(e.target.value)}
+                      className="w-full px-3 py-1.5 rounded-xl bg-neutral-800/80 border border-neutral-700/60 text-xs font-mono text-white placeholder-neutral-500 focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-bold text-neutral-400 block mb-1">
+                      New Path Prefix
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. E:\Music or D:\Desktop\Music"
+                      value={newPrefix}
+                      onChange={(e) => setNewPrefix(e.target.value)}
+                      className="w-full px-3 py-1.5 rounded-xl bg-neutral-800/80 border border-neutral-700/60 text-xs font-mono text-white placeholder-neutral-500 focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+
+                  <button
+                    onClick={async () => {
+                      if (!oldPrefix || !newPrefix) return;
+                      setIsRelocating(true);
+                      setRelocateMsg(null);
+                      try {
+                        const res = await relocatePaths(oldPrefix, newPrefix);
+                        if (res && res.success) {
+                          setRelocateMsg(`Relocated ${res.updatedTracks} tracks (${res.verifiedOnDisk} verified on disk). ${res.updatedFolders} watched folders updated.`);
+                        } else {
+                          setRelocateMsg('No tracks matched the specified path prefix.');
+                        }
+                      } finally {
+                        setIsRelocating(false);
+                      }
+                    }}
+                    disabled={isRelocating || !oldPrefix || !newPrefix}
+                    className="w-full py-2 px-4 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+                  >
+                    {isRelocating ? <RefreshCw size={13} className="animate-spin" /> : <FolderSync size={13} />}
+                    <span>Update Path Prefixes</span>
+                  </button>
+
+                  {relocateMsg && (
+                    <div className="p-2.5 rounded-xl bg-neutral-900 border border-neutral-800 text-xs text-neutral-300">
+                      {relocateMsg}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 6: DEVICE SYNC */}
+          {activeTab === 'devicesync' && (
+            <div className="space-y-6">
+              <div className={`p-4 rounded-2xl border ${isDark ? 'bg-neutral-900/50 border-neutral-800' : 'bg-gray-50 border-gray-200'}`}>
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h3 className="text-sm font-bold flex items-center gap-2">
+                      <Wifi size={16} className="text-amber-500" />
+                      <span>Local-Network Device Sync</span>
+                    </h3>
+                    <p className={`text-xs ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
+                      Share playlists with other Overtone devices on your local Wi-Fi / LAN. No cloud account or external servers required.
+                    </p>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      const enabled = !(syncStatus?.enabled);
+                      await toggleDeviceSync(enabled);
+                    }}
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+                      syncStatus?.enabled
+                        ? 'bg-green-500 text-black shadow-xs'
+                        : 'bg-neutral-800 text-neutral-400 hover:text-white'
+                    }`}
+                  >
+                    {syncStatus?.enabled ? 'Active / Listening' : 'Disabled'}
+                  </button>
+                </div>
+
+                {syncStatus?.enabled && (
+                  <div className="mt-4 space-y-4 pt-3 border-t border-neutral-800/40">
+                    <div className="grid grid-cols-3 gap-2.5 text-center text-xs">
+                      <div className="p-2.5 rounded-xl bg-neutral-800/40">
+                        <span className="text-[10px] text-neutral-400 block font-bold">This Device</span>
+                        <span className="font-bold text-white">{syncStatus.deviceName}</span>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-neutral-800/40">
+                        <span className="text-[10px] text-neutral-400 block font-bold">Local IP</span>
+                        <span className="font-mono text-white">{syncStatus.localIp}</span>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-neutral-800/40">
+                        <span className="text-[10px] text-neutral-400 block font-bold">Port</span>
+                        <span className="font-mono text-white">{syncStatus.port}</span>
+                      </div>
+                    </div>
+
+                    {/* Pairing PIN */}
+                    <div className={`p-4 rounded-xl border flex items-center justify-between ${
+                      isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
+                    }`}>
+                      <div>
+                        <span className="text-[10px] text-neutral-400 uppercase font-bold tracking-wider block">
+                          Pairing Security PIN
+                        </span>
+                        {syncStatus.activePairingPin ? (
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-xl font-mono font-extrabold tracking-widest text-amber-500">
+                              {syncStatus.activePairingPin}
+                            </span>
+                            <span className="text-[10px] text-neutral-400">
+                              (expires in {syncStatus.pinExpiresInSeconds}s)
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-neutral-500 mt-1 block">
+                            No active PIN. Generate a code to pair a new device.
+                          </span>
+                        )}
+                      </div>
+                      <button
+                        onClick={async () => {
+                          await generateSyncPin();
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-black text-xs font-bold transition-colors"
+                      >
+                        Generate 6-Digit PIN
+                      </button>
+                    </div>
+
+                    {/* Connect to Remote Device */}
+                    <div className={`p-4 rounded-xl border space-y-3 ${
+                      isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
+                    }`}>
+                      <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                        <Smartphone size={14} className="text-amber-500" />
+                        <span>Pair With Peer Device</span>
+                      </h4>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          placeholder="Peer Device IP (e.g. 192.168.1.15)"
+                          value={peerIp}
+                          onChange={(e) => setPeerIp(e.target.value)}
+                          className="px-3 py-1.5 rounded-xl bg-neutral-800 border border-neutral-700 text-xs font-mono text-white placeholder-neutral-500 focus:outline-none focus:border-amber-500"
+                        />
+                        <input
+                          type="text"
+                          placeholder="6-Digit PIN (e.g. 583920)"
+                          value={peerPin}
+                          onChange={(e) => setPeerPin(e.target.value)}
+                          className="px-3 py-1.5 rounded-xl bg-neutral-800 border border-neutral-700 text-xs font-mono text-white placeholder-neutral-500 focus:outline-none focus:border-amber-500"
+                        />
+                      </div>
+                      <button
+                        onClick={async () => {
+                          if (!peerIp || !peerPin) return;
+                          setIsPairing(true);
+                          setPairingMsg(null);
+                          try {
+                            const res = await pairWithPeerDevice(peerIp, peerPin);
+                            if (res.success) {
+                              setPairingMsg(`Successfully paired with ${res.hostDeviceName || 'peer'}!`);
+                              setPeerIp('');
+                              setPeerPin('');
+                            } else {
+                              setPairingMsg(res.error || 'Pairing failed. Check IP and PIN.');
+                            }
+                          } finally {
+                            setIsPairing(false);
+                          }
+                        }}
+                        disabled={isPairing || !peerIp || !peerPin}
+                        className="w-full py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50"
+                      >
+                        {isPairing ? <RefreshCw size={13} className="animate-spin" /> : <Check size={13} />}
+                        <span>Connect & Verify Pair</span>
+                      </button>
+
+                      {pairingMsg && (
+                        <p className="text-[11px] text-amber-400 font-semibold">{pairingMsg}</p>
+                      )}
+                    </div>
+
+                    {/* Incoming Pending Playlists */}
+                    {syncStatus.pendingPlaylists && syncStatus.pendingPlaylists.length > 0 && (
+                      <div className="space-y-2">
+                        <h4 className="text-xs font-bold text-white">Incoming Shared Playlists</h4>
+                        {syncStatus.pendingPlaylists.map((pending) => (
+                          <div
+                            key={pending.id}
+                            className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between"
+                          >
+                            <div>
+                              <span className="text-xs font-bold text-white block">{pending.playlistName}</span>
+                              <span className="text-[11px] text-neutral-400">
+                                {pending.trackCount} tracks from {pending.fromDeviceName}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={async () => {
+                                  await acceptSharedPlaylist(pending.id);
+                                }}
+                                className="px-3 py-1 rounded-lg bg-green-500 text-black font-bold text-xs hover:bg-green-400 transition-colors"
+                              >
+                                Accept
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  await declineSharedPlaylist(pending.id);
+                                }}
+                                className="px-2.5 py-1 rounded-lg bg-neutral-800 text-neutral-400 font-bold text-xs hover:text-white transition-colors"
+                              >
+                                Decline
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Paired Devices List */}
+                    <div className="space-y-2">
+                      <h4 className="text-xs font-bold text-white">Authorized Paired Devices</h4>
+                      {syncStatus.pairedDevices && syncStatus.pairedDevices.length > 0 ? (
+                        syncStatus.pairedDevices.map((dev) => (
+                          <div
+                            key={dev.id}
+                            className="p-3 rounded-xl bg-neutral-900 border border-neutral-800 flex items-center justify-between"
+                          >
+                            <div>
+                              <span className="text-xs font-bold text-white block">{dev.name}</span>
+                              <span className="text-[10px] text-neutral-400 font-mono">
+                                IP: {dev.ip} • Paired: {new Date(dev.paired_at).toLocaleDateString()}
+                              </span>
+                            </div>
+                            <button
+                              onClick={async () => {
+                                await revokeDevice(dev.id);
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-red-500/15 hover:bg-red-500/30 text-red-400 text-xs font-semibold transition-colors"
+                            >
+                              Revoke
+                            </button>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-xs text-neutral-500 italic p-2">
+                          No authorized paired devices. Devices you pair with will appear here.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 7: ABOUT & FEEDBACK */}
+          {activeTab === 'about' && (
+            <div className="space-y-6">
+              {/* Product Badge */}
+              <div className={`p-5 rounded-2xl border flex items-center justify-between ${
+                isDark ? 'bg-neutral-900/60 border-neutral-800' : 'bg-gray-50 border-gray-200'
+              }`}>
+                <div className="flex items-center gap-4">
+                  <OvertoneLogo size={48} />
+                  <div>
+                    <h3 className="text-base font-extrabold tracking-tight">Overtone</h3>
+                    <p className="text-xs text-amber-500 font-bold">Version 0.2.0 • Personal Music Hub</p>
+                    <p className={`text-[11px] ${isDark ? 'text-neutral-400' : 'text-gray-500'} mt-0.5`}>
+                      Local-first desktop music player with Spotify-grade UI and offline reliability.
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="px-2.5 py-1 rounded-lg bg-amber-500/15 text-amber-500 text-[10px] font-bold uppercase tracking-wider">
+                    Milestone 0.2
+                  </span>
+                </div>
+              </div>
+
+              {/* Database & Migration Status */}
+              <div className={`p-4 rounded-2xl border ${isDark ? 'bg-neutral-900/50 border-neutral-800' : 'bg-gray-50 border-gray-200'}`}>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-400 mb-3 flex items-center gap-1.5">
+                  <ShieldCheck size={14} className="text-green-400" />
+                  <span>Database & Schema Health</span>
+                </h4>
+                <div className="grid grid-cols-3 gap-2.5 text-center text-xs">
+                  <div className="p-2.5 rounded-xl bg-neutral-800/40">
+                    <span className="text-[10px] text-neutral-400 block font-bold">Schema Version</span>
+                    <span className="font-bold text-amber-500">v{migrationStatus?.currentVersion ?? 5}</span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-neutral-800/40">
+                    <span className="text-[10px] text-neutral-400 block font-bold">Applied Migrations</span>
+                    <span className="font-bold text-green-400">{migrationStatus?.appliedMigrations?.length ?? 5} / 5</span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-neutral-800/40">
+                    <span className="text-[10px] text-neutral-400 block font-bold">Automatic Rollback</span>
+                    <span className="font-bold text-blue-400">Available</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Environment Specs */}
+              {appInfo && (
+                <div className={`p-4 rounded-2xl border ${isDark ? 'bg-neutral-900/50 border-neutral-800' : 'bg-gray-50 border-gray-200'}`}>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-400 mb-2">
+                    Runtime Architecture
+                  </h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                    <div className="p-2 rounded-lg bg-neutral-800/30">
+                      <span className="text-[10px] text-neutral-400 block">Electron</span>
+                      <span className="font-mono font-bold text-white">{appInfo.electron}</span>
+                    </div>
+                    <div className="p-2 rounded-lg bg-neutral-800/30">
+                      <span className="text-[10px] text-neutral-400 block">Node.js</span>
+                      <span className="font-mono font-bold text-white">{appInfo.node}</span>
+                    </div>
+                    <div className="p-2 rounded-lg bg-neutral-800/30">
+                      <span className="text-[10px] text-neutral-400 block">Chromium</span>
+                      <span className="font-mono font-bold text-white">{appInfo.chrome}</span>
+                    </div>
+                    <div className="p-2 rounded-lg bg-neutral-800/30">
+                      <span className="text-[10px] text-neutral-400 block">Platform</span>
+                      <span className="font-mono font-bold text-white">{appInfo.platform} ({appInfo.arch})</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Feedback & Community */}
+              <FeedbackLink variant="card" />
             </div>
           )}
 
