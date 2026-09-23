@@ -112,6 +112,23 @@ export function initDb() {
       offset_ms INTEGER DEFAULT 0,
       FOREIGN KEY(track_id) REFERENCES tracks(id) ON DELETE CASCADE
     );
+
+    CREATE TABLE IF NOT EXISTS watched_folders (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      path TEXT NOT NULL UNIQUE,
+      last_scan_at DATETIME,
+      track_count INTEGER DEFAULT 0,
+      status TEXT DEFAULT 'idle'
+    );
+
+    CREATE TABLE IF NOT EXISTS scan_errors (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      folder_id INTEGER,
+      file_path TEXT,
+      error_message TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(folder_id) REFERENCES watched_folders(id) ON DELETE CASCADE
+    );
   `);
 
   return db;
@@ -329,5 +346,263 @@ export function setLyricOffset(trackId: number, offsetMs: number): boolean {
     console.error('Error setting lyric offset in DB:', e);
     return false;
   }
+}
+
+// ── Watched Folders Operations ───────────────────────────────────────
+
+export function getWatchedFolders() {
+  const database = getDb();
+  return database.prepare(`SELECT * FROM watched_folders ORDER BY path ASC`).all();
+}
+
+export function addWatchedFolder(folderPath: string) {
+  const database = getDb();
+  database.prepare(`
+    INSERT OR IGNORE INTO watched_folders (path, last_scan_at, status)
+    VALUES (?, CURRENT_TIMESTAMP, 'idle')
+  `).run(folderPath);
+}
+
+export function updateWatchedFolder(folderPath: string, trackCount: number, status: string) {
+  const database = getDb();
+  database.prepare(`
+    UPDATE watched_folders SET track_count = ?, status = ?, last_scan_at = CURRENT_TIMESTAMP
+    WHERE path = ?
+  `).run(trackCount, status, folderPath);
+}
+
+export function removeWatchedFolder(folderId: number) {
+  const database = getDb();
+  database.prepare(`DELETE FROM scan_errors WHERE folder_id = ?`).run(folderId);
+  database.prepare(`DELETE FROM watched_folders WHERE id = ?`).run(folderId);
+  return true;
+}
+
+// ── Scan Errors ──────────────────────────────────────────────────────
+
+export function logScanError(folderId: number | null, filePath: string, errorMessage: string) {
+  const database = getDb();
+  database.prepare(`
+    INSERT INTO scan_errors (folder_id, file_path, error_message) VALUES (?, ?, ?)
+  `).run(folderId, filePath, errorMessage);
+}
+
+export function getScanErrors(folderId?: number) {
+  const database = getDb();
+  if (folderId) {
+    return database.prepare(`SELECT * FROM scan_errors WHERE folder_id = ? ORDER BY created_at DESC LIMIT 100`).all(folderId);
+  }
+  return database.prepare(`SELECT * FROM scan_errors ORDER BY created_at DESC LIMIT 100`).all();
+}
+
+export function clearScanErrors(folderId?: number) {
+  const database = getDb();
+  if (folderId) {
+    database.prepare(`DELETE FROM scan_errors WHERE folder_id = ?`).run(folderId);
+  } else {
+    database.prepare(`DELETE FROM scan_errors`).run();
+  }
+  return true;
+}
+
+// ── Metadata Editor Operations ───────────────────────────────────────
+
+export function getTrackDetails(trackId: number) {
+  const database = getDb();
+  return database.prepare(`
+    SELECT
+      t.id, t.title, t.path, t.duration, t.track_number, t.genre, t.file_hash,
+      COALESCE(a.name, 'Unknown Artist') AS artist,
+      a.id AS artist_id,
+      COALESCE(al.title, 'Unknown Album') AS album,
+      al.id AS album_id,
+      al.year, al.cover_art_path AS cover_art
+    FROM tracks t
+    LEFT JOIN artists a ON t.artist_id = a.id
+    LEFT JOIN albums al ON t.album_id = al.id
+    WHERE t.id = ?
+  `).get(trackId);
+}
+
+export interface TrackMetadataUpdate {
+  title?: string;
+  artist?: string;
+  album?: string;
+  track_number?: number | null;
+  genre?: string | null;
+  year?: number | null;
+}
+
+export function updateTrackMetadataCatalog(trackId: number, fields: TrackMetadataUpdate): boolean {
+  try {
+    const database = getDb();
+
+    if (fields.title) {
+      database.prepare(`UPDATE tracks SET title = ? WHERE id = ?`).run(fields.title, trackId);
+    }
+    if (fields.track_number !== undefined) {
+      database.prepare(`UPDATE tracks SET track_number = ? WHERE id = ?`).run(fields.track_number, trackId);
+    }
+    if (fields.genre !== undefined) {
+      database.prepare(`UPDATE tracks SET genre = ? WHERE id = ?`).run(fields.genre, trackId);
+    }
+    if (fields.artist) {
+      const artistRow = database.prepare(`INSERT INTO artists (name) VALUES (?) ON CONFLICT(name) DO UPDATE SET name=excluded.name RETURNING id`).get(fields.artist) as { id: number };
+      database.prepare(`UPDATE tracks SET artist_id = ? WHERE id = ?`).run(artistRow.id, trackId);
+    }
+    if (fields.album) {
+      const track = database.prepare(`SELECT artist_id FROM tracks WHERE id = ?`).get(trackId) as { artist_id: number } | undefined;
+      if (track) {
+        const albumRow = database.prepare(`INSERT INTO albums (title, artist_id, year) VALUES (?, ?, ?) ON CONFLICT(title, artist_id) DO UPDATE SET title=excluded.title RETURNING id`)
+          .get(fields.album, track.artist_id, fields.year ?? null) as { id: number };
+        database.prepare(`UPDATE tracks SET album_id = ? WHERE id = ?`).run(albumRow.id, trackId);
+      }
+    }
+    if (fields.year !== undefined && !fields.album) {
+      const track = database.prepare(`SELECT album_id FROM tracks WHERE id = ?`).get(trackId) as { album_id: number } | undefined;
+      if (track?.album_id) {
+        database.prepare(`UPDATE albums SET year = ? WHERE id = ?`).run(fields.year, track.album_id);
+      }
+    }
+    return true;
+  } catch (e) {
+    console.error('Error updating track metadata in catalog:', e);
+    return false;
+  }
+}
+
+export function updateAlbumArtwork(albumId: number, artworkPath: string): boolean {
+  try {
+    const database = getDb();
+    database.prepare(`UPDATE albums SET cover_art_path = ? WHERE id = ?`).run(artworkPath, albumId);
+    return true;
+  } catch (e) {
+    console.error('Error updating album artwork:', e);
+    return false;
+  }
+}
+
+// ── Duplicate Detection ──────────────────────────────────────────────
+
+export function findDuplicates() {
+  const database = getDb();
+  const groups = database.prepare(`
+    SELECT file_hash, COUNT(*) as count
+    FROM tracks
+    WHERE file_hash IS NOT NULL AND file_hash != ''
+    GROUP BY file_hash
+    HAVING count > 1
+    ORDER BY count DESC
+  `).all() as Array<{ file_hash: string; count: number }>;
+
+  return groups.map((group) => {
+    const tracks = database.prepare(`
+      SELECT
+        t.id, t.title, t.path, t.duration, t.track_number, t.genre, t.file_hash,
+        COALESCE(a.name, 'Unknown Artist') AS artist,
+        COALESCE(al.title, 'Unknown Album') AS album,
+        al.cover_art_path AS cover_art
+      FROM tracks t
+      LEFT JOIN artists a ON t.artist_id = a.id
+      LEFT JOIN albums al ON t.album_id = al.id
+      WHERE t.file_hash = ?
+    `).all(group.file_hash);
+    return { file_hash: group.file_hash, count: group.count, tracks };
+  });
+}
+
+export function removeTrackFromLibrary(trackId: number): boolean {
+  try {
+    const database = getDb();
+    database.prepare(`DELETE FROM playlist_tracks WHERE track_id = ?`).run(trackId);
+    database.prepare(`DELETE FROM favorites WHERE track_id = ?`).run(trackId);
+    database.prepare(`DELETE FROM lyric_offsets WHERE track_id = ?`).run(trackId);
+    database.prepare(`DELETE FROM tracks WHERE id = ?`).run(trackId);
+    return true;
+  } catch (e) {
+    console.error('Error removing track from library:', e);
+    return false;
+  }
+}
+
+// ── Missing File Detection ───────────────────────────────────────────
+
+export function getAllTrackPaths(): Array<{ id: number; path: string }> {
+  const database = getDb();
+  return database.prepare(`SELECT id, path FROM tracks`).all() as Array<{ id: number; path: string }>;
+}
+
+export function relinkTrack(trackId: number, newPath: string): boolean {
+  try {
+    const database = getDb();
+    database.prepare(`UPDATE tracks SET path = ? WHERE id = ?`).run(newPath, trackId);
+    return true;
+  } catch (e) {
+    console.error('Error relinking track:', e);
+    return false;
+  }
+}
+
+// ── Library Health Report ────────────────────────────────────────────
+
+export function getLibraryHealthReport() {
+  const database = getDb();
+
+  const totalTracks = (database.prepare(`SELECT COUNT(*) as c FROM tracks`).get() as { c: number }).c;
+  const totalAlbums = (database.prepare(`SELECT COUNT(*) as c FROM albums`).get() as { c: number }).c;
+  const totalArtists = (database.prepare(`SELECT COUNT(*) as c FROM artists`).get() as { c: number }).c;
+
+  const missingTitle = database.prepare(`
+    SELECT id, path FROM tracks WHERE title IS NULL OR title = ''
+  `).all() as Array<{ id: number; path: string }>;
+
+  const missingArtist = database.prepare(`
+    SELECT t.id, t.path FROM tracks t
+    LEFT JOIN artists a ON t.artist_id = a.id
+    WHERE a.name IS NULL OR a.name = '' OR a.name = 'Unknown Artist'
+  `).all() as Array<{ id: number; path: string }>;
+
+  const zeroDuration = database.prepare(`
+    SELECT id, title, path FROM tracks WHERE duration IS NULL OR duration <= 0
+  `).all() as Array<{ id: number; title: string; path: string }>;
+
+  const missingGenre = (database.prepare(`SELECT COUNT(*) as c FROM tracks WHERE genre IS NULL OR genre = ''`).get() as { c: number }).c;
+
+  const duplicateCount = (database.prepare(`
+    SELECT COUNT(*) as c FROM (
+      SELECT file_hash FROM tracks WHERE file_hash IS NOT NULL AND file_hash != ''
+      GROUP BY file_hash HAVING COUNT(*) > 1
+    )
+  `).get() as { c: number }).c;
+
+  const albumsMissingArt = database.prepare(`
+    SELECT al.id, al.title, COALESCE(a.name, 'Unknown Artist') as artist
+    FROM albums al LEFT JOIN artists a ON al.artist_id = a.id
+    WHERE al.cover_art_path IS NULL OR al.cover_art_path = ''
+  `).all();
+
+  return {
+    totalTracks,
+    totalAlbums,
+    totalArtists,
+    missingTitle: missingTitle.length,
+    missingArtist: missingArtist.length,
+    zeroDuration: zeroDuration.length,
+    missingGenre,
+    duplicateCount,
+    albumsMissingArt: albumsMissingArt.length,
+    zeroDurationTracks: zeroDuration.slice(0, 50),
+    albumsMissingArtList: albumsMissingArt.slice(0, 50),
+  };
+}
+
+// ── Scan Dashboard ───────────────────────────────────────────────────
+
+export function getScanDashboard() {
+  const database = getDb();
+  const folders = getWatchedFolders();
+  const totalTracks = (database.prepare(`SELECT COUNT(*) as c FROM tracks`).get() as { c: number }).c;
+  const recentErrors = getScanErrors();
+  return { folders, totalTracks, recentErrors };
 }
 

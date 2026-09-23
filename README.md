@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/gitnaseem745/overtune/releases"><img src="https://img.shields.io/badge/version-0.1.6-blue.svg?style=flat-square" alt="Version"></a>
+  <a href="https://github.com/gitnaseem745/overtune/releases"><img src="https://img.shields.io/badge/version-0.1.7-blue.svg?style=flat-square" alt="Version"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg?style=flat-square" alt="License"></a>
   <a href="https://www.electronjs.org/"><img src="https://img.shields.io/badge/Electron-32.0.0-47848F.svg?style=flat-square&logo=electron" alt="Electron"></a>
   <a href="https://nextjs.org/"><img src="https://img.shields.io/badge/Next.js-16.2.10-000000.svg?style=flat-square&logo=next.js" alt="Next.js"></a>
@@ -79,6 +79,15 @@
 - **Manual Offset Controls:** Adjust per-track lyric timing in 100ms increments, persisted in the database without modifying audio files.
 - **Keyboard & Accessibility:** Full keyboard navigation, ARIA labels, focus states, and `prefers-reduced-motion` support.
 
+### 🛡️ Library Care & Metadata Tools (v0.1.7)
+- **Library Scan Dashboard:** Real-time visibility into monitored folders, tracked audio counts, last scan timestamps, one-click folder rescan, safe folder removal, and structured error logs.
+- **Safe Metadata Editor:** Edit track title, artist, album, track number, year, and genre. Choose between 100% risk-free catalog-only updates or direct file tag writes.
+- **Direct ID3v2 Tag Writing:** Integrated `node-id3` tag writing for MP3 audio files with explicit confirmation and safety guards.
+- **Album Artwork Manager:** Browse album cover art with filters for missing covers, one-click artwork replacement with automatic app cover cache and optional file embedding.
+- **Deduplication Review:** SHA-256 cryptographic file hashing detects identical audio tracks. Inspect paths, open directly in Explorer, and cleanly remove duplicates from the library without touching disk files.
+- **Missing File Recovery:** Flags tracks whose disk paths are broken (moved or renamed files) with an interactive relink dialog.
+- **Library Health Diagnostics:** High-level dashboard highlighting untagged tracks, missing artwork, and broken links with direct jump links to fix issues.
+
 ---
 
 ## 🎼 Supported Audio Formats
@@ -138,6 +147,7 @@ graph TD
 | **State Management** | [Zustand 5](https://github.com/pmndrs/zustand) | Lightweight, reactive centralized state store |
 | **Styling & Icons** | [Tailwind CSS 4](https://tailwindcss.com/) & [Lucide](https://lucide.dev/) | Utility-first responsive design & crisp iconography |
 | **Database** | [better-sqlite3](https://github.com/WiseLibs/better-sqlite3) | Synchronous, ultra-fast local SQLite storage in WAL mode |
+| **Metadata & Tagging** | [music-metadata](https://github.com/Borewit/music-metadata) & [node-id3](https://github.com/Zazama/node-id3) | Audio metadata parsing & direct ID3v2 tag writing |
 | **Audio Metadata** | [music-metadata](https://github.com/Borewit/music-metadata) | High-resolution ID3, Vorbis, and MP4 tag extraction |
 | **Directory Watching**| [chokidar 3](https://github.com/paulmillr/chokidar) | Incremental filesystem change monitoring |
 | **Packaging** | [electron-builder](https://www.electron.build/) | NSIS Windows installer generation & bundling |
@@ -245,7 +255,7 @@ build-installer.bat
 ```
 
 The generated installer will be placed in the `release/` directory:
-- `release/Overtone-Setup-0.1.6.exe`
+- `release/Overtone-Setup-0.1.7.exe`
 
 ---
 

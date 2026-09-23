@@ -1,5 +1,8 @@
 import { create } from 'zustand';
-import { Track, Album, Artist, Playlist, LyricsData, ThemeMode, LayoutMode, AccentColor, RepeatMode, ActiveTab } from '../types/music';
+import { 
+  Track, Album, Artist, Playlist, LyricsData, ThemeMode, LayoutMode, AccentColor, RepeatMode, ActiveTab,
+  WatchedFolder, ScanError, DuplicateGroup, MissingFile, HealthReport, TrackMetadataUpdate 
+} from '../types/music';
 
 interface PlayerState {
   // ── Appearance & UI Preferences ──
@@ -21,6 +24,15 @@ interface PlayerState {
   // ── Lyrics ──
   lyrics: LyricsData | null;
   lyricOffset: number;
+
+  // ── Library Care ──
+  libraryCareTab: 'scan' | 'metadata' | 'artwork' | 'duplicates' | 'missing' | 'health';
+  watchedFolders: WatchedFolder[];
+  scanErrors: ScanError[];
+  duplicateGroups: DuplicateGroup[];
+  missingFiles: MissingFile[];
+  healthReport: HealthReport | null;
+  isLibraryCareLoading: boolean;
 
   // ── Library Data ──
   tracks: Track[];
@@ -116,6 +128,29 @@ interface PlayerState {
   handleNext: () => void;
   handlePrev: () => void;
   refreshLibrary: () => Promise<void>;
+
+  // Library Care Actions
+  setLibraryCareTab: (tab: 'scan' | 'metadata' | 'artwork' | 'duplicates' | 'missing' | 'health') => void;
+  loadLibraryCareData: () => Promise<void>;
+  rescanWatchedFolder: (folderPath: string) => Promise<void>;
+  removeWatchedFolder: (folderPath: string) => Promise<void>;
+  clearScanErrors: (folderId?: number) => Promise<void>;
+  fetchDuplicates: () => Promise<void>;
+  fetchMissingFiles: () => Promise<void>;
+  fetchHealthReport: () => Promise<void>;
+  relinkMissingTrack: (trackId: number) => Promise<{ success: boolean; newPath?: string }>;
+  removeTrackFromLibrary: (trackId: number) => Promise<void>;
+  saveTrackMetadata: (trackId: number, fields: TrackMetadataUpdate, writeToFile?: boolean) => Promise<{
+    success: boolean;
+    catalogUpdated: boolean;
+    fileUpdated: boolean;
+    error?: string;
+  }>;
+  replaceAlbumArtwork: (albumId: number, writeToFile?: boolean) => Promise<{
+    success: boolean;
+    newPath?: string;
+    error?: string;
+  }>;
 }
 
 export const usePlayerStore = create<PlayerState>((set, get) => ({
@@ -137,6 +172,14 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   lyrics: null,
   lyricOffset: 0,
+
+  libraryCareTab: 'scan',
+  watchedFolders: [],
+  scanErrors: [],
+  duplicateGroups: [],
+  missingFiles: [],
+  healthReport: null,
+  isLibraryCareLoading: false,
 
   tracks: [],
   albums: [],
@@ -697,5 +740,134 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         console.error('Error refreshing library:', err);
       }
     }
+  },
+
+  // ── Library Care Actions ──
+  setLibraryCareTab: (tab) => set({ libraryCareTab: tab }),
+
+  loadLibraryCareData: async () => {
+    if (typeof window !== 'undefined' && window.api) {
+      set({ isLibraryCareLoading: true });
+      try {
+        const [dash, health, dupes, missing] = await Promise.all([
+          window.api.getScanDashboard(),
+          window.api.getLibraryHealthReport(),
+          window.api.findDuplicates(),
+          window.api.findMissingFiles(),
+        ]);
+        set({
+          watchedFolders: dash?.folders || [],
+          scanErrors: dash?.recentErrors || [],
+          healthReport: health || null,
+          duplicateGroups: dupes || [],
+          missingFiles: missing || [],
+          isLibraryCareLoading: false,
+        });
+      } catch (err) {
+        console.error('Error loading library care data:', err);
+        set({ isLibraryCareLoading: false });
+      }
+    }
+  },
+
+  rescanWatchedFolder: async (folderPath) => {
+    if (typeof window !== 'undefined' && window.api) {
+      set({ isLibraryCareLoading: true });
+      try {
+        await window.api.rescanFolder(folderPath);
+        await get().refreshLibrary();
+        await get().loadLibraryCareData();
+      } catch (e) {
+        console.error('Error rescanning folder:', e);
+      } finally {
+        set({ isLibraryCareLoading: false });
+      }
+    }
+  },
+
+  removeWatchedFolder: async (folderPath) => {
+    if (typeof window !== 'undefined' && window.api) {
+      set({ isLibraryCareLoading: true });
+      try {
+        await window.api.removeFolderFromLibrary(folderPath);
+        await get().refreshLibrary();
+        await get().loadLibraryCareData();
+      } catch (e) {
+        console.error('Error removing watched folder:', e);
+      } finally {
+        set({ isLibraryCareLoading: false });
+      }
+    }
+  },
+
+  clearScanErrors: async (folderId) => {
+    if (typeof window !== 'undefined' && window.api) {
+      await window.api.clearScanErrors(folderId);
+      const errors = await window.api.getScanErrors();
+      set({ scanErrors: errors || [] });
+    }
+  },
+
+  fetchDuplicates: async () => {
+    if (typeof window !== 'undefined' && window.api) {
+      const dupes = await window.api.findDuplicates();
+      set({ duplicateGroups: dupes || [] });
+    }
+  },
+
+  fetchMissingFiles: async () => {
+    if (typeof window !== 'undefined' && window.api) {
+      const missing = await window.api.findMissingFiles();
+      set({ missingFiles: missing || [] });
+    }
+  },
+
+  fetchHealthReport: async () => {
+    if (typeof window !== 'undefined' && window.api) {
+      const health = await window.api.getLibraryHealthReport();
+      set({ healthReport: health || null });
+    }
+  },
+
+  relinkMissingTrack: async (trackId) => {
+    if (typeof window !== 'undefined' && window.api) {
+      const result = await window.api.relinkTrackDialog(trackId);
+      if (result.success) {
+        await get().fetchMissingFiles();
+        await get().refreshLibrary();
+      }
+      return result;
+    }
+    return { success: false };
+  },
+
+  removeTrackFromLibrary: async (trackId) => {
+    if (typeof window !== 'undefined' && window.api) {
+      await window.api.removeTrackFromLibrary(trackId);
+      await get().refreshLibrary();
+      await get().loadLibraryCareData();
+    }
+  },
+
+  saveTrackMetadata: async (trackId, fields, writeToFile) => {
+    if (typeof window !== 'undefined' && window.api) {
+      const result = await window.api.updateTrackMetadata(trackId, fields, writeToFile);
+      if (result.success) {
+        await get().refreshLibrary();
+      }
+      return result;
+    }
+    return { success: false, catalogUpdated: false, fileUpdated: false };
+  },
+
+  replaceAlbumArtwork: async (albumId, writeToFile) => {
+    if (typeof window !== 'undefined' && window.api) {
+      const result = await window.api.replaceAlbumArtwork(albumId, writeToFile);
+      if (result.success) {
+        await get().refreshLibrary();
+      }
+      return result;
+    }
+    return { success: false };
   },
 }));

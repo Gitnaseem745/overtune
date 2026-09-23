@@ -14,10 +14,23 @@ import {
   removeTrackFromPlaylist, getFavorites, toggleFavorite, 
   exportPlaylistToM3U, importPlaylistFromM3U,
   updateTrackDuration,
-  getLyricOffset, setLyricOffset
+  getLyricOffset, setLyricOffset,
+  getWatchedFolders, addWatchedFolder, removeWatchedFolder,
+  getScanErrors, clearScanErrors, getTrackDetails,
+  findDuplicates, removeTrackFromLibrary,
+  getLibraryHealthReport, getScanDashboard,
+  type TrackMetadataUpdate
 } from './db';
-import { importDirectoryAsPlaylists } from './scanner';
+import { importDirectoryAsPlaylists, rescanFolder, removeFolderFromLibrary } from './scanner';
 import { findLyricsForTrack } from './lyrics';
+import {
+  updateTrackMetadata,
+  findMissingFiles,
+  relinkTrackDialog,
+  relinkTrack,
+  replaceAlbumArtworkDialog,
+  revealInExplorer
+} from './metadata-editor';
 
 const isDev = !app.isPackaged && process.env.NODE_ENV === 'development';
 
@@ -413,6 +426,81 @@ ipcMain.handle('lyrics:getOffset', (_event, trackId: number) => {
 
 ipcMain.handle('lyrics:setOffset', (_event, trackId: number, offsetMs: number) => {
   return setLyricOffset(trackId, offsetMs);
+});
+
+// ── Library Care & Metadata IPC Handlers ──────────────────────────────
+
+ipcMain.handle('db:getWatchedFolders', () => {
+  return getWatchedFolders();
+});
+
+ipcMain.handle('db:addWatchedFolder', (_event, folderPath: string) => {
+  addWatchedFolder(folderPath);
+  return true;
+});
+
+ipcMain.handle('db:removeWatchedFolder', (_event, folderId: number) => {
+  return removeWatchedFolder(folderId);
+});
+
+ipcMain.handle('db:getScanErrors', (_event, folderId?: number) => {
+  return getScanErrors(folderId);
+});
+
+ipcMain.handle('db:clearScanErrors', (_event, folderId?: number) => {
+  return clearScanErrors(folderId);
+});
+
+ipcMain.handle('scanner:rescanFolder', async (_event, folderPath: string) => {
+  return await rescanFolder(folderPath);
+});
+
+ipcMain.handle('scanner:removeFolder', (_event, folderPath: string) => {
+  return removeFolderFromLibrary(folderPath);
+});
+
+ipcMain.handle('metadata:getTrackDetails', (_event, trackId: number) => {
+  return getTrackDetails(trackId);
+});
+
+ipcMain.handle('metadata:updateTrack', async (_event, trackId: number, fields: TrackMetadataUpdate, writeToFile?: boolean) => {
+  return await updateTrackMetadata(trackId, fields, writeToFile);
+});
+
+ipcMain.handle('metadata:findDuplicates', () => {
+  return findDuplicates();
+});
+
+ipcMain.handle('metadata:findMissingFiles', () => {
+  return findMissingFiles();
+});
+
+ipcMain.handle('metadata:relinkTrackDialog', async (_event, trackId: number) => {
+  return await relinkTrackDialog(trackId);
+});
+
+ipcMain.handle('metadata:relinkTrack', (_event, trackId: number, newPath: string) => {
+  return relinkTrack(trackId, newPath);
+});
+
+ipcMain.handle('metadata:replaceAlbumArtwork', async (_event, albumId: number, writeToFile?: boolean) => {
+  return await replaceAlbumArtworkDialog(albumId, writeToFile);
+});
+
+ipcMain.handle('metadata:removeTrackFromLibrary', (_event, trackId: number) => {
+  return removeTrackFromLibrary(trackId);
+});
+
+ipcMain.handle('metadata:revealInExplorer', (_event, filePath: string) => {
+  return revealInExplorer(filePath);
+});
+
+ipcMain.handle('library:getHealthReport', () => {
+  return getLibraryHealthReport();
+});
+
+ipcMain.handle('library:getScanDashboard', () => {
+  return getScanDashboard();
 });
 
 // ── Miniplayer IPC Handlers ───────────────────────────────────────────

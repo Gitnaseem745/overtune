@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.7] - 2026-09-24
+
+### Added
+- **Library Care & Maintenance View**: Complete dedicated management interface for library health, diagnostics, safe metadata editing, artwork replacement, duplicate review, and missing file recovery.
+- **Scan Dashboard**: Real-time status for monitored audio directories, track counts, last scan timestamps, one-click directory rescan, safe directory removal from library, and detailed scan error logs with clearance tools.
+- **Safe Metadata Editor**: Full tag editing for title, artist, album, track number, year, and genre with live preview. Supports both safe catalog-only updates and direct file tag writing.
+- **Direct ID3v2 File Tag Writing**: Integrated `node-id3` to write tags directly into MP3 files on disk with user consent, while preserving catalog-only mode for non-destructive edits.
+- **Album Artwork Manager**: Visual album cover browser and replacer. Allows updating embedded artwork or assigning custom album covers with automatic thumbnail generation.
+- **Deduplication & Duplicate Review**: Cryptographic SHA-256 file hash duplicate detection grouping identical copies. Allows inspecting paths, comparing metadata, revealing files in system Explorer, and non-destructive removal from catalog.
+- **Missing File Detection & Relinking**: Real-time verification of audio file existence on disk with interactive file picker relink workflow for relocated libraries or renamed files.
+- **Library Health Diagnostics**: Comprehensive report tracking untagged titles, missing artists, unassigned genres, zero-duration tracks, and albums without cover artwork with actionable one-click recommendations.
+- **Database Schema Expansion**: Added `watched_folders` and `scan_errors` tables for robust folder tracking and error persistence across sessions.
+- **Automated Test Suite**: 9 unit tests in `tests/library-care.test.js` validating schema migrations, watched folder operations, scan error handling, metadata catalog updates, hash deduplication, missing file detection, relinking, and `node-id3` tag writes.
+
+### Changed
+- Added "Library Care" navigation item to both Spotify and Classic sidebar layouts.
+- Enhanced scanner workflow to automatically log directory scan metrics and capture errors into the database.
+
+---
+
 ## [0.1.6] - 2026-09-24
 
 ### Added

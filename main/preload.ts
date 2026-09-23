@@ -28,6 +28,28 @@ contextBridge.exposeInMainWorld('api', {
   getLyricOffset: (trackId: number) => ipcRenderer.invoke('lyrics:getOffset', trackId),
   setLyricOffset: (trackId: number, offsetMs: number) => ipcRenderer.invoke('lyrics:setOffset', trackId, offsetMs),
 
+  // Library Care & Metadata
+  getWatchedFolders: () => ipcRenderer.invoke('db:getWatchedFolders'),
+  addWatchedFolder: (folderPath: string) => ipcRenderer.invoke('db:addWatchedFolder', folderPath),
+  removeWatchedFolder: (folderId: number) => ipcRenderer.invoke('db:removeWatchedFolder', folderId),
+  getScanErrors: (folderId?: number) => ipcRenderer.invoke('db:getScanErrors', folderId),
+  clearScanErrors: (folderId?: number) => ipcRenderer.invoke('db:clearScanErrors', folderId),
+  rescanFolder: (folderPath: string) => ipcRenderer.invoke('scanner:rescanFolder', folderPath),
+  removeFolderFromLibrary: (folderPath: string) => ipcRenderer.invoke('scanner:removeFolder', folderPath),
+  getTrackDetails: (trackId: number) => ipcRenderer.invoke('metadata:getTrackDetails', trackId),
+  updateTrackMetadata: (trackId: number, fields: unknown, writeToFile?: boolean) =>
+    ipcRenderer.invoke('metadata:updateTrack', trackId, fields, writeToFile),
+  findDuplicates: () => ipcRenderer.invoke('metadata:findDuplicates'),
+  findMissingFiles: () => ipcRenderer.invoke('metadata:findMissingFiles'),
+  relinkTrackDialog: (trackId: number) => ipcRenderer.invoke('metadata:relinkTrackDialog', trackId),
+  relinkTrack: (trackId: number, newPath: string) => ipcRenderer.invoke('metadata:relinkTrack', trackId, newPath),
+  replaceAlbumArtwork: (albumId: number, writeToFile?: boolean) =>
+    ipcRenderer.invoke('metadata:replaceAlbumArtwork', albumId, writeToFile),
+  removeTrackFromLibrary: (trackId: number) => ipcRenderer.invoke('metadata:removeTrackFromLibrary', trackId),
+  revealInExplorer: (filePath: string) => ipcRenderer.invoke('metadata:revealInExplorer', filePath),
+  getLibraryHealthReport: () => ipcRenderer.invoke('library:getHealthReport'),
+  getScanDashboard: () => ipcRenderer.invoke('library:getScanDashboard'),
+
   // Miniplayer
   toggleMiniplayer: () => ipcRenderer.invoke('window:toggleMiniplayer'),
   setMiniplayer: (enable: boolean) => ipcRenderer.invoke('window:setMiniplayer', enable),

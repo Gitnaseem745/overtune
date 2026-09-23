@@ -11,7 +11,6 @@ import {
 export function LyricsPanel() {
   const currentTrack = usePlayerStore((s) => s.currentTrack);
   const currentTime = usePlayerStore((s) => s.currentTime);
-  const isPlaying = usePlayerStore((s) => s.isPlaying);
   const theme = usePlayerStore((s) => s.theme);
   const accentColor = usePlayerStore((s) => s.accentColor);
   const lyrics = usePlayerStore((s) => s.lyrics);
@@ -37,7 +36,7 @@ export function LyricsPanel() {
     } else if (!currentTrack) {
       lastTrackIdRef.current = null;
     }
-  }, [currentTrack?.id, fetchLyrics]);
+  }, [currentTrack, fetchLyrics]);
 
   // Find the currently active line index (for synced lyrics)
   const getActiveLineIndex = useCallback(() => {

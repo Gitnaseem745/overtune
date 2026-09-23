@@ -1,5 +1,5 @@
 import chokidar from 'chokidar';
-import { getDb } from './db';
+import { getDb, addWatchedFolder, updateWatchedFolder, logScanError } from './db';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as mm from 'music-metadata';
@@ -71,6 +71,7 @@ export function startWatching(folderPath: string) {
     });
 
   watchers.set(folderPath, watcher);
+  addWatchedFolder(folderPath);
 }
 
 export function stopWatching(folderPath: string) {
@@ -79,6 +80,47 @@ export function stopWatching(folderPath: string) {
     watcher.close();
     watchers.delete(folderPath);
   }
+}
+
+export async function rescanFolder(folderPath: string): Promise<{ tracksFound: number }> {
+  const audioFiles = findAudioFilesRecursively(folderPath);
+  let tracksFound = 0;
+
+  updateWatchedFolder(folderPath, 0, 'scanning');
+
+  for (const filePath of audioFiles) {
+    try {
+      const trackId = await insertOrGetTrack(filePath);
+      if (trackId) tracksFound++;
+    } catch (err) {
+      const db = getDb();
+      const folder = db.prepare(`SELECT id FROM watched_folders WHERE path = ?`).get(folderPath) as { id: number } | undefined;
+      logScanError(folder?.id ?? null, filePath, String(err));
+    }
+  }
+
+  updateWatchedFolder(folderPath, tracksFound, 'idle');
+  notifyLibraryUpdated();
+  return { tracksFound };
+}
+
+export function removeFolderFromLibrary(folderPath: string): { tracksRemoved: number } {
+  stopWatching(folderPath);
+  const db = getDb();
+  const tracks = db.prepare(`SELECT id FROM tracks WHERE path LIKE ?`).all(`${folderPath}%`) as Array<{ id: number }>;
+  for (const t of tracks) {
+    db.prepare(`DELETE FROM playlist_tracks WHERE track_id = ?`).run(t.id);
+    db.prepare(`DELETE FROM favorites WHERE track_id = ?`).run(t.id);
+    db.prepare(`DELETE FROM lyric_offsets WHERE track_id = ?`).run(t.id);
+  }
+  const result = db.prepare(`DELETE FROM tracks WHERE path LIKE ?`).run(`${folderPath}%`);
+  const folder = db.prepare(`SELECT id FROM watched_folders WHERE path = ?`).get(folderPath) as { id: number } | undefined;
+  if (folder) {
+    db.prepare(`DELETE FROM scan_errors WHERE folder_id = ?`).run(folder.id);
+    db.prepare(`DELETE FROM watched_folders WHERE id = ?`).run(folder.id);
+  }
+  notifyLibraryUpdated();
+  return { tracksRemoved: result.changes };
 }
 
 export function isAudioFile(filePath: string) {

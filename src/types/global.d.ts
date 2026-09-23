@@ -1,4 +1,7 @@
-import { Track, Album, Artist, Playlist, LyricsData } from './music';
+import { 
+  Track, Album, Artist, Playlist, LyricsData,
+  WatchedFolder, ScanError, DuplicateGroup, MissingFile, HealthReport, ScanDashboard, TrackMetadataUpdate
+} from './music';
 
 export {};
 
@@ -36,6 +39,31 @@ declare global {
       getLyricsForTrack: (trackPath: string, trackId: number) => Promise<LyricsData>;
       getLyricOffset: (trackId: number) => Promise<number>;
       setLyricOffset: (trackId: number, offsetMs: number) => Promise<boolean>;
+
+      // Library Care & Metadata
+      getWatchedFolders: () => Promise<WatchedFolder[]>;
+      addWatchedFolder: (folderPath: string) => Promise<boolean>;
+      removeWatchedFolder: (folderId: number) => Promise<boolean>;
+      getScanErrors: (folderId?: number) => Promise<ScanError[]>;
+      clearScanErrors: (folderId?: number) => Promise<boolean>;
+      rescanFolder: (folderPath: string) => Promise<{ tracksFound: number }>;
+      removeFolderFromLibrary: (folderPath: string) => Promise<{ tracksRemoved: number }>;
+      getTrackDetails: (trackId: number) => Promise<Track & { artist_id: number; album_id: number; year?: number | null } | undefined>;
+      updateTrackMetadata: (trackId: number, fields: TrackMetadataUpdate, writeToFile?: boolean) => Promise<{
+        success: boolean;
+        catalogUpdated: boolean;
+        fileUpdated: boolean;
+        error?: string;
+      }>;
+      findDuplicates: () => Promise<DuplicateGroup[]>;
+      findMissingFiles: () => Promise<MissingFile[]>;
+      relinkTrackDialog: (trackId: number) => Promise<{ success: boolean; newPath?: string }>;
+      relinkTrack: (trackId: number, newPath: string) => Promise<{ success: boolean; error?: string }>;
+      replaceAlbumArtwork: (albumId: number, writeToFile?: boolean) => Promise<{ success: boolean; newPath?: string; error?: string }>;
+      removeTrackFromLibrary: (trackId: number) => Promise<boolean>;
+      revealInExplorer: (filePath: string) => Promise<boolean>;
+      getLibraryHealthReport: () => Promise<HealthReport>;
+      getScanDashboard: () => Promise<ScanDashboard>;
 
       // Miniplayer
       toggleMiniplayer: () => Promise<boolean>;

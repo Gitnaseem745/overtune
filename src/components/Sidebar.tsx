@@ -6,7 +6,7 @@ import { ActiveTab } from '../types/music';
 import { 
   Compass, Music, Disc3, Mic2, Folder, FolderDown,
   Library, Plus, Heart, ListMusic,
-  PanelLeftClose, EyeOff
+  PanelLeftClose, EyeOff, ShieldCheck
 } from 'lucide-react';
 import { getAccentColorHex } from '../lib/utils';
 import { OvertoneLogo } from './OvertoneLogo';
@@ -228,6 +228,17 @@ export function Sidebar() {
                   tab="Songs" 
                   icon={Music} 
                   badge={tracks.length} 
+                  activeTab={activeTab}
+                  isDark={isDark}
+                  isSpotifyLayout={isSpotifyLayout}
+                  isCollapsed={isSidebarCollapsed}
+                  accentHex={accentHex}
+                  onClick={setActiveTab}
+                />
+                <NavItem 
+                  name="Library Care" 
+                  tab="LibraryCare" 
+                  icon={ShieldCheck} 
                   activeTab={activeTab}
                   isDark={isDark}
                   isSpotifyLayout={isSpotifyLayout}
@@ -543,6 +554,17 @@ export function Sidebar() {
               tab="Artists" 
               icon={Mic2} 
               badge={artists.length} 
+              activeTab={activeTab}
+              isDark={isDark}
+              isSpotifyLayout={isSpotifyLayout}
+              isCollapsed={isSidebarCollapsed}
+              accentHex={accentHex}
+              onClick={setActiveTab}
+            />
+            <NavItem 
+              name="Library Care" 
+              tab="LibraryCare" 
+              icon={ShieldCheck} 
               activeTab={activeTab}
               isDark={isDark}
               isSpotifyLayout={isSpotifyLayout}

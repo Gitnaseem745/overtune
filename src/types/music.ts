@@ -48,6 +48,65 @@ export interface Playlist {
   cover_art?: string | null;
 }
 
+export interface WatchedFolder {
+  id: number;
+  path: string;
+  last_scan_at: string | null;
+  track_count: number;
+  status: 'idle' | 'scanning' | 'error';
+}
+
+export interface ScanError {
+  id: number;
+  folder_id: number | null;
+  file_path: string;
+  error_message: string;
+  created_at: string;
+}
+
+export interface DuplicateGroup {
+  file_hash: string;
+  count: number;
+  tracks: Track[];
+}
+
+export interface MissingFile {
+  id: number;
+  title: string;
+  artist: string;
+  album: string;
+  path: string;
+}
+
+export interface HealthReport {
+  totalTracks: number;
+  totalAlbums: number;
+  totalArtists: number;
+  missingTitle: number;
+  missingArtist: number;
+  zeroDuration: number;
+  missingGenre: number;
+  duplicateCount: number;
+  albumsMissingArt: number;
+  zeroDurationTracks: Array<{ id: number; title: string; path: string }>;
+  albumsMissingArtList: Array<{ id: number; title: string; artist: string }>;
+}
+
+export interface ScanDashboard {
+  folders: WatchedFolder[];
+  totalTracks: number;
+  recentErrors: ScanError[];
+}
+
+export interface TrackMetadataUpdate {
+  title?: string;
+  artist?: string;
+  album?: string;
+  track_number?: number | null;
+  genre?: string | null;
+  year?: number | null;
+}
+
 export type ThemeMode = 'light' | 'dark';
 export type LayoutMode = 'classic' | 'spotify';
 export type AccentColor = 
@@ -74,4 +133,5 @@ export type ActiveTab =
   | 'AlbumDetail' 
   | 'ArtistDetail' 
   | 'PlaylistDetail' 
-  | 'LikedSongs';
+  | 'LikedSongs'
+  | 'LibraryCare';
