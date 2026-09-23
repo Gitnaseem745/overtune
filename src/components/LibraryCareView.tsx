@@ -7,7 +7,7 @@ import {
   Folder, RefreshCw, Trash2, AlertTriangle, CheckCircle2, 
   Edit3, Image as ImageIcon, Copy, FileQuestion, Activity, 
   ExternalLink, Link2, Search, Save, ShieldCheck, 
-  Disc, FileWarning, ArrowRight, FolderPlus
+  Disc, FileWarning, ArrowRight, FolderPlus, Check
 } from 'lucide-react';
 import { formatTime, getAccentColorHex } from '../lib/utils';
 
@@ -31,6 +31,7 @@ export function LibraryCareView() {
   const clearScanErrors = usePlayerStore((s) => s.clearScanErrors);
   const relinkMissingTrack = usePlayerStore((s) => s.relinkMissingTrack);
   const removeTrackFromLibrary = usePlayerStore((s) => s.removeTrackFromLibrary);
+  const ignoreDuplicate = usePlayerStore((s) => s.ignoreDuplicate);
   const saveTrackMetadata = usePlayerStore((s) => s.saveTrackMetadata);
   const replaceAlbumArtwork = usePlayerStore((s) => s.replaceAlbumArtwork);
 
@@ -708,9 +709,9 @@ export function LibraryCareView() {
           }`}>
             <Copy size={20} style={{ color: accentHex }} className="mt-0.5 shrink-0" />
             <div>
-              <h2 className="text-sm font-bold">Identical Audio File Groups</h2>
+              <h2 className="text-sm font-bold">Duplicate Audio Review & Resolution</h2>
               <p className={`text-xs mt-0.5 ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
-                Detected via cryptographic SHA-256 file hashing. Removing a duplicate from library is non-destructive: it only removes the catalog entry, never deleting the audio file on disk.
+                Detected via audio file hashing and matching song metadata (title, duration, album) across different artists. Choose <strong>Remove</strong> to unregister a duplicate or <strong>Stay</strong> to keep both copies if they are different versions.
               </p>
             </div>
           </div>
@@ -728,13 +729,37 @@ export function LibraryCareView() {
                   key={group.file_hash || idx}
                   className={`rounded-2xl p-4 border ${isDark ? 'bg-neutral-900/60 border-neutral-800' : 'bg-white border-gray-200 shadow-xs'}`}
                 >
-                  <div className="flex items-center justify-between mb-3 pb-2 border-b border-neutral-700/20">
-                    <span className="text-xs font-mono text-neutral-400">
-                      Hash: {group.file_hash.substring(0, 16)}... ({group.count} copies)
-                    </span>
-                    <span className="text-[11px] font-semibold text-amber-400">
-                      Duplicate Set #{idx + 1}
-                    </span>
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-3 pb-2 border-b border-neutral-700/20">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full ${
+                        group.match_type === 'metadata'
+                          ? 'bg-purple-500/15 text-purple-400 border border-purple-500/30'
+                          : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                      }`}>
+                        {group.reason || (group.match_type === 'metadata' ? 'Matching Title & Duration' : 'Identical Audio Hash')}
+                      </span>
+                      <span className="text-xs text-neutral-400">
+                        ({group.count} copies)
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={async () => {
+                          const trackIds = group.tracks.map((t) => t.id);
+                          await ignoreDuplicate(trackIds);
+                        }}
+                        title="Mark as different tracks and keep all in library"
+                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors border ${
+                          isDark 
+                            ? 'bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border-neutral-700' 
+                            : 'bg-gray-100 hover:bg-gray-200 text-gray-800 border-gray-300'
+                        }`}
+                      >
+                        <Check size={13} className="text-emerald-400" />
+                        <span>Stay (Keep Both)</span>
+                      </button>
+                    </div>
                   </div>
 
                   <div className="space-y-2">

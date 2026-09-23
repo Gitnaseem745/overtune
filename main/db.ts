@@ -165,6 +165,15 @@ export function initDb() {
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS ignored_duplicates (
+      track_id_1 INTEGER NOT NULL,
+      track_id_2 INTEGER NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (track_id_1, track_id_2),
+      FOREIGN KEY(track_id_1) REFERENCES tracks(id) ON DELETE CASCADE,
+      FOREIGN KEY(track_id_2) REFERENCES tracks(id) ON DELETE CASCADE
+    );
   `);
 
   return db;
@@ -533,42 +542,289 @@ export function updateAlbumArtwork(albumId: number, artworkPath: string): boolea
   }
 }
 
-// ── Duplicate Detection ──────────────────────────────────────────────
+// ── Duplicate Detection & Management ──────────────────────────────────
 
-export function findDuplicates() {
+export interface DuplicateGroupResult {
+  file_hash: string;
+  count: number;
+  tracks: TrackRecord[];
+  match_type?: 'hash' | 'metadata';
+  reason?: string;
+}
+
+export interface TrackRecord {
+  id: number;
+  title: string;
+  path: string;
+  duration: number;
+  track_number: number | null;
+  genre: string | null;
+  file_hash: string | null;
+  artist: string;
+  album: string;
+  cover_art: string | null;
+}
+
+export function ignoreDuplicate(trackId1: number, trackId2: number): boolean {
+  try {
+    const database = getDb();
+    const t1 = Math.min(trackId1, trackId2);
+    const t2 = Math.max(trackId1, trackId2);
+    database.prepare(`
+      INSERT OR IGNORE INTO ignored_duplicates (track_id_1, track_id_2)
+      VALUES (?, ?)
+    `).run(t1, t2);
+    return true;
+  } catch (err) {
+    console.error('Error ignoring duplicate:', err);
+    return false;
+  }
+}
+
+export function ignoreDuplicateGroup(trackIds: number[]): boolean {
+  try {
+    const database = getDb();
+    const insert = database.prepare(`
+      INSERT OR IGNORE INTO ignored_duplicates (track_id_1, track_id_2)
+      VALUES (?, ?)
+    `);
+    const transaction = database.transaction((ids: number[]) => {
+      for (let i = 0; i < ids.length; i++) {
+        for (let j = i + 1; j < ids.length; j++) {
+          const t1 = Math.min(ids[i], ids[j]);
+          const t2 = Math.max(ids[i], ids[j]);
+          insert.run(t1, t2);
+        }
+      }
+    });
+    transaction(trackIds);
+    return true;
+  } catch (err) {
+    console.error('Error ignoring duplicate group:', err);
+    return false;
+  }
+}
+
+export function unignoreDuplicate(trackId1: number, trackId2: number): boolean {
+  try {
+    const database = getDb();
+    const t1 = Math.min(trackId1, trackId2);
+    const t2 = Math.max(trackId1, trackId2);
+    database.prepare(`
+      DELETE FROM ignored_duplicates WHERE track_id_1 = ? AND track_id_2 = ?
+    `).run(t1, t2);
+    return true;
+  } catch (err) {
+    console.error('Error unignoring duplicate:', err);
+    return false;
+  }
+}
+
+export function findDuplicates(): DuplicateGroupResult[] {
   const database = getDb();
-  const groups = database.prepare(`
-    SELECT file_hash, COUNT(*) as count
-    FROM tracks
-    WHERE file_hash IS NOT NULL AND file_hash != ''
-    GROUP BY file_hash
-    HAVING count > 1
-    ORDER BY count DESC
-  `).all() as Array<{ file_hash: string; count: number }>;
 
-  return groups.map((group) => {
-    const tracks = database.prepare(`
-      SELECT
-        t.id, t.title, t.path, t.duration, t.track_number, t.genre, t.file_hash,
-        COALESCE(a.name, 'Unknown Artist') AS artist,
-        COALESCE(al.title, 'Unknown Album') AS album,
-        al.cover_art_path AS cover_art
-      FROM tracks t
-      LEFT JOIN artists a ON t.artist_id = a.id
-      LEFT JOIN albums al ON t.album_id = al.id
-      WHERE t.file_hash = ?
-    `).all(group.file_hash);
-    return { file_hash: group.file_hash, count: group.count, tracks };
-  });
+  // 1. Load ignored pairs
+  const ignoredRows = database.prepare(`
+    SELECT track_id_1, track_id_2 FROM ignored_duplicates
+  `).all() as Array<{ track_id_1: number; track_id_2: number }>;
+  const ignoredSet = new Set<string>();
+  for (const row of ignoredRows) {
+    const t1 = Math.min(row.track_id_1, row.track_id_2);
+    const t2 = Math.max(row.track_id_1, row.track_id_2);
+    ignoredSet.add(`${t1}_${t2}`);
+  }
+
+  // 2. Fetch all tracks
+  const allTracks = database.prepare(`
+    SELECT
+      t.id, t.title, t.path, t.duration, t.track_number, t.genre, t.file_hash,
+      COALESCE(a.name, 'Unknown Artist') AS artist,
+      COALESCE(al.title, 'Unknown Album') AS album,
+      al.cover_art_path AS cover_art
+    FROM tracks t
+    LEFT JOIN artists a ON t.artist_id = a.id
+    LEFT JOIN albums al ON t.album_id = al.id
+    ORDER BY t.id ASC
+  `).all() as TrackRecord[];
+
+  if (allTracks.length < 2) {
+    return [];
+  }
+
+  // Adjacency graph for clustering
+  const adj = new Map<number, Set<number>>();
+  const trackMap = new Map<number, TrackRecord>();
+  const edgeReason = new Map<string, string>();
+
+  for (const t of allTracks) {
+    adj.set(t.id, new Set());
+    trackMap.set(t.id, t);
+  }
+
+  function addEdge(id1: number, id2: number, reason: string) {
+    if (id1 === id2) return;
+    const t1 = Math.min(id1, id2);
+    const t2 = Math.max(id1, id2);
+    const key = `${t1}_${t2}`;
+    if (ignoredSet.has(key)) return; // Ignored by user ("Stay")
+
+    adj.get(id1)!.add(id2);
+    adj.get(id2)!.add(id1);
+    if (!edgeReason.has(key)) {
+      edgeReason.set(key, reason);
+    }
+  }
+
+  // A. Check exact file_hash matches
+  const hashBuckets = new Map<string, number[]>();
+  for (const t of allTracks) {
+    if (t.file_hash && t.file_hash.trim()) {
+      const h = t.file_hash.trim();
+      if (!hashBuckets.has(h)) hashBuckets.set(h, []);
+      hashBuckets.get(h)!.push(t.id);
+    }
+  }
+  for (const [, ids] of hashBuckets.entries()) {
+    if (ids.length > 1) {
+      for (let i = 0; i < ids.length; i++) {
+        for (let j = i + 1; j < ids.length; j++) {
+          addEdge(ids[i], ids[j], 'Identical Audio File Hash');
+        }
+      }
+    }
+  }
+
+  // Helper to normalize strings (remove punctuation, extra spaces, lowercase)
+  const normalize = (str: string) => str.toLowerCase().replace(/[^\w\s]/gi, '').replace(/\s+/g, ' ').trim();
+
+  // B. Check Metadata duplicates:
+  // Same normalized title + close duration (within 3 seconds) or same album
+  // Even if artists are different!
+  const titleBuckets = new Map<string, number[]>();
+  for (const t of allTracks) {
+    const normTitle = normalize(t.title || '');
+    if (normTitle.length > 1) { // ignore single-char or empty titles
+      if (!titleBuckets.has(normTitle)) titleBuckets.set(normTitle, []);
+      titleBuckets.get(normTitle)!.push(t.id);
+    }
+  }
+
+  for (const [, ids] of titleBuckets.entries()) {
+    if (ids.length > 1) {
+      for (let i = 0; i < ids.length; i++) {
+        for (let j = i + 1; j < ids.length; j++) {
+          const t1 = trackMap.get(ids[i])!;
+          const t2 = trackMap.get(ids[j])!;
+
+          const d1 = t1.duration || 0;
+          const d2 = t2.duration || 0;
+          const durationDiff = Math.abs(d1 - d2);
+
+          const album1 = normalize(t1.album || '');
+          const album2 = normalize(t2.album || '');
+          const sameAlbum = album1.length > 1 && album1 === album2;
+
+          // If duration is known for both and close (<= 3 seconds)
+          if (d1 > 0 && d2 > 0) {
+            if (durationDiff <= 3.0) {
+              addEdge(t1.id, t2.id, `Matching Song Title & Duration (~${Math.round(d1)}s)`);
+            } else if (sameAlbum && durationDiff <= 8.0) {
+              addEdge(t1.id, t2.id, `Matching Song Title & Album ("${t1.album}")`);
+            }
+          } else if (sameAlbum) {
+            // Duration unknown on one/both, but same title & album
+            addEdge(t1.id, t2.id, `Matching Song Title & Album ("${t1.album}")`);
+          }
+        }
+      }
+    }
+  }
+
+  // 3. Find connected components (groups of duplicate tracks)
+  const visited = new Set<number>();
+  const groups: DuplicateGroupResult[] = [];
+
+  for (const t of allTracks) {
+    if (visited.has(t.id)) continue;
+    const neighbors = adj.get(t.id)!;
+    if (neighbors.size === 0) continue; // Not a duplicate
+
+    // BFS to find all connected tracks in this duplicate cluster
+    const cluster: number[] = [];
+    const queue = [t.id];
+    visited.add(t.id);
+
+    while (queue.length > 0) {
+      const curr = queue.shift()!;
+      cluster.push(curr);
+      for (const n of adj.get(curr)!) {
+        if (!visited.has(n)) {
+          visited.add(n);
+          queue.push(n);
+        }
+      }
+    }
+
+    if (cluster.length > 1) {
+      const groupTracks = cluster.map(id => trackMap.get(id)!);
+
+      // Determine primary reason
+      let primaryReason = 'Potential Duplicate';
+      let matchType: 'hash' | 'metadata' = 'metadata';
+
+      for (let i = 0; i < cluster.length; i++) {
+        for (let j = i + 1; j < cluster.length; j++) {
+          const key = `${Math.min(cluster[i], cluster[j])}_${Math.max(cluster[i], cluster[j])}`;
+          if (edgeReason.has(key)) {
+            primaryReason = edgeReason.get(key)!;
+            if (primaryReason.includes('Hash')) {
+              matchType = 'hash';
+            }
+            break;
+          }
+        }
+      }
+
+      // Group identifier
+      const fileHash = matchType === 'hash' && groupTracks[0].file_hash
+        ? groupTracks[0].file_hash
+        : `meta_${groupTracks[0].id}_${groupTracks[1].id}`;
+
+      groups.push({
+        file_hash: fileHash,
+        count: groupTracks.length,
+        tracks: groupTracks,
+        match_type: matchType,
+        reason: primaryReason,
+      });
+    }
+  }
+
+  return groups;
 }
 
 export function removeTrackFromLibrary(trackId: number): boolean {
   try {
     const database = getDb();
+    const track = database.prepare(`SELECT album_id FROM tracks WHERE id = ?`).get(trackId) as { album_id?: number } | undefined;
+    
     database.prepare(`DELETE FROM playlist_tracks WHERE track_id = ?`).run(trackId);
     database.prepare(`DELETE FROM favorites WHERE track_id = ?`).run(trackId);
     database.prepare(`DELETE FROM lyric_offsets WHERE track_id = ?`).run(trackId);
+    database.prepare(`DELETE FROM track_ratings WHERE track_id = ?`).run(trackId);
+    database.prepare(`DELETE FROM track_tags WHERE track_id = ?`).run(trackId);
+    database.prepare(`DELETE FROM play_history WHERE track_id = ?`).run(trackId);
+    database.prepare(`DELETE FROM ignored_duplicates WHERE track_id_1 = ? OR track_id_2 = ?`).run(trackId, trackId);
     database.prepare(`DELETE FROM tracks WHERE id = ?`).run(trackId);
+
+    // If album now has 0 tracks, clean up orphaned album record
+    if (track?.album_id) {
+      const remaining = database.prepare(`SELECT COUNT(*) as count FROM tracks WHERE album_id = ?`).get(track.album_id) as { count: number };
+      if (remaining.count === 0) {
+        database.prepare(`DELETE FROM albums WHERE id = ?`).run(track.album_id);
+      }
+    }
+
     return true;
   } catch (e) {
     console.error('Error removing track from library:', e);

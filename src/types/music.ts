@@ -68,6 +68,8 @@ export interface DuplicateGroup {
   file_hash: string;
   count: number;
   tracks: Track[];
+  match_type?: 'hash' | 'metadata';
+  reason?: string;
 }
 
 export interface MissingFile {

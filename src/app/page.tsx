@@ -10,6 +10,7 @@ import { TopHeader } from '../components/TopHeader';
 import { RightPanel } from '../components/RightPanel';
 import { NowPlayingBar } from '../components/NowPlayingBar';
 import { MiniPlayer } from '../components/MiniPlayer';
+import { FullscreenPlayer } from '../components/FullscreenPlayer';
 
 import { DiscoverView } from '../components/DiscoverView';
 import { SongsView } from '../components/SongsView';
@@ -31,6 +32,7 @@ export default function Home() {
   const isMiniplayer = usePlayerStore((s) => s.isMiniplayer);
   const setMiniplayer = usePlayerStore((s) => s.setMiniplayer);
   const isLyricsPanelOpen = usePlayerStore((s) => s.isLyricsPanelOpen);
+  const isFullscreenPlayerOpen = usePlayerStore((s) => s.isFullscreenPlayerOpen);
 
   const isDark = theme === 'dark';
   const isSpotifyLayout = layout === 'spotify';
@@ -122,6 +124,9 @@ export default function Home() {
 
       {/* ── Bottom Persistent Transport Bar ── */}
       <NowPlayingBar />
+
+      {/* ── Spotify Fullscreen Overlay ── */}
+      {isFullscreenPlayerOpen && <FullscreenPlayer />}
     </div>
   );
 }

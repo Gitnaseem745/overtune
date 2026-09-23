@@ -21,7 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Local-Network Device Sync (100% Cloud-Free)**: Private, local-area network synchronization protocol operating over native Node.js HTTP. Features 6-digit time-limited numeric PIN pairing, authorized paired device management with instant revocation, and peer-to-peer playlist transmission requiring explicit recipient approval before library import.
 - **Versioned Database Migration Engine**: Safe schema evolution via `schema_migrations` tracking table. Applies incremental migrations in isolated database transactions with pre-migration backup safeguards.
 - **In-App Release Quality Baseline & Community Feedback**: Added About & Feedback tab displaying runtime specifications (Electron 32, Node 20, Next.js 16, React 19, SQLite WAL), schema health, and direct GitHub bug reporting / feature requests via `<FeedbackLink />` with zero telemetry and no account requirements.
-- **Automated Test Suite**: Added `tests/backup.test.js` verifying migrations, backup JSON schema, preview inspection, conflict handling modes, catalog relocation, and device pairing (87/87 automated tests passing across 19 suites).
+- **Cross-Artist Duplicate Detection & Resolution**: Upgraded duplicate detection in Library Care to catch songs sharing matching title and duration/album even when artist tags differ (e.g., collaborative releases or compilations). Provides a "Stay (Keep Both)" option to permanently ignore false positives, persisted in a dedicated `ignored_duplicates` database table.
+- **Spotify-Grade Fullscreen Player**: Fullscreen player overlay (`FullscreenPlayer.tsx`) toggleable via the Now Playing bar or hotkey. Supports high-resolution cover artwork mode, bold synchronized lyrics mode with interactive seeking, complete playback transport bar, and an automatic 5-second inactivity timer that smoothly fades out controls during uninterrupted listening.
+- **Automated Test Suite**: Added `tests/backup.test.js` and `tests/duplicates-extended.test.js` (90/90 automated tests passing across 20 suites).
 
 ---
 

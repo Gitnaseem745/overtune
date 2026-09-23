@@ -113,6 +113,8 @@
 - **Music Library Relocation Wizard:** Effortlessly map and update base path prefixes across the database when migrating music collections between external drives, partitions, or new computers.
 - **Local-Network Device Sync (100% Cloud-Free):** Private peer-to-peer playlist sharing over local Wi-Fi / LAN with 6-digit numeric PIN pairing, explicit authorization management, and recipient confirmation prompts.
 - **Versioned Migration Architecture:** Transactional schema migrations tracked via `schema_migrations` ensuring safe database upgrades.
+- **Cross-Artist Duplicate Detection & "Stay" Resolution:** Detects duplicate audio tracks sharing identical titles and duration/album across different artist tags with "Stay (Keep Both)" ignore persistence in `ignored_duplicates`.
+- **Spotify-Grade Fullscreen Player & 5s Auto-Hide:** Immersive full-screen playback with toggleable large artwork view, bold synchronized lyrics view with interactive seek, full transport controls, and intelligent 5-second inactivity auto-hide.
 - **In-App Release Quality Baseline & Community Feedback:** Integrated About view with runtime specs (Electron, Node.js, Chromium, SQLite WAL) and direct, privacy-respecting GitHub feedback link.
 
 ---

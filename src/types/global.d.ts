@@ -58,6 +58,7 @@ declare global {
         error?: string;
       }>;
       findDuplicates: () => Promise<DuplicateGroup[]>;
+      ignoreDuplicate: (trackIds: number[]) => Promise<boolean>;
       findMissingFiles: () => Promise<MissingFile[]>;
       relinkTrackDialog: (trackId: number) => Promise<{ success: boolean; newPath?: string }>;
       relinkTrack: (trackId: number, newPath: string) => Promise<{ success: boolean; error?: string }>;
@@ -105,6 +106,8 @@ declare global {
       maximizeWindow: () => Promise<boolean>;
       closeWindow: () => Promise<boolean>;
       isMaximized: () => Promise<boolean>;
+      toggleFullScreen: () => Promise<boolean>;
+      isFullScreen: () => Promise<boolean>;
 
       onLibraryUpdated: (callback: () => void) => () => void;
 

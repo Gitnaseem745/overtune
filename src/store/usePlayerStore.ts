@@ -66,6 +66,8 @@ interface PlayerState {
   restoreResult: RestoreResult | null;
   syncStatus: DeviceSyncStatus | null;
   appInfo: AppInfo | null;
+  isFullscreenPlayerOpen: boolean;
+  fullscreenMode: 'artwork' | 'lyrics';
 
   // ── Library Data ──
   tracks: Track[];
@@ -114,6 +116,10 @@ interface PlayerState {
   setMiniplayer: (mini: boolean) => void;
   toggleLyricsPanel: () => void;
   setLyricsPanelOpen: (open: boolean) => void;
+  toggleFullscreenPlayer: () => void;
+  setFullscreenPlayerOpen: (open: boolean) => void;
+  setFullscreenMode: (mode: 'artwork' | 'lyrics') => void;
+  ignoreDuplicate: (trackIds: number[]) => Promise<void>;
   fetchLyrics: (trackPath: string, trackId: number) => Promise<void>;
   adjustLyricOffset: (trackId: number, deltaMs: number) => Promise<void>;
   resetLyricOffset: (trackId: number) => Promise<void>;
@@ -297,6 +303,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   restoreResult: null,
   syncStatus: null,
   appInfo: null,
+  isFullscreenPlayerOpen: false,
+  fullscreenMode: 'artwork',
 
   tracks: [],
   albums: [],
@@ -447,6 +455,19 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       localStorage.setItem('overtone_lyrics_panel', String(isLyricsPanelOpen));
     }
     set({ isLyricsPanelOpen });
+  },
+  toggleFullscreenPlayer: () => {
+    const next = !get().isFullscreenPlayerOpen;
+    set({ isFullscreenPlayerOpen: next });
+    if (typeof window !== 'undefined' && window.api?.toggleFullScreen) {
+      window.api.toggleFullScreen().catch(console.error);
+    }
+  },
+  setFullscreenPlayerOpen: (isFullscreenPlayerOpen) => {
+    set({ isFullscreenPlayerOpen });
+  },
+  setFullscreenMode: (fullscreenMode) => {
+    set({ fullscreenMode });
   },
   fetchLyrics: async (trackPath, trackId) => {
     if (typeof window !== 'undefined' && window.api?.getLyricsForTrack) {
@@ -939,6 +960,14 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   fetchDuplicates: async () => {
     if (typeof window !== 'undefined' && window.api) {
+      const dupes = await window.api.findDuplicates();
+      set({ duplicateGroups: dupes || [] });
+    }
+  },
+
+  ignoreDuplicate: async (trackIds: number[]) => {
+    if (typeof window !== 'undefined' && window.api?.ignoreDuplicate) {
+      await window.api.ignoreDuplicate(trackIds);
       const dupes = await window.api.findDuplicates();
       set({ duplicateGroups: dupes || [] });
     }

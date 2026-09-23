@@ -27,7 +27,7 @@ import {
   getLyricOffset, setLyricOffset,
   getWatchedFolders, addWatchedFolder, removeWatchedFolder,
   getScanErrors, clearScanErrors, getTrackDetails,
-  findDuplicates, removeTrackFromLibrary,
+  findDuplicates, removeTrackFromLibrary, ignoreDuplicateGroup,
   getLibraryHealthReport, getScanDashboard,
   type TrackMetadataUpdate,
   recordPlayEvent, getPlayHistory, getPlayCounts, clearPlayHistory,
@@ -587,6 +587,10 @@ ipcMain.handle('metadata:findDuplicates', () => {
   return findDuplicates();
 });
 
+ipcMain.handle('metadata:ignoreDuplicate', (_event, trackIds: number[]) => {
+  return ignoreDuplicateGroup(trackIds);
+});
+
 ipcMain.handle('metadata:findMissingFiles', () => {
   return findMissingFiles();
 });
@@ -813,6 +817,19 @@ ipcMain.handle('window:close', () => {
 
 ipcMain.handle('window:isMaximized', () => {
   return mainWindow?.isMaximized() ?? false;
+});
+
+ipcMain.handle('window:toggleFullScreen', () => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    const next = !mainWindow.isFullScreen();
+    mainWindow.setFullScreen(next);
+    return next;
+  }
+  return false;
+});
+
+ipcMain.handle('window:isFullScreen', () => {
+  return mainWindow?.isFullScreen() ?? false;
 });
 
 // ── Shortcuts IPC Handlers ───────────────────────────────────────────

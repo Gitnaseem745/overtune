@@ -41,6 +41,7 @@ contextBridge.exposeInMainWorld('api', {
   updateTrackMetadata: (trackId: number, fields: unknown, writeToFile?: boolean) =>
     ipcRenderer.invoke('metadata:updateTrack', trackId, fields, writeToFile),
   findDuplicates: () => ipcRenderer.invoke('metadata:findDuplicates'),
+  ignoreDuplicate: (trackIds: number[]) => ipcRenderer.invoke('metadata:ignoreDuplicate', trackIds),
   findMissingFiles: () => ipcRenderer.invoke('metadata:findMissingFiles'),
   relinkTrackDialog: (trackId: number) => ipcRenderer.invoke('metadata:relinkTrackDialog', trackId),
   relinkTrack: (trackId: number, newPath: string) => ipcRenderer.invoke('metadata:relinkTrack', trackId, newPath),
@@ -95,6 +96,8 @@ contextBridge.exposeInMainWorld('api', {
   maximizeWindow: () => ipcRenderer.invoke('window:maximize'),
   closeWindow: () => ipcRenderer.invoke('window:close'),
   isMaximized: () => ipcRenderer.invoke('window:isMaximized'),
+  toggleFullScreen: () => ipcRenderer.invoke('window:toggleFullScreen'),
+  isFullScreen: () => ipcRenderer.invoke('window:isFullScreen'),
 
   onLibraryUpdated: (callback: () => void) => {
     const handler = () => callback();

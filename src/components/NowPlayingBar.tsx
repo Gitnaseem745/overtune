@@ -4,7 +4,7 @@ import { usePlayerStore } from '../store/usePlayerStore';
 import { getLocalUrl, formatTime, getAccentColorHex } from '../lib/utils';
 import { 
   Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, 
-  Volume2, VolumeX, Heart, Music, ListMusic, PictureInPicture2, Mic2 
+  Volume2, VolumeX, Heart, Music, ListMusic, PictureInPicture2, Mic2, Maximize2 
 } from 'lucide-react';
 
 export function NowPlayingBar() {
@@ -25,6 +25,7 @@ export function NowPlayingBar() {
   const toggleMiniplayer = usePlayerStore((s) => s.toggleMiniplayer);
   const isLyricsPanelOpen = usePlayerStore((s) => s.isLyricsPanelOpen);
   const toggleLyricsPanel = usePlayerStore((s) => s.toggleLyricsPanel);
+  const toggleFullscreenPlayer = usePlayerStore((s) => s.toggleFullscreenPlayer);
 
   const setIsPlaying = usePlayerStore((s) => s.setIsPlaying);
   const setVolume = usePlayerStore((s) => s.setVolume);
@@ -294,6 +295,17 @@ export function NowPlayingBar() {
           }}
           className="w-24 h-1.5 rounded-full appearance-none cursor-pointer focus:outline-none transition-all"
         />
+
+        {/* Fullscreen Button (Spotify-Style) */}
+        <button
+          onClick={toggleFullscreenPlayer}
+          className={`p-1.5 rounded-lg transition-colors ${
+            isDark ? 'text-neutral-400 hover:text-white hover:bg-neutral-800' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
+          }`}
+          title="Full Screen (Artwork / Lyrics)"
+        >
+          <Maximize2 size={18} />
+        </button>
       </div>
     </footer>
   );
