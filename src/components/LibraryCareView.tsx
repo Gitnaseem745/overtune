@@ -9,7 +9,7 @@ import {
   ExternalLink, Link2, Search, Save, ShieldCheck, 
   Disc, FileWarning, ArrowRight, FolderPlus, Check
 } from 'lucide-react';
-import { formatTime, getAccentColorHex } from '../lib/utils';
+import { formatTime, getAccentColorHex, getLocalUrl } from '../lib/utils';
 
 export function LibraryCareView() {
   const theme = usePlayerStore((s) => s.theme);
@@ -164,7 +164,7 @@ export function LibraryCareView() {
   ];
 
   return (
-    <div className={`p-6 max-w-7xl mx-auto space-y-6 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+    <div className={`w-full p-6 md:p-8 pb-36 space-y-6 ${isDark ? 'text-white' : 'text-gray-900'}`}>
       {/* ── Page Header ── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-neutral-700/30">
         <div>
@@ -662,7 +662,7 @@ export function LibraryCareView() {
                   <div className="aspect-square w-full rounded-xl overflow-hidden bg-neutral-800 mb-2 relative group flex items-center justify-center">
                     {alb.cover_art ? (
                       <img 
-                        src={`atom://${alb.cover_art}`} 
+                        src={getLocalUrl(alb.cover_art)} 
                         alt={alb.title} 
                         className="w-full h-full object-cover" 
                       />

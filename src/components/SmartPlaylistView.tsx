@@ -114,7 +114,7 @@ export function SmartPlaylistView() {
   };
 
   return (
-    <div className={`p-6 max-w-7xl mx-auto space-y-6 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+    <div className={`w-full p-6 md:p-8 pb-36 space-y-6 ${isDark ? 'text-white' : 'text-gray-900'}`}>
       {/* ── Rule Builder Modal / Overlay ── */}
       {isEditing && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">

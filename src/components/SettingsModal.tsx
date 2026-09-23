@@ -815,7 +815,11 @@ export function SettingsModal() {
                     onClick={async () => {
                       await selectBackupFile();
                     }}
-                    className="px-3 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-white text-xs font-semibold transition-colors flex items-center gap-1.5"
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+                      isDark 
+                        ? 'bg-neutral-800 hover:bg-neutral-700 text-white' 
+                        : 'bg-white hover:bg-gray-100 text-gray-800 border border-gray-300 shadow-2xs'
+                    }`}
                   >
                     <Upload size={13} />
                     <span>Choose File...</span>
@@ -823,7 +827,11 @@ export function SettingsModal() {
                 </div>
 
                 {selectedBackupPath ? (
-                  <p className="text-[11px] text-neutral-400 font-mono truncate bg-black/30 p-2 rounded-lg mb-3">
+                  <p className={`text-[11px] font-mono truncate p-2 rounded-lg mb-3 border ${
+                    isDark 
+                      ? 'text-neutral-400 bg-black/30 border-neutral-800' 
+                      : 'text-gray-700 bg-gray-100/80 border-gray-200'
+                  }`}>
                     {selectedBackupPath}
                   </p>
                 ) : (
@@ -833,31 +841,41 @@ export function SettingsModal() {
                 )}
 
                 {backupPreview && backupPreview.valid && (
-                  <div className="space-y-4 pt-3 border-t border-neutral-800/40">
+                  <div className={`space-y-4 pt-3 border-t ${isDark ? 'border-neutral-800/40' : 'border-gray-200'}`}>
                     <div className="grid grid-cols-4 gap-2 text-center text-xs">
-                      <div className="p-2 rounded-lg bg-neutral-800/40">
-                        <span className="text-[10px] text-neutral-400 block">Playlists</span>
-                        <span className="font-bold text-white">{backupPreview.counts.playlists}</span>
+                      <div className={`p-2.5 rounded-xl border ${
+                        isDark ? 'bg-neutral-800/40 border-neutral-700/40' : 'bg-white border-gray-200 shadow-2xs'
+                      }`}>
+                        <span className={`text-[10px] block ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>Playlists</span>
+                        <span className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{backupPreview.counts.playlists}</span>
                         {backupPreview.counts.existingPlaylists > 0 && (
                           <span className="text-[9px] text-amber-500 block">({backupPreview.counts.existingPlaylists} existing)</span>
                         )}
                       </div>
-                      <div className="p-2 rounded-lg bg-neutral-800/40">
-                        <span className="text-[10px] text-neutral-400 block">Smart Playlists</span>
-                        <span className="font-bold text-white">{backupPreview.counts.smartPlaylists}</span>
+                      <div className={`p-2.5 rounded-xl border ${
+                        isDark ? 'bg-neutral-800/40 border-neutral-700/40' : 'bg-white border-gray-200 shadow-2xs'
+                      }`}>
+                        <span className={`text-[10px] block ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>Smart Playlists</span>
+                        <span className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{backupPreview.counts.smartPlaylists}</span>
                       </div>
-                      <div className="p-2 rounded-lg bg-neutral-800/40">
-                        <span className="text-[10px] text-neutral-400 block">Ratings & Tags</span>
-                        <span className="font-bold text-white">{backupPreview.counts.ratings + backupPreview.counts.tags}</span>
+                      <div className={`p-2.5 rounded-xl border ${
+                        isDark ? 'bg-neutral-800/40 border-neutral-700/40' : 'bg-white border-gray-200 shadow-2xs'
+                      }`}>
+                        <span className={`text-[10px] block ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>Ratings & Tags</span>
+                        <span className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{backupPreview.counts.ratings + backupPreview.counts.tags}</span>
                       </div>
-                      <div className="p-2 rounded-lg bg-neutral-800/40">
-                        <span className="text-[10px] text-neutral-400 block">Matched Tracks</span>
-                        <span className="font-bold text-green-400">{backupPreview.counts.matchedTracks}</span>
+                      <div className={`p-2.5 rounded-xl border ${
+                        isDark ? 'bg-neutral-800/40 border-neutral-700/40' : 'bg-white border-gray-200 shadow-2xs'
+                      }`}>
+                        <span className={`text-[10px] block ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>Matched Tracks</span>
+                        <span className="font-bold text-green-500">{backupPreview.counts.matchedTracks}</span>
                       </div>
                     </div>
 
                     <div>
-                      <label className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider block mb-1.5">
+                      <label className={`text-[11px] font-bold uppercase tracking-wider block mb-1.5 ${
+                        isDark ? 'text-neutral-400' : 'text-gray-500'
+                      }`}>
                         Conflict Policy
                       </label>
                       <div className="grid grid-cols-3 gap-2">
@@ -870,14 +888,24 @@ export function SettingsModal() {
                             key={opt.id}
                             type="button"
                             onClick={() => setRestoreMode(opt.id as 'skip' | 'overwrite' | 'merge')}
-                            className={`p-2 rounded-xl text-left border transition-all ${
+                            className={`p-2.5 rounded-xl text-left border transition-all ${
                               restoreMode === opt.id
-                                ? 'border-amber-500 bg-amber-500/10 text-white'
-                                : 'border-neutral-800 bg-neutral-900/30 text-neutral-400 hover:text-white'
+                                ? isDark 
+                                  ? 'border-amber-500 bg-amber-500/15 text-white' 
+                                  : 'border-amber-500 bg-amber-50/80 text-amber-950 shadow-2xs'
+                                : isDark 
+                                  ? 'border-neutral-800 bg-neutral-900/40 text-neutral-400 hover:text-white hover:bg-neutral-800/50' 
+                                  : 'border-gray-200 bg-white text-gray-600 hover:text-gray-900 hover:bg-gray-50 shadow-2xs'
                             }`}
                           >
-                            <span className="text-xs font-bold block">{opt.name}</span>
-                            <span className="text-[10px] text-neutral-400 leading-tight block">{opt.desc}</span>
+                            <span className={`text-xs font-bold block ${
+                              restoreMode === opt.id
+                                ? isDark ? 'text-white' : 'text-amber-900'
+                                : isDark ? 'text-neutral-300' : 'text-gray-800'
+                            }`}>{opt.name}</span>
+                            <span className={`text-[10px] leading-tight block ${
+                              isDark ? 'text-neutral-400' : 'text-gray-500'
+                            }`}>{opt.desc}</span>
                           </button>
                         ))}
                       </div>
@@ -891,7 +919,7 @@ export function SettingsModal() {
                         onChange={(e) => setRestoreSettings(e.target.checked)}
                         className="rounded accent-amber-500"
                       />
-                      <label htmlFor="modal_restore_settings" className="text-xs text-neutral-300">
+                      <label htmlFor="modal_restore_settings" className={`text-xs ${isDark ? 'text-neutral-300' : 'text-gray-700'}`}>
                         Restore preferences and theme settings
                       </label>
                     </div>
@@ -916,12 +944,14 @@ export function SettingsModal() {
 
                 {restoreResult && (
                   <div className={`mt-3 p-3 rounded-xl border text-xs ${
-                    restoreResult.success ? 'bg-green-500/10 border-green-500/30 text-green-400' : 'bg-red-500/10 border-red-500/30 text-red-400'
+                    restoreResult.success 
+                      ? isDark ? 'bg-green-500/10 border-green-500/30 text-green-400' : 'bg-green-50 border-green-200 text-green-900'
+                      : isDark ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-red-50 border-red-200 text-red-900'
                   }`}>
                     {restoreResult.success ? (
                       <div>
-                        <p className="font-bold text-white mb-0.5">Restore Complete</p>
-                        <p className="text-[11px] text-neutral-400">
+                        <p className={`font-bold mb-0.5 ${isDark ? 'text-white' : 'text-green-950'}`}>Restore Complete</p>
+                        <p className={`text-[11px] ${isDark ? 'text-neutral-400' : 'text-green-800'}`}>
                           Restored {restoreResult.imported.playlists} playlists, {restoreResult.imported.ratings} ratings, and {restoreResult.imported.tags} tags.
                         </p>
                       </div>
@@ -944,7 +974,7 @@ export function SettingsModal() {
 
                 <div className="space-y-3">
                   <div>
-                    <label className="text-[11px] font-bold text-neutral-400 block mb-1">
+                    <label className={`text-[11px] font-bold block mb-1 ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
                       Current / Old Path Prefix
                     </label>
                     <input
@@ -952,12 +982,16 @@ export function SettingsModal() {
                       placeholder="e.g. D:\Music or /Users/name/Music"
                       value={oldPrefix}
                       onChange={(e) => setOldPrefix(e.target.value)}
-                      className="w-full px-3 py-1.5 rounded-xl bg-neutral-800/80 border border-neutral-700/60 text-xs font-mono text-white placeholder-neutral-500 focus:outline-none focus:border-amber-500"
+                      className={`w-full px-3 py-1.5 rounded-xl text-xs font-mono border transition-colors focus:outline-hidden ${
+                        isDark 
+                          ? 'bg-neutral-800/80 border-neutral-700/60 text-white placeholder-neutral-500 focus:border-amber-500' 
+                          : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-amber-500 shadow-2xs'
+                      }`}
                     />
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-bold text-neutral-400 block mb-1">
+                    <label className={`text-[11px] font-bold block mb-1 ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
                       New Path Prefix
                     </label>
                     <input
@@ -965,7 +999,11 @@ export function SettingsModal() {
                       placeholder="e.g. E:\Music or D:\Desktop\Music"
                       value={newPrefix}
                       onChange={(e) => setNewPrefix(e.target.value)}
-                      className="w-full px-3 py-1.5 rounded-xl bg-neutral-800/80 border border-neutral-700/60 text-xs font-mono text-white placeholder-neutral-500 focus:outline-none focus:border-amber-500"
+                      className={`w-full px-3 py-1.5 rounded-xl text-xs font-mono border transition-colors focus:outline-hidden ${
+                        isDark 
+                          ? 'bg-neutral-800/80 border-neutral-700/60 text-white placeholder-neutral-500 focus:border-amber-500' 
+                          : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-amber-500 shadow-2xs'
+                      }`}
                     />
                   </div>
 
@@ -986,14 +1024,20 @@ export function SettingsModal() {
                       }
                     }}
                     disabled={isRelocating || !oldPrefix || !newPrefix}
-                    className="w-full py-2 px-4 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+                    className={`w-full py-2 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-colors disabled:opacity-50 ${
+                      isDark 
+                        ? 'bg-neutral-800 hover:bg-neutral-700 text-white' 
+                        : 'bg-white hover:bg-gray-100 text-gray-900 border border-gray-300 shadow-2xs'
+                    }`}
                   >
                     {isRelocating ? <RefreshCw size={13} className="animate-spin" /> : <FolderSync size={13} />}
                     <span>Update Path Prefixes</span>
                   </button>
 
                   {relocateMsg && (
-                    <div className="p-2.5 rounded-xl bg-neutral-900 border border-neutral-800 text-xs text-neutral-300">
+                    <div className={`p-2.5 rounded-xl border text-xs ${
+                      isDark ? 'bg-neutral-900 border-neutral-800 text-neutral-300' : 'bg-gray-100 border-gray-200 text-gray-800'
+                    }`}>
                       {relocateMsg}
                     </div>
                   )}
@@ -1024,7 +1068,7 @@ export function SettingsModal() {
                     className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
                       syncStatus?.enabled
                         ? 'bg-green-500 text-black shadow-xs'
-                        : 'bg-neutral-800 text-neutral-400 hover:text-white'
+                        : isDark ? 'bg-neutral-800 text-neutral-400 hover:text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                     }`}
                   >
                     {syncStatus?.enabled ? 'Active / Listening' : 'Disabled'}
@@ -1032,19 +1076,25 @@ export function SettingsModal() {
                 </div>
 
                 {syncStatus?.enabled && (
-                  <div className="mt-4 space-y-4 pt-3 border-t border-neutral-800/40">
+                  <div className={`mt-4 space-y-4 pt-3 border-t ${isDark ? 'border-neutral-800/40' : 'border-gray-200'}`}>
                     <div className="grid grid-cols-3 gap-2.5 text-center text-xs">
-                      <div className="p-2.5 rounded-xl bg-neutral-800/40">
-                        <span className="text-[10px] text-neutral-400 block font-bold">This Device</span>
-                        <span className="font-bold text-white">{syncStatus.deviceName}</span>
+                      <div className={`p-2.5 rounded-xl border ${
+                        isDark ? 'bg-neutral-800/40 border-neutral-700/40' : 'bg-white border-gray-200 shadow-2xs'
+                      }`}>
+                        <span className={`text-[10px] block font-bold ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>This Device</span>
+                        <span className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{syncStatus.deviceName}</span>
                       </div>
-                      <div className="p-2.5 rounded-xl bg-neutral-800/40">
-                        <span className="text-[10px] text-neutral-400 block font-bold">Local IP</span>
-                        <span className="font-mono text-white">{syncStatus.localIp}</span>
+                      <div className={`p-2.5 rounded-xl border ${
+                        isDark ? 'bg-neutral-800/40 border-neutral-700/40' : 'bg-white border-gray-200 shadow-2xs'
+                      }`}>
+                        <span className={`text-[10px] block font-bold ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>Local IP</span>
+                        <span className={`font-mono ${isDark ? 'text-white' : 'text-gray-900'}`}>{syncStatus.localIp}</span>
                       </div>
-                      <div className="p-2.5 rounded-xl bg-neutral-800/40">
-                        <span className="text-[10px] text-neutral-400 block font-bold">Port</span>
-                        <span className="font-mono text-white">{syncStatus.port}</span>
+                      <div className={`p-2.5 rounded-xl border ${
+                        isDark ? 'bg-neutral-800/40 border-neutral-700/40' : 'bg-white border-gray-200 shadow-2xs'
+                      }`}>
+                        <span className={`text-[10px] block font-bold ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>Port</span>
+                        <span className={`font-mono ${isDark ? 'text-white' : 'text-gray-900'}`}>{syncStatus.port}</span>
                       </div>
                     </div>
 
@@ -1085,7 +1135,7 @@ export function SettingsModal() {
                     <div className={`p-4 rounded-xl border space-y-3 ${
                       isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
                     }`}>
-                      <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                      <h4 className={`text-xs font-bold flex items-center gap-1.5 ${isDark ? 'text-white' : 'text-gray-900'}`}>
                         <Smartphone size={14} className="text-amber-500" />
                         <span>Pair With Peer Device</span>
                       </h4>
@@ -1095,14 +1145,22 @@ export function SettingsModal() {
                           placeholder="Peer Device IP (e.g. 192.168.1.15)"
                           value={peerIp}
                           onChange={(e) => setPeerIp(e.target.value)}
-                          className="px-3 py-1.5 rounded-xl bg-neutral-800 border border-neutral-700 text-xs font-mono text-white placeholder-neutral-500 focus:outline-none focus:border-amber-500"
+                          className={`px-3 py-1.5 rounded-xl text-xs font-mono border transition-colors focus:outline-hidden ${
+                            isDark 
+                              ? 'bg-neutral-800 border-neutral-700 text-white placeholder-neutral-500 focus:border-amber-500' 
+                              : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-amber-500 shadow-2xs'
+                          }`}
                         />
                         <input
                           type="text"
                           placeholder="6-Digit PIN (e.g. 583920)"
                           value={peerPin}
                           onChange={(e) => setPeerPin(e.target.value)}
-                          className="px-3 py-1.5 rounded-xl bg-neutral-800 border border-neutral-700 text-xs font-mono text-white placeholder-neutral-500 focus:outline-none focus:border-amber-500"
+                          className={`px-3 py-1.5 rounded-xl text-xs font-mono border transition-colors focus:outline-hidden ${
+                            isDark 
+                              ? 'bg-neutral-800 border-neutral-700 text-white placeholder-neutral-500 focus:border-amber-500' 
+                              : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-amber-500 shadow-2xs'
+                          }`}
                         />
                       </div>
                       <button
@@ -1124,29 +1182,35 @@ export function SettingsModal() {
                           }
                         }}
                         disabled={isPairing || !peerIp || !peerPin}
-                        className="w-full py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50"
+                        className={`w-full py-2 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50 ${
+                          isDark 
+                            ? 'bg-neutral-800 hover:bg-neutral-700 text-white' 
+                            : 'bg-white hover:bg-gray-100 text-gray-900 border border-gray-300 shadow-2xs'
+                        }`}
                       >
                         {isPairing ? <RefreshCw size={13} className="animate-spin" /> : <Check size={13} />}
                         <span>Connect & Verify Pair</span>
                       </button>
 
                       {pairingMsg && (
-                        <p className="text-[11px] text-amber-400 font-semibold">{pairingMsg}</p>
+                        <p className="text-[11px] text-amber-500 font-semibold">{pairingMsg}</p>
                       )}
                     </div>
 
                     {/* Incoming Pending Playlists */}
                     {syncStatus.pendingPlaylists && syncStatus.pendingPlaylists.length > 0 && (
                       <div className="space-y-2">
-                        <h4 className="text-xs font-bold text-white">Incoming Shared Playlists</h4>
+                        <h4 className={`text-xs font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Incoming Shared Playlists</h4>
                         {syncStatus.pendingPlaylists.map((pending) => (
                           <div
                             key={pending.id}
-                            className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between"
+                            className={`p-3 rounded-xl border flex items-center justify-between ${
+                              isDark ? 'bg-amber-500/10 border-amber-500/30' : 'bg-amber-50/80 border-amber-200'
+                            }`}
                           >
                             <div>
-                              <span className="text-xs font-bold text-white block">{pending.playlistName}</span>
-                              <span className="text-[11px] text-neutral-400">
+                              <span className={`text-xs font-bold block ${isDark ? 'text-white' : 'text-gray-900'}`}>{pending.playlistName}</span>
+                              <span className={`text-[11px] ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
                                 {pending.trackCount} tracks from {pending.fromDeviceName}
                               </span>
                             </div>
@@ -1163,7 +1227,9 @@ export function SettingsModal() {
                                 onClick={async () => {
                                   await declineSharedPlaylist(pending.id);
                                 }}
-                                className="px-2.5 py-1 rounded-lg bg-neutral-800 text-neutral-400 font-bold text-xs hover:text-white transition-colors"
+                                className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-colors ${
+                                  isDark ? 'bg-neutral-800 text-neutral-400 hover:text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                }`}
                               >
                                 Decline
                               </button>
@@ -1175,16 +1241,18 @@ export function SettingsModal() {
 
                     {/* Paired Devices List */}
                     <div className="space-y-2">
-                      <h4 className="text-xs font-bold text-white">Authorized Paired Devices</h4>
+                      <h4 className={`text-xs font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Authorized Paired Devices</h4>
                       {syncStatus.pairedDevices && syncStatus.pairedDevices.length > 0 ? (
                         syncStatus.pairedDevices.map((dev) => (
                           <div
                             key={dev.id}
-                            className="p-3 rounded-xl bg-neutral-900 border border-neutral-800 flex items-center justify-between"
+                            className={`p-3 rounded-xl border flex items-center justify-between ${
+                              isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200 shadow-2xs'
+                            }`}
                           >
                             <div>
-                              <span className="text-xs font-bold text-white block">{dev.name}</span>
-                              <span className="text-[10px] text-neutral-400 font-mono">
+                              <span className={`text-xs font-bold block ${isDark ? 'text-white' : 'text-gray-900'}`}>{dev.name}</span>
+                              <span className={`text-[10px] font-mono ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
                                 IP: {dev.ip} • Paired: {new Date(dev.paired_at).toLocaleDateString()}
                               </span>
                             </div>
@@ -1192,14 +1260,14 @@ export function SettingsModal() {
                               onClick={async () => {
                                 await revokeDevice(dev.id);
                               }}
-                              className="px-2.5 py-1 rounded-lg bg-red-500/15 hover:bg-red-500/30 text-red-400 text-xs font-semibold transition-colors"
+                              className="px-2.5 py-1 rounded-lg bg-red-500/15 hover:bg-red-500/30 text-red-500 text-xs font-semibold transition-colors"
                             >
                               Revoke
                             </button>
                           </div>
                         ))
                       ) : (
-                        <p className="text-xs text-neutral-500 italic p-2">
+                        <p className={`text-xs italic p-2 ${isDark ? 'text-neutral-500' : 'text-gray-400'}`}>
                           No authorized paired devices. Devices you pair with will appear here.
                         </p>
                       )}
@@ -1236,22 +1304,28 @@ export function SettingsModal() {
 
               {/* Database & Migration Status */}
               <div className={`p-4 rounded-2xl border ${isDark ? 'bg-neutral-900/50 border-neutral-800' : 'bg-gray-50 border-gray-200'}`}>
-                <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-400 mb-3 flex items-center gap-1.5">
-                  <ShieldCheck size={14} className="text-green-400" />
+                <h4 className={`text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-1.5 ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
+                  <ShieldCheck size={14} className="text-green-500" />
                   <span>Database & Schema Health</span>
                 </h4>
                 <div className="grid grid-cols-3 gap-2.5 text-center text-xs">
-                  <div className="p-2.5 rounded-xl bg-neutral-800/40">
-                    <span className="text-[10px] text-neutral-400 block font-bold">Schema Version</span>
+                  <div className={`p-2.5 rounded-xl border ${
+                    isDark ? 'bg-neutral-800/40 border-neutral-700/40' : 'bg-white border-gray-200 shadow-2xs'
+                  }`}>
+                    <span className={`text-[10px] block font-bold ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>Schema Version</span>
                     <span className="font-bold text-amber-500">v{migrationStatus?.currentVersion ?? 5}</span>
                   </div>
-                  <div className="p-2.5 rounded-xl bg-neutral-800/40">
-                    <span className="text-[10px] text-neutral-400 block font-bold">Applied Migrations</span>
-                    <span className="font-bold text-green-400">{migrationStatus?.appliedMigrations?.length ?? 5} / 5</span>
+                  <div className={`p-2.5 rounded-xl border ${
+                    isDark ? 'bg-neutral-800/40 border-neutral-700/40' : 'bg-white border-gray-200 shadow-2xs'
+                  }`}>
+                    <span className={`text-[10px] block font-bold ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>Applied Migrations</span>
+                    <span className="font-bold text-green-500">{migrationStatus?.appliedMigrations?.length ?? 5} / 5</span>
                   </div>
-                  <div className="p-2.5 rounded-xl bg-neutral-800/40">
-                    <span className="text-[10px] text-neutral-400 block font-bold">Automatic Rollback</span>
-                    <span className="font-bold text-blue-400">Available</span>
+                  <div className={`p-2.5 rounded-xl border ${
+                    isDark ? 'bg-neutral-800/40 border-neutral-700/40' : 'bg-white border-gray-200 shadow-2xs'
+                  }`}>
+                    <span className={`text-[10px] block font-bold ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>Automatic Rollback</span>
+                    <span className="font-bold text-blue-500">Available</span>
                   </div>
                 </div>
               </div>
@@ -1259,25 +1333,33 @@ export function SettingsModal() {
               {/* Environment Specs */}
               {appInfo && (
                 <div className={`p-4 rounded-2xl border ${isDark ? 'bg-neutral-900/50 border-neutral-800' : 'bg-gray-50 border-gray-200'}`}>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-400 mb-2">
+                  <h4 className={`text-xs font-bold uppercase tracking-wider mb-2 ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
                     Runtime Architecture
                   </h4>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                    <div className="p-2 rounded-lg bg-neutral-800/30">
-                      <span className="text-[10px] text-neutral-400 block">Electron</span>
-                      <span className="font-mono font-bold text-white">{appInfo.electron}</span>
+                    <div className={`p-2 rounded-lg border ${
+                      isDark ? 'bg-neutral-800/30 border-neutral-700/40' : 'bg-white border-gray-200 shadow-2xs'
+                    }`}>
+                      <span className={`text-[10px] block ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>Electron</span>
+                      <span className={`font-mono font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{appInfo.electron}</span>
                     </div>
-                    <div className="p-2 rounded-lg bg-neutral-800/30">
-                      <span className="text-[10px] text-neutral-400 block">Node.js</span>
-                      <span className="font-mono font-bold text-white">{appInfo.node}</span>
+                    <div className={`p-2 rounded-lg border ${
+                      isDark ? 'bg-neutral-800/30 border-neutral-700/40' : 'bg-white border-gray-200 shadow-2xs'
+                    }`}>
+                      <span className={`text-[10px] block ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>Node.js</span>
+                      <span className={`font-mono font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{appInfo.node}</span>
                     </div>
-                    <div className="p-2 rounded-lg bg-neutral-800/30">
-                      <span className="text-[10px] text-neutral-400 block">Chromium</span>
-                      <span className="font-mono font-bold text-white">{appInfo.chrome}</span>
+                    <div className={`p-2 rounded-lg border ${
+                      isDark ? 'bg-neutral-800/30 border-neutral-700/40' : 'bg-white border-gray-200 shadow-2xs'
+                    }`}>
+                      <span className={`text-[10px] block ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>Chromium</span>
+                      <span className={`font-mono font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{appInfo.chrome}</span>
                     </div>
-                    <div className="p-2 rounded-lg bg-neutral-800/30">
-                      <span className="text-[10px] text-neutral-400 block">Platform</span>
-                      <span className="font-mono font-bold text-white">{appInfo.platform} ({appInfo.arch})</span>
+                    <div className={`p-2 rounded-lg border ${
+                      isDark ? 'bg-neutral-800/30 border-neutral-700/40' : 'bg-white border-gray-200 shadow-2xs'
+                    }`}>
+                      <span className={`text-[10px] block ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>Platform</span>
+                      <span className={`font-mono font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{appInfo.platform} ({appInfo.arch})</span>
                     </div>
                   </div>
                 </div>
@@ -1297,15 +1379,15 @@ export function SettingsModal() {
             <div className="grid grid-cols-3 gap-3 text-center">
               <div className={`p-2 rounded-xl ${isDark ? 'bg-[#121212]' : 'bg-white shadow-xs'}`}>
                 <span className="block text-base font-extrabold">{tracks.length}</span>
-                <span className="text-[10px] text-neutral-400">Indexed Tracks</span>
+                <span className={`text-[10px] ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>Indexed Tracks</span>
               </div>
               <div className={`p-2 rounded-xl ${isDark ? 'bg-[#121212]' : 'bg-white shadow-xs'}`}>
                 <span className="block text-base font-extrabold">{albums.length}</span>
-                <span className="text-[10px] text-neutral-400">Scanned Albums</span>
+                <span className={`text-[10px] ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>Scanned Albums</span>
               </div>
               <div className={`p-2 rounded-xl ${isDark ? 'bg-[#121212]' : 'bg-white shadow-xs'}`}>
                 <span className="block text-base font-extrabold">{artists.length}</span>
-                <span className="text-[10px] text-neutral-400">Total Artists</span>
+                <span className={`text-[10px] ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>Total Artists</span>
               </div>
             </div>
           </div>

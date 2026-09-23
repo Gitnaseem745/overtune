@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react';
 import { usePlayerStore } from '../store/usePlayerStore';
 import { History, Play, Trash2, PauseCircle, PlayCircle, ListPlus, Clock, Sparkles } from 'lucide-react';
-import { formatTime, getAccentColorHex } from '../lib/utils';
+import { formatTime, getAccentColorHex, getLocalUrl } from '../lib/utils';
 
 export function RecentlyPlayedView() {
   const theme = usePlayerStore((s) => s.theme);
@@ -32,7 +32,7 @@ export function RecentlyPlayedView() {
   };
 
   return (
-    <div className={`p-6 max-w-7xl mx-auto space-y-6 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+    <div className={`w-full p-6 md:p-8 pb-36 space-y-6 ${isDark ? 'text-white' : 'text-gray-900'}`}>
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-neutral-700/30">
         <div className="flex items-center gap-3">
@@ -133,7 +133,7 @@ export function RecentlyPlayedView() {
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-lg overflow-hidden bg-neutral-800 shrink-0 flex items-center justify-center">
                           {item.cover_art ? (
-                            <img src={`atom://${item.cover_art}`} alt={item.title} className="w-full h-full object-cover" />
+                            <img src={getLocalUrl(item.cover_art)} alt={item.title} className="w-full h-full object-cover" />
                           ) : (
                             <Sparkles size={16} className="text-neutral-500" />
                           )}
