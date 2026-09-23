@@ -82,22 +82,44 @@ function initTestDb() {
   return db;
 }
 
-function insertMockTrack(db, filePath, title, artistName, albumName) {
+/**
+ * Insert a mock track into the test database.
+ * @param {object} db - better-sqlite3 database instance
+ * @param {string} filePath - file path for the track
+ * @param {string} title - track title
+ * @param {string} artistName - track-level artist name
+ * @param {string} albumName - album title
+ * @param {object} [opts] - optional parameters
+ * @param {string} [opts.albumArtist] - album-level artist (defaults to artistName)
+ * @param {number} [opts.duration] - track duration (defaults to 180.0)
+ * @param {string} [opts.fileHash] - file hash for dedup (defaults to null)
+ */
+function insertMockTrack(db, filePath, title, artistName, albumName, opts = {}) {
   const existing = db.prepare('SELECT id FROM tracks WHERE path = ?').get(filePath);
   if (existing) return existing.id;
 
+  const albumArtistName = opts.albumArtist || artistName;
+  const duration = opts.duration !== undefined ? opts.duration : 180.0;
+  const fileHash = opts.fileHash || null;
+
+  // Insert track-level artist
   const insertArtist = db.prepare('INSERT INTO artists (name) VALUES (?) ON CONFLICT(name) DO UPDATE SET name=excluded.name RETURNING id');
   const artistRow = insertArtist.get(artistName);
 
+  // Insert album-level artist (for album grouping)
+  const albumArtistRow = insertArtist.get(albumArtistName);
+  const albumArtistId = albumArtistRow.id;
+
+  // Album keyed by (title, album_artist_id)
   const insertAlbum = db.prepare('INSERT INTO albums (title, artist_id) VALUES (?, ?) ON CONFLICT(title, artist_id) DO UPDATE SET title=excluded.title RETURNING id');
-  const albumRow = insertAlbum.get(albumName, artistRow.id);
+  const albumRow = insertAlbum.get(albumName, albumArtistId);
 
   const insertTrack = db.prepare(`
-    INSERT INTO tracks (title, album_id, artist_id, path, duration)
-    VALUES (?, ?, ?, ?, ?)
+    INSERT INTO tracks (title, album_id, artist_id, path, duration, file_hash)
+    VALUES (?, ?, ?, ?, ?, ?)
     ON CONFLICT(path) DO NOTHING
   `);
-  insertTrack.run(title, albumRow.id, artistRow.id, filePath, 180.0);
+  insertTrack.run(title, albumRow.id, artistRow.id, filePath, duration, fileHash);
 
   const trackRow = db.prepare('SELECT id FROM tracks WHERE path = ?').get(filePath);
   return trackRow ? trackRow.id : null;
@@ -194,6 +216,22 @@ function getAllTracksTest(db) {
   return db.prepare('SELECT t.id, t.title, t.path FROM tracks t ORDER BY t.title ASC').all();
 }
 
+/** Get deduplicated tracks (same logic as the fixed db:getTracks handler) */
+function getDeduplicatedTracksTest(db) {
+  return db.prepare(`
+    SELECT t.id, t.title, t.path, t.file_hash,
+      COALESCE(a.name, 'Unknown Artist') AS artist,
+      COALESCE(al.title, 'Unknown Album') AS album
+    FROM tracks t
+    LEFT JOIN artists a ON t.artist_id = a.id
+    LEFT JOIN albums al ON t.album_id = al.id
+    WHERE t.id IN (
+      SELECT MIN(t2.id) FROM tracks t2 GROUP BY COALESCE(t2.file_hash, t2.id)
+    )
+    ORDER BY t.title ASC
+  `).all();
+}
+
 function searchTracksTest(db, query) {
   const q = `%${query}%`;
   return db.prepare(`
@@ -203,6 +241,21 @@ function searchTracksTest(db, query) {
     LEFT JOIN albums al ON t.album_id = al.id
     WHERE t.title LIKE ? OR a.name LIKE ? OR al.title LIKE ?
   `).all(q, q, q);
+}
+
+function getAlbumsTest(db) {
+  return db.prepare(`
+    SELECT
+      al.id, al.title, al.year, al.cover_art_path AS cover_art,
+      COALESCE(a.name, 'Unknown Artist') AS artist,
+      COUNT(DISTINCT t.id) AS track_count
+    FROM albums al
+    LEFT JOIN artists a ON al.artist_id = a.id
+    LEFT JOIN tracks t ON t.album_id = al.id
+    GROUP BY al.id
+    HAVING track_count > 0
+    ORDER BY al.title ASC
+  `).all();
 }
 
 test('Directory Playlist Imports & Scoped Views Suite', async (t) => {
@@ -320,5 +373,109 @@ test('Directory Playlist Imports & Scoped Views Suite', async (t) => {
 
     const allTracks = getAllTracksTest(db);
     assert.equal(allTracks.length, 5, 'No duplicate tracks created');
+  });
+});
+
+test('Album Splitting Bug — Multi-Artist Albums', async (t) => {
+  await t.test('tracks with different artists but same album + albumArtist produce exactly 1 album', () => {
+    const db = initTestDb();
+
+    // Simulate: album "3AM AT FALLS" with albumArtist "Various Artists"
+    // Track 1 by artist "JJ47", Track 2 by artist "Umair"
+    insertMockTrack(db, '/music/3am_track1.mp3', 'Track 1', 'JJ47', '3AM AT FALLS', {
+      albumArtist: 'Various Artists',
+    });
+    insertMockTrack(db, '/music/3am_track2.mp3', 'Track 2', 'Umair', '3AM AT FALLS', {
+      albumArtist: 'Various Artists',
+    });
+
+    const albums = getAlbumsTest(db);
+    const matchingAlbums = albums.filter((a) => a.title === '3AM AT FALLS');
+
+    assert.equal(matchingAlbums.length, 1, 'Multi-artist album should produce exactly 1 album entry');
+    assert.equal(matchingAlbums[0].artist, 'Various Artists', 'Album artist should be the album-level artist');
+    assert.equal(matchingAlbums[0].track_count, 2, 'Album should contain both tracks');
+  });
+
+  await t.test('tracks with different artists and NO albumArtist fall back to track artist (separate albums)', () => {
+    const db = initTestDb();
+
+    // Without albumArtist, each track artist creates its own album entry
+    insertMockTrack(db, '/music/solo_a.mp3', 'Solo Track A', 'Artist A', 'Shared Album Name');
+    insertMockTrack(db, '/music/solo_b.mp3', 'Solo Track B', 'Artist B', 'Shared Album Name');
+
+    const albums = getAlbumsTest(db);
+    const matchingAlbums = albums.filter((a) => a.title === 'Shared Album Name');
+
+    // Without albumArtist metadata, these are legitimately different albums by different artists
+    assert.equal(matchingAlbums.length, 2, 'Without albumArtist, different track artists create separate albums');
+  });
+
+  await t.test('tracks with same artist naturally group into one album', () => {
+    const db = initTestDb();
+
+    insertMockTrack(db, '/music/same_a.mp3', 'Song A', 'Same Artist', 'My Album');
+    insertMockTrack(db, '/music/same_b.mp3', 'Song B', 'Same Artist', 'My Album');
+    insertMockTrack(db, '/music/same_c.mp3', 'Song C', 'Same Artist', 'My Album');
+
+    const albums = getAlbumsTest(db);
+    const matchingAlbums = albums.filter((a) => a.title === 'My Album');
+
+    assert.equal(matchingAlbums.length, 1, 'Same artist should produce exactly 1 album');
+    assert.equal(matchingAlbums[0].track_count, 3, 'Album should have 3 tracks');
+  });
+});
+
+test('Duplicate Songs Deduplication', async (t) => {
+  await t.test('tracks with same file_hash at different paths are deduplicated', () => {
+    const db = initTestDb();
+    const sharedHash = 'abc123deadbeef';
+
+    // Same song at two different file paths
+    insertMockTrack(db, '/music/folder1/song.mp3', 'Duplicate Song', 'Artist X', 'Album Y', {
+      fileHash: sharedHash,
+      duration: 200,
+    });
+    insertMockTrack(db, '/music/folder2/song.mp3', 'Duplicate Song', 'Artist X', 'Album Y', {
+      fileHash: sharedHash,
+      duration: 200,
+    });
+
+    // Raw count: 2 tracks exist in the DB
+    const allRaw = getAllTracksTest(db);
+    assert.equal(allRaw.length, 2, 'Two raw track rows should exist');
+
+    // Deduplicated count: only 1 should be returned
+    const deduped = getDeduplicatedTracksTest(db);
+    assert.equal(deduped.length, 1, 'Deduplicated query should return only 1 track');
+    assert.equal(deduped[0].title, 'Duplicate Song');
+  });
+
+  await t.test('tracks with different file_hash are not deduplicated', () => {
+    const db = initTestDb();
+
+    insertMockTrack(db, '/music/song_a.mp3', 'Song A', 'Artist', 'Album', {
+      fileHash: 'hash_aaa',
+    });
+    insertMockTrack(db, '/music/song_b.mp3', 'Song B', 'Artist', 'Album', {
+      fileHash: 'hash_bbb',
+    });
+
+    const deduped = getDeduplicatedTracksTest(db);
+    assert.equal(deduped.length, 2, 'Different hashes should not be deduplicated');
+  });
+
+  await t.test('tracks with null file_hash are each treated as unique', () => {
+    const db = initTestDb();
+
+    insertMockTrack(db, '/music/null_hash_1.mp3', 'No Hash 1', 'Artist', 'Album', {
+      fileHash: null,
+    });
+    insertMockTrack(db, '/music/null_hash_2.mp3', 'No Hash 2', 'Artist', 'Album', {
+      fileHash: null,
+    });
+
+    const deduped = getDeduplicatedTracksTest(db);
+    assert.equal(deduped.length, 2, 'Null-hash tracks should each be treated as unique');
   });
 });

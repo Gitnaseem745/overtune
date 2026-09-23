@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.5] - 2026-09-23
+
+### Fixed
+- **Album Splitting Bug (Issue [#2](https://github.com/gitnaseem745/overtune/issues/2))**: Albums containing tracks by multiple artists were incorrectly split into separate album entries. The scanner now uses `albumartist` metadata (standard ID3/Vorbis/MP4 tag) for album grouping, falling back to the track-level artist when `albumartist` is not set. This ensures multi-artist albums (compilations, features, VA releases) remain unified under a single album entry.
+- **Duplicate Songs in Library**: Tracks with identical content (same title, artist, duration) located at different file paths were appearing multiple times in the All Songs view. The `getTracks` query now deduplicates by `file_hash`, returning only the first occurrence of each unique song.
+- **Empty Album Shells**: Albums with zero associated tracks (orphaned rows from deleted files) no longer appear in the Albums view.
+- **Album Track Count Accuracy**: Changed album track count to use `COUNT(DISTINCT t.id)` for precise counting.
+
+### Changed
+- Expanded automated test suite with 6 new tests covering multi-artist album grouping (3 tests) and duplicate song deduplication (3 tests), bringing the total to 11 tests across 3 suites.
+
+---
+
 ## [0.1.4] - 2026-09-12
 
 ### Added

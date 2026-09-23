@@ -288,6 +288,9 @@ ipcMain.handle('db:getTracks', () => {
     FROM tracks t
     LEFT JOIN artists a ON t.artist_id = a.id
     LEFT JOIN albums al ON t.album_id = al.id
+    WHERE t.id IN (
+      SELECT MIN(t2.id) FROM tracks t2 GROUP BY COALESCE(t2.file_hash, t2.id)
+    )
     ORDER BY t.title ASC
   `);
   return stmt.all();
@@ -300,11 +303,12 @@ ipcMain.handle('db:getAlbums', () => {
     SELECT 
       al.id, al.title, al.year, al.cover_art_path AS cover_art,
       COALESCE(a.name, 'Unknown Artist') AS artist,
-      COUNT(t.id) AS track_count
+      COUNT(DISTINCT t.id) AS track_count
     FROM albums al
     LEFT JOIN artists a ON al.artist_id = a.id
     LEFT JOIN tracks t ON t.album_id = al.id
     GROUP BY al.id
+    HAVING track_count > 0
     ORDER BY al.title ASC
   `);
   return stmt.all();

@@ -116,6 +116,7 @@ export async function insertOrGetTrack(filePath: string): Promise<number | null>
     
     const title = metadata.common.title || path.basename(filePath, path.extname(filePath));
     const artistName = metadata.common.artist || 'Unknown Artist';
+    const albumArtistName = metadata.common.albumartist || artistName;
     const albumTitle = metadata.common.album || 'Unknown Album';
     const duration = metadata.format.duration || 0;
     const year = metadata.common.year || null;
@@ -124,12 +125,18 @@ export async function insertOrGetTrack(filePath: string): Promise<number | null>
 
     const fileHash = crypto.createHash('md5').update(`${artistName}-${title}-${duration}`).digest('hex');
 
+    // Insert/get the track-level artist (the performing artist for this track)
     const insertArtist = db.prepare(`INSERT INTO artists (name) VALUES (?) ON CONFLICT(name) DO UPDATE SET name=excluded.name RETURNING id`);
     const artistRow = insertArtist.get(artistName) as { id: number };
     const artistId = artistRow.id;
 
+    // Insert/get the album-level artist (albumartist metadata, used for album grouping)
+    // This ensures multi-artist albums stay unified under one album entry
+    const albumArtistRow = insertArtist.get(albumArtistName) as { id: number };
+    const albumArtistId = albumArtistRow.id;
+
     const insertAlbum = db.prepare(`INSERT INTO albums (title, artist_id, year) VALUES (?, ?, ?) ON CONFLICT(title, artist_id) DO UPDATE SET title=excluded.title RETURNING id`);
-    const albumRow = insertAlbum.get(albumTitle, artistId, year) as { id: number };
+    const albumRow = insertAlbum.get(albumTitle, albumArtistId, year) as { id: number };
     const albumId = albumRow.id;
 
     // Check and save cover art if available
