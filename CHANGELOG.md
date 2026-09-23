@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.9] - 2026-09-24
+
+### Added
+- **Global Keyboard Shortcuts & Media Keys**: Configurable global shortcuts via Electron's `globalShortcut` API with duplicate conflict detection, case-insensitive accelerator validation, and custom shortcut persistence in the database. Supports Play/Pause, Next/Previous track, Volume Step (+/- 5%), Toggle Lyrics, and Toggle Miniplayer.
+- **System Media Integration (`navigator.mediaSession`)**: OS-level playback integration with desktop media overlays, displaying track title, artist, album, and high-resolution album artwork with action handlers for play, pause, next, previous, and seek.
+- **System Tray Icon & Quick Controls**: Persistent system tray icon with rich context menu displaying current track status, playback controls (Play/Pause/Next/Prev), quick show/minimize toggle, preferences shortcut, and clean quit option.
+- **Minimize-to-Tray**: Optional setting allowing Overtone to keep playing in the background when the main window is closed, accessible via system tray click.
+- **Window State & Multi-Monitor Validation**: Persists window dimensions, coordinates, and maximized state across sessions with dynamic validation against all active connected displays (`screen.getAllDisplays()`), ensuring windows never restore off-screen when external monitors are disconnected.
+- **Desktop Notifications**: Optional native OS notifications on track changes with song title, artist, and album. Integrated with a "Focus Mode" preference to silence non-essential interruptions.
+- **Privacy-Sanitized Diagnostics & Support Bundle**: One-click generation of sanitized support reports containing system metrics, app version, library statistics, and error logs with personal user folder paths masked to `[USER_HOME]`. Includes export to JSON.
+- **Accessibility & Customization**: Added user preferences for Reduced Motion and Scalable Text (Small, Normal, Large) with real-time class synchronization on `document.documentElement` and CSS variable rules.
+- **Redesigned Tabbed Settings**: Modern tabbed preferences interface organizing options into Appearance, Playback & History, Hotkeys, Desktop & Tray, Accessibility, and Diagnostics.
+- **Automated Test Suite**: Added `tests/desktop-polish.test.js` validating shortcut conflict detection, default shortcut completeness, privacy path sanitization, and multi-display bounds fallback logic.
+
+---
+
 ## [0.1.8] - 2026-09-24
 
 ### Added

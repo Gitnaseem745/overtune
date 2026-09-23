@@ -1,7 +1,10 @@
-import { app, BrowserWindow, dialog, ipcMain, protocol } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, protocol, screen, Notification } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { Readable } from 'stream';
+import { initTray, updateTrayTrack, destroyTray } from './tray';
+import { registerShortcuts, unregisterShortcuts, validateShortcuts, DEFAULT_SHORTCUTS, type ShortcutMap } from './shortcuts';
+import { generateDiagnosticReport, exportDiagnosticReport } from './diagnostics';
 
 // Ensure consistent application name and Windows AppUserModelID for taskbar pinning and persistent userData
 app.setName('Overtone');
@@ -100,11 +103,66 @@ function getAppIconPath(): string {
   return '';
 }
 
+function getValidWindowBounds(): { x?: number; y?: number; width: number; height: number; isMaximized?: boolean } | null {
+  try {
+    const raw = getSetting('window_bounds');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed.width !== 'number' || typeof parsed.height !== 'number') return null;
+
+    let validCoords = false;
+    if (typeof parsed.x === 'number' && typeof parsed.y === 'number') {
+      const displays = screen.getAllDisplays();
+      validCoords = displays.some(display => {
+        const { x, y, width, height } = display.bounds;
+        return (
+          parsed.x >= x - 20 &&
+          parsed.x <= x + width - 50 &&
+          parsed.y >= y - 20 &&
+          parsed.y <= y + height - 50
+        );
+      });
+    }
+
+    return {
+      x: validCoords ? parsed.x : undefined,
+      y: validCoords ? parsed.y : undefined,
+      width: Math.max(parsed.width, 900),
+      height: Math.max(parsed.height, 600),
+      isMaximized: Boolean(parsed.isMaximized),
+    };
+  } catch (err) {
+    console.warn('[Main] Failed to parse saved window bounds:', err);
+    return null;
+  }
+}
+
+function saveWindowBounds() {
+  if (!mainWindow || mainWindow.isDestroyed() || isMiniplayer) return;
+  try {
+    const isMax = mainWindow.isMaximized();
+    const bounds = mainWindow.getBounds();
+    setSetting('window_bounds', JSON.stringify({
+      x: bounds.x,
+      y: bounds.y,
+      width: bounds.width,
+      height: bounds.height,
+      isMaximized: isMax,
+    }));
+  } catch (err) {
+    console.error('[Main] Failed to save window bounds:', err);
+  }
+}
+
 function createWindow() {
   const iconPath = getAppIconPath();
+  const savedBounds = getValidWindowBounds();
+
   mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 800,
+    width: savedBounds?.width || 1280,
+    height: savedBounds?.height || 800,
+    x: savedBounds?.x,
+    y: savedBounds?.y,
     minWidth: 900,
     minHeight: 600,
     frame: false,
@@ -118,6 +176,23 @@ function createWindow() {
     },
     show: false,
   });
+
+  if (savedBounds?.isMaximized) {
+    mainWindow.maximize();
+  }
+
+  // Setup System Tray
+  initTray(iconPath, () => mainWindow);
+
+  // Setup Global Keyboard Shortcuts
+  try {
+    const customShortcutsRaw = getSetting('custom_shortcuts');
+    const shortcuts: ShortcutMap = customShortcutsRaw ? JSON.parse(customShortcutsRaw) : DEFAULT_SHORTCUTS;
+    registerShortcuts(() => mainWindow, shortcuts);
+  } catch (err) {
+    console.error('[Main] Error loading shortcuts:', err);
+    registerShortcuts(() => mainWindow, DEFAULT_SHORTCUTS);
+  }
 
   mainWindow.once('ready-to-show', () => {
     if (mainWindow && !mainWindow.isVisible()) {
@@ -146,6 +221,16 @@ function createWindow() {
       console.error('[Main] Failed to loadFile:', err);
     });
   }
+
+  mainWindow.on('close', (event) => {
+    saveWindowBounds();
+    const minimizeToTray = getSetting('minimize_to_tray') === 'true';
+    const isQuitting = Boolean((app as unknown as { isQuitting?: boolean }).isQuitting);
+    if (minimizeToTray && !isQuitting) {
+      event.preventDefault();
+      mainWindow?.hide();
+    }
+  });
 
   mainWindow.on('closed', () => {
     mainWindow = null;
@@ -246,6 +331,13 @@ if (!gotTheLock) {
 
   app.on('window-all-closed', function () {
     if (process.platform !== 'darwin') app.quit();
+  });
+
+  app.on('before-quit', () => {
+    (app as unknown as { isQuitting?: boolean }).isQuitting = true;
+    saveWindowBounds();
+    unregisterShortcuts();
+    destroyTray();
   });
 }
 
@@ -709,6 +801,83 @@ ipcMain.handle('window:close', () => {
 
 ipcMain.handle('window:isMaximized', () => {
   return mainWindow?.isMaximized() ?? false;
+});
+
+// ── Shortcuts IPC Handlers ───────────────────────────────────────────
+
+ipcMain.handle('shortcuts:get', () => {
+  const custom = getSetting('custom_shortcuts');
+  if (custom) {
+    try {
+      return JSON.parse(custom);
+    } catch {
+      return DEFAULT_SHORTCUTS;
+    }
+  }
+  return DEFAULT_SHORTCUTS;
+});
+
+ipcMain.handle('shortcuts:save', (_event, shortcuts: ShortcutMap) => {
+  const validation = validateShortcuts(shortcuts);
+  if (!validation.valid) {
+    return { success: false, conflicts: validation.conflicts };
+  }
+  setSetting('custom_shortcuts', JSON.stringify(shortcuts));
+  const res = registerShortcuts(() => mainWindow, shortcuts);
+  return { success: true, ...res };
+});
+
+ipcMain.handle('shortcuts:reset', () => {
+  setSetting('custom_shortcuts', JSON.stringify(DEFAULT_SHORTCUTS));
+  const res = registerShortcuts(() => mainWindow, DEFAULT_SHORTCUTS);
+  return { success: true, shortcuts: DEFAULT_SHORTCUTS, ...res };
+});
+
+// ── Tray IPC Handlers ────────────────────────────────────────────────
+
+ipcMain.handle('tray:updateTrack', (_event, title: string, artist: string, isPlaying: boolean) => {
+  updateTrayTrack(title, artist, isPlaying, () => mainWindow);
+  return true;
+});
+
+// ── Desktop Notifications IPC Handlers ───────────────────────────────
+
+ipcMain.handle('notification:trackChanged', (_event, title: string, artist: string, album: string) => {
+  const enabled = getSetting('notifications_enabled') === 'true';
+  const focusMode = getSetting('focus_mode') === 'true';
+
+  if (!enabled || focusMode) return false;
+
+  try {
+    if (Notification.isSupported()) {
+      const notif = new Notification({
+        title: title || 'Now Playing',
+        body: `${artist || 'Unknown Artist'} • ${album || 'Unknown Album'}`,
+        silent: true,
+      });
+      notif.show();
+      return true;
+    }
+  } catch (err) {
+    console.error('[Notification] Error showing notification:', err);
+  }
+  return false;
+});
+
+// ── Diagnostics IPC Handlers ─────────────────────────────────────────
+
+ipcMain.handle('diagnostics:getReport', () => {
+  return generateDiagnosticReport();
+});
+
+ipcMain.handle('diagnostics:export', async () => {
+  const { canceled, filePath } = await dialog.showSaveDialog({
+    title: 'Export Diagnostic Support Bundle',
+    defaultPath: `overtone-diagnostics-${new Date().toISOString().slice(0, 10)}.json`,
+    filters: [{ name: 'JSON Document', extensions: ['json'] }],
+  });
+  if (canceled || !filePath) return false;
+  return await exportDiagnosticReport(filePath);
 });
 
 

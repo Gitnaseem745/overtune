@@ -103,4 +103,52 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.removeListener('library-updated', handler);
     };
   },
+
+  // Desktop Polish: Shortcuts, Tray, Notifications & Diagnostics
+  getShortcuts: () => ipcRenderer.invoke('shortcuts:get'),
+  saveShortcuts: (shortcuts: unknown) => ipcRenderer.invoke('shortcuts:save', shortcuts),
+  resetShortcuts: () => ipcRenderer.invoke('shortcuts:reset'),
+  updateTrayTrack: (title: string, artist: string, isPlaying: boolean) =>
+    ipcRenderer.invoke('tray:updateTrack', title, artist, isPlaying),
+  notifyTrackChanged: (title: string, artist: string, album: string) =>
+    ipcRenderer.invoke('notification:trackChanged', title, artist, album),
+  getDiagnosticReport: () => ipcRenderer.invoke('diagnostics:getReport'),
+  exportDiagnosticReport: () => ipcRenderer.invoke('diagnostics:export'),
+
+  // Desktop Shortcut Listeners (from Global Shortcuts / OS Media Keys / Tray)
+  onShortcutTogglePlay: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('playback:togglePlay', handler);
+    return () => { ipcRenderer.removeListener('playback:togglePlay', handler); };
+  },
+  onShortcutNext: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('playback:next', handler);
+    return () => { ipcRenderer.removeListener('playback:next', handler); };
+  },
+  onShortcutPrev: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('playback:prev', handler);
+    return () => { ipcRenderer.removeListener('playback:prev', handler); };
+  },
+  onShortcutVolumeStep: (callback: (delta: number) => void) => {
+    const handler = (_event: unknown, delta: number) => callback(delta);
+    ipcRenderer.on('playback:volumeStep', handler);
+    return () => { ipcRenderer.removeListener('playback:volumeStep', handler); };
+  },
+  onShortcutToggleLyrics: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('ui:toggleLyrics', handler);
+    return () => { ipcRenderer.removeListener('ui:toggleLyrics', handler); };
+  },
+  onShortcutToggleMiniplayer: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('ui:toggleMiniplayer', handler);
+    return () => { ipcRenderer.removeListener('ui:toggleMiniplayer', handler); };
+  },
+  onOpenSettings: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('ui:openSettings', handler);
+    return () => { ipcRenderer.removeListener('ui:openSettings', handler); };
+  },
 });

@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/gitnaseem745/overtune/releases"><img src="https://img.shields.io/badge/version-0.1.8-blue.svg?style=flat-square" alt="Version"></a>
+  <a href="https://github.com/gitnaseem745/overtune/releases"><img src="https://img.shields.io/badge/version-0.1.9-blue.svg?style=flat-square" alt="Version"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg?style=flat-square" alt="License"></a>
   <a href="https://www.electronjs.org/"><img src="https://img.shields.io/badge/Electron-32.0.0-47848F.svg?style=flat-square&logo=electron" alt="Electron"></a>
   <a href="https://nextjs.org/"><img src="https://img.shields.io/badge/Next.js-16.2.10-000000.svg?style=flat-square&logo=next.js" alt="Next.js"></a>
@@ -96,6 +96,15 @@
 - **Offline Smart Mixes:** Automatically generates "Forgotten Favorites" (beloved tracks unplayed in over 30 days), "Recent Additions", and "Deep Catalog Gems", playable, shuffleable, and exportable to regular playlists.
 - **Playlist Reordering & Multi-Selection:** Move tracks up/down, sort by metadata, and perform bulk actions (play, add to queue, remove) with multi-track selection.
 - **Queue to Playlist Export:** Convert your current playing queue into a permanent playlist with one click.
+
+### ⚡ Desktop Polish & Everyday Reliability (v0.1.9)
+- **Configurable Global Keyboard Shortcuts:** Custom global accelerator bindings with conflict validation for playback, volume stepping (+/- 5%), lyrics toggle, and miniplayer toggle.
+- **System Media Key & Notification Integration:** Full OS `MediaSession` integration with native desktop controls and optional track change notifications with Focus Mode silencing.
+- **System Tray Icon & Minimize-to-Tray:** Background playback support with system tray icon, live tooltip, playback context menu, and one-click show/hide toggle.
+- **Multi-Monitor Window State Persistence:** Saves window dimensions, coordinates, and maximized state with multi-monitor geometry bounds validation to prevent off-screen spawns.
+- **Privacy-Sanitized Support Diagnostics:** Generate and export privacy-sanitized diagnostic bundles (system specs, library stats, masked error paths) for easy bug reporting without credential leakage.
+- **Accessibility & Scalable Text:** Preferences for Reduced Motion animation suppression and customizable text scaling (Small, Normal, Large) with real-time CSS synchronization.
+- **Organized Tabbed Preferences:** Redesigned preferences modal categorized into Appearance, Playback & History, Hotkeys, Desktop & Tray, Accessibility, and Diagnostics.
 
 ---
 

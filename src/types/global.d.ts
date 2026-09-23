@@ -1,7 +1,7 @@
 import { 
   Track, Album, Artist, Playlist, LyricsData,
   WatchedFolder, ScanError, DuplicateGroup, MissingFile, HealthReport, ScanDashboard, TrackMetadataUpdate,
-  PlayHistoryEntry, SmartPlaylistRule, SmartPlaylist, PlaybackState
+  PlayHistoryEntry, SmartPlaylistRule, SmartPlaylist, PlaybackState, ShortcutMap, DiagnosticBundle
 } from './music';
 
 export {};
@@ -107,6 +107,24 @@ declare global {
       isMaximized: () => Promise<boolean>;
 
       onLibraryUpdated: (callback: () => void) => () => void;
+
+      // Desktop Polish: Shortcuts, Tray, Notifications & Diagnostics
+      getShortcuts: () => Promise<ShortcutMap>;
+      saveShortcuts: (shortcuts: ShortcutMap) => Promise<{ success: boolean; conflicts?: string[]; registered?: string[]; failed?: string[] }>;
+      resetShortcuts: () => Promise<{ success: boolean; shortcuts: ShortcutMap }>;
+      updateTrayTrack: (title: string, artist: string, isPlaying: boolean) => Promise<boolean>;
+      notifyTrackChanged: (title: string, artist: string, album: string) => Promise<boolean>;
+      getDiagnosticReport: () => Promise<DiagnosticBundle>;
+      exportDiagnosticReport: () => Promise<boolean>;
+
+      // Desktop Shortcut / Media Session Listeners
+      onShortcutTogglePlay: (callback: () => void) => () => void;
+      onShortcutNext: (callback: () => void) => () => void;
+      onShortcutPrev: (callback: () => void) => () => void;
+      onShortcutVolumeStep: (callback: (delta: number) => void) => () => void;
+      onShortcutToggleLyrics: (callback: () => void) => () => void;
+      onShortcutToggleMiniplayer: (callback: () => void) => () => void;
+      onOpenSettings: (callback: () => void) => () => void;
     };
   }
 }

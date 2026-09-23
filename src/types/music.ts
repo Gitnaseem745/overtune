@@ -133,6 +133,48 @@ export interface PlaybackState {
   resumePreference: 'always' | 'ask' | 'off';
 }
 
+export interface ShortcutMap {
+  playPause: string;
+  nextTrack: string;
+  prevTrack: string;
+  volumeUp: string;
+  volumeDown: string;
+  toggleLyrics: string;
+  toggleMiniplayer: string;
+}
+
+export interface DiagnosticBundle {
+  generatedAt: string;
+  app: {
+    name: string;
+    version: string;
+    electronVersion: string;
+    nodeVersion: string;
+    chromeVersion: string;
+    isPackaged: boolean;
+  };
+  system: {
+    platform: string;
+    release: string;
+    arch: string;
+    totalMemoryMB: number;
+    freeMemoryMB: number;
+    cpus: number;
+  };
+  library: {
+    tracksCount: number;
+    albumsCount: number;
+    artistsCount: number;
+    playlistsCount: number;
+    watchedFoldersCount: number;
+  };
+  sanitizedErrors: Array<{
+    file: string;
+    error: string;
+    time: string;
+  }>;
+}
+
 export type ThemeMode = 'light' | 'dark';
 export type LayoutMode = 'classic' | 'spotify';
 export type AccentColor = 

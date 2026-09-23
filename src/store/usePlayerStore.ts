@@ -2,7 +2,8 @@ import { create } from 'zustand';
 import { 
   Track, Album, Artist, Playlist, LyricsData, ThemeMode, LayoutMode, AccentColor, RepeatMode, ActiveTab,
   WatchedFolder, ScanError, DuplicateGroup, MissingFile, HealthReport, TrackMetadataUpdate,
-  PlayHistoryEntry, SmartPlaylistRule, SmartPlaylist
+  PlayHistoryEntry, SmartPlaylistRule, SmartPlaylist,
+  ShortcutMap, DiagnosticBundle
 } from '../types/music';
 
 interface PlayerState {
@@ -47,6 +48,15 @@ interface PlayerState {
   forgottenFavorites: Track[];
   recentAdditions: Track[];
   resumePreference: 'always' | 'ask' | 'off';
+
+  // ── Desktop Polish Preferences ──
+  shortcuts: ShortcutMap;
+  minimizeToTray: boolean;
+  notificationsEnabled: boolean;
+  focusMode: boolean;
+  reducedMotion: boolean;
+  textScale: 'small' | 'normal' | 'large';
+  diagnosticBundle: DiagnosticBundle | null;
 
   // ── Library Data ──
   tracks: Track[];
@@ -186,6 +196,18 @@ interface PlayerState {
   savePlaybackState: () => Promise<void>;
   restorePlaybackState: () => Promise<void>;
   setResumePreference: (pref: 'always' | 'ask' | 'off') => Promise<void>;
+
+  // ── Desktop Polish Actions ──
+  loadDesktopSettings: () => Promise<void>;
+  setShortcuts: (shortcuts: ShortcutMap) => Promise<{ success: boolean; conflicts?: string[] }>;
+  resetShortcuts: () => Promise<void>;
+  setMinimizeToTray: (enabled: boolean) => Promise<void>;
+  setNotificationsEnabled: (enabled: boolean) => Promise<void>;
+  setFocusMode: (enabled: boolean) => Promise<void>;
+  setReducedMotion: (enabled: boolean) => void;
+  setTextScale: (scale: 'small' | 'normal' | 'large') => void;
+  loadDiagnosticReport: () => Promise<void>;
+  exportDiagnostics: () => Promise<boolean>;
 }
 
 export const usePlayerStore = create<PlayerState>((set, get) => ({
@@ -227,6 +249,22 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   forgottenFavorites: [],
   recentAdditions: [],
   resumePreference: 'always',
+
+  shortcuts: {
+    playPause: 'MediaPlayPause',
+    nextTrack: 'MediaTrackNext',
+    prevTrack: 'MediaTrackPrevious',
+    volumeUp: 'VolumeUp',
+    volumeDown: 'VolumeDown',
+    toggleLyrics: 'CommandOrControl+L',
+    toggleMiniplayer: 'CommandOrControl+M',
+  },
+  minimizeToTray: false,
+  notificationsEnabled: false,
+  focusMode: false,
+  reducedMotion: (typeof window !== 'undefined' && localStorage.getItem('overtone_reduced_motion') === 'true') || false,
+  textScale: (typeof window !== 'undefined' && (localStorage.getItem('overtone_text_scale') as 'small' | 'normal' | 'large')) || 'normal',
+  diagnosticBundle: null,
 
   tracks: [],
   albums: [],
@@ -1167,5 +1205,108 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       await window.api.setSetting('resume_preference', pref);
       set({ resumePreference: pref });
     }
+  },
+
+  // ── Desktop Polish Actions ──
+  loadDesktopSettings: async () => {
+    if (typeof window !== 'undefined' && window.api) {
+      try {
+        const [sc, minTray, notif, focus] = await Promise.all([
+          window.api.getShortcuts(),
+          window.api.getSetting('minimize_to_tray', 'false'),
+          window.api.getSetting('notifications_enabled', 'false'),
+          window.api.getSetting('focus_mode', 'false'),
+        ]);
+        set({
+          shortcuts: sc || get().shortcuts,
+          minimizeToTray: minTray === 'true',
+          notificationsEnabled: notif === 'true',
+          focusMode: focus === 'true',
+        });
+      } catch (err) {
+        console.error('Error loading desktop settings:', err);
+      }
+    }
+  },
+
+  setShortcuts: async (shortcuts) => {
+    if (typeof window !== 'undefined' && window.api) {
+      const res = await window.api.saveShortcuts(shortcuts);
+      if (res.success) {
+        set({ shortcuts });
+      }
+      return res;
+    }
+    return { success: false };
+  },
+
+  resetShortcuts: async () => {
+    if (typeof window !== 'undefined' && window.api) {
+      const res = await window.api.resetShortcuts();
+      if (res.success) {
+        set({ shortcuts: res.shortcuts });
+      }
+    }
+  },
+
+  setMinimizeToTray: async (enabled) => {
+    if (typeof window !== 'undefined' && window.api) {
+      await window.api.setSetting('minimize_to_tray', String(enabled));
+      set({ minimizeToTray: enabled });
+    }
+  },
+
+  setNotificationsEnabled: async (enabled) => {
+    if (typeof window !== 'undefined' && window.api) {
+      await window.api.setSetting('notifications_enabled', String(enabled));
+      set({ notificationsEnabled: enabled });
+    }
+  },
+
+  setFocusMode: async (enabled) => {
+    if (typeof window !== 'undefined' && window.api) {
+      await window.api.setSetting('focus_mode', String(enabled));
+      set({ focusMode: enabled });
+    }
+  },
+
+  setReducedMotion: (enabled) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('overtone_reduced_motion', String(enabled));
+      if (enabled) {
+        document.documentElement.classList.add('reduced-motion');
+      } else {
+        document.documentElement.classList.remove('reduced-motion');
+      }
+    }
+    set({ reducedMotion: enabled });
+  },
+
+  setTextScale: (scale) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('overtone_text_scale', scale);
+      document.documentElement.classList.remove('text-scale-small', 'text-scale-large');
+      if (scale === 'small') document.documentElement.classList.add('text-scale-small');
+      if (scale === 'large') document.documentElement.classList.add('text-scale-large');
+    }
+    set({ textScale: scale });
+  },
+
+  loadDiagnosticReport: async () => {
+    if (typeof window !== 'undefined' && window.api) {
+      try {
+        const report = await window.api.getDiagnosticReport();
+        set({ diagnosticBundle: report });
+      } catch (err) {
+        console.error('Error getting diagnostic report:', err);
+      }
+    }
+  },
+
+  exportDiagnostics: async () => {
+    if (typeof window !== 'undefined' && window.api) {
+      return await window.api.exportDiagnosticReport();
+    }
+    return false;
   },
 }));
