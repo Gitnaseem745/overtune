@@ -1,0 +1,55 @@
+{
+  "expo": {
+    "name": "Overtone",
+    "slug": "overtune",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "overtune",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0A0A0F"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.overtone.music",
+      "infoPlist": {
+        "UIBackgroundModes": ["audio"],
+        "NSLocalNetworkUsageDescription": "Overtone uses your local network to sync playlists with the Overtone desktop app on the same Wi-Fi network.",
+        "NSBonjourServices": ["_overtune._tcp."],
+        "NSAppleMusicUsageDescription": "Overtone does not access Apple Music. It plays music files you import."
+      },
+      "config": {
+        "usesNonExemptEncryption": false
+      }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-font",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": false,
+          "enableBackgroundPlayback": true
+        }
+      ],
+      [
+        "expo-document-picker",
+        {
+          "iCloudContainerEnvironment": "Production"
+        }
+      ],
+      [
+        "expo-sqlite",
+        {}
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

@@ -90,3 +90,7 @@ desktop.ini
 # Vercel & Deployment
 .vercel
 MOBILE_APPS.md
+
+# Mobile Dev Artifacts & Reference Media
+mobile/.expo/
+public/ios_app_ui/
