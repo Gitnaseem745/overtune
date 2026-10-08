@@ -1,0 +1,5 @@
+module.exports = [
+  {
+    ignores: ['node_modules/**', '.expo/**', 'dist/**', 'babel.config.js', 'jest.config.js', 'jest.setup.js'],
+  },
+];
