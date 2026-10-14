@@ -35,7 +35,7 @@ export function FullscreenPlayer() {
   const fetchLyrics = usePlayerStore((s) => s.fetchLyrics);
 
   const [isIdle, setIsIdle] = useState(false);
-  const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activeLineRef = useRef<HTMLDivElement>(null);
   const lyricsScrollRef = useRef<HTMLDivElement>(null);
   const lastTrackIdRef = useRef<number | null>(null);
