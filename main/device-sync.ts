@@ -32,6 +32,7 @@ export interface DeviceSyncStatus {
   enabled: boolean;
   deviceName: string;
   localIp: string;
+  candidateIps?: string[];
   port: number;
   activePairingPin: string | null;
   pinExpiresInSeconds: number;
@@ -46,25 +47,50 @@ const DEFAULT_PORT = 47848;
 const pendingPlaylists: PendingSharedPlaylist[] = [];
 
 /**
- * Get the primary non-internal IPv4 address for local network discovery.
+ * Get all usable non-internal IPv4 addresses for local network discovery.
  */
-export function getLocalIpAddress(): string {
+export function getAllLocalIpAddresses(): string[] {
   const interfaces = os.networkInterfaces();
+  const addresses: string[] = [];
+  const virtualRegex = /(vethernet|docker|wsl|virtual|vmware|vbox|tailscale|tap|tun)/i;
+
+  // First pass: physical / non-virtual interfaces
   for (const name of Object.keys(interfaces)) {
+    if (virtualRegex.test(name)) continue;
     for (const iface of interfaces[name] || []) {
       if (iface.family === 'IPv4' && !iface.internal) {
-        return iface.address;
+        addresses.push(iface.address);
       }
     }
   }
-  return '127.0.0.1';
+
+  // Second pass: any other non-internal IPv4 if no physical found
+  if (addresses.length === 0) {
+    for (const name of Object.keys(interfaces)) {
+      for (const iface of interfaces[name] || []) {
+        if (iface.family === 'IPv4' && !iface.internal) {
+          addresses.push(iface.address);
+        }
+      }
+    }
+  }
+
+  return addresses.length > 0 ? addresses : ['127.0.0.1'];
 }
 
 /**
- * Generate a 6-digit numeric pairing PIN code valid for 5 minutes.
+ * Get the primary non-internal IPv4 address for local network discovery.
+ */
+export function getLocalIpAddress(): string {
+  const all = getAllLocalIpAddresses();
+  return all[0] || '127.0.0.1';
+}
+
+/**
+ * Generate a 6-digit numeric pairing PIN code valid for 5 minutes using secure random.
  */
 export function generatePairingPin(): { pin: string; expiresInSeconds: number } {
-  const pin = Math.floor(100000 + Math.random() * 900000).toString();
+  const pin = crypto.randomInt(100000, 1000000).toString();
   activePairingPin = pin;
   pinExpiresAt = Date.now() + 5 * 60 * 1000;
   return { pin, expiresInSeconds: 300 };
@@ -147,14 +173,85 @@ export function startDeviceSyncServer(
         return;
       }
 
-      // 3. Receive Shared Playlist
-      if (url === '/api/sync/playlist' && method === 'POST') {
+      // Helper to authenticate Bearer token
+      const authenticateBearer = (): { id: string; name: string } | null => {
         const authHeader = req.headers['authorization'] || '';
         const token = authHeader.replace(/^Bearer\s+/i, '');
-
+        if (!token) return null;
         const db = customDb || getDb();
         const paired = db.prepare('SELECT id, name FROM paired_devices WHERE auth_token = ?').get(token) as { id: string; name: string } | undefined;
+        return paired || null;
+      };
 
+      // 3. List Playlists (for mobile client pull)
+      if (url === '/api/sync/playlists' && method === 'GET') {
+        const paired = authenticateBearer();
+        if (!paired) {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: 'Unauthorized: device is not paired' }));
+          return;
+        }
+
+        const db = customDb || getDb();
+        try {
+          const playlists = db.prepare(`
+            SELECT p.id, p.name, COUNT(pt.track_id) as trackCount
+            FROM playlists p
+            LEFT JOIN playlist_tracks pt ON pt.playlist_id = p.id
+            GROUP BY p.id
+            ORDER BY p.name ASC
+          `).all();
+
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ playlists }));
+        } catch (e: any) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: e?.message || 'Database error' }));
+        }
+        return;
+      }
+
+      // 4. Get specific Playlist (for mobile client pull)
+      if (url.startsWith('/api/sync/playlist/') && method === 'GET') {
+        const paired = authenticateBearer();
+        if (!paired) {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: 'Unauthorized: device is not paired' }));
+          return;
+        }
+
+        const playlistId = parseInt(url.replace('/api/sync/playlist/', ''), 10);
+        const db = customDb || getDb();
+        const playlist = db.prepare('SELECT name FROM playlists WHERE id = ?').get(playlistId) as { name: string } | undefined;
+
+        if (!playlist) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Playlist not found' }));
+          return;
+        }
+
+        const tracks = db.prepare(`
+          SELECT t.title, COALESCE(a.name, 'Unknown Artist') as artist, COALESCE(al.title, 'Unknown Album') as album,
+                 t.duration, t.genre
+          FROM playlist_tracks pt
+          JOIN tracks t ON pt.track_id = t.id
+          LEFT JOIN artists a ON t.artist_id = a.id
+          LEFT JOIN albums al ON t.album_id = al.id
+          WHERE pt.playlist_id = ?
+          ORDER BY pt.position ASC
+        `).all(playlistId);
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          playlistName: playlist.name,
+          tracks,
+        }));
+        return;
+      }
+
+      // 5. Receive Shared Playlist (push to desktop)
+      if (url === '/api/sync/playlist' && method === 'POST') {
+        const paired = authenticateBearer();
         if (!paired) {
           res.writeHead(403, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ success: false, error: 'Unauthorized: device is not paired' }));
@@ -203,6 +300,13 @@ export function startDeviceSyncServer(
 
     server.on('error', (err) => {
       console.warn('[DeviceSync] Server failed to start on port', customPort, err);
+      // Clean up server reference so it is not falsely reported as active
+      if (server) {
+        try {
+          server.close();
+        } catch {}
+        server = null;
+      }
       resolve(false);
     });
   });
@@ -481,6 +585,7 @@ export function getDeviceSyncStatus(customDb?: Database.Database): DeviceSyncSta
     enabled: server !== null,
     deviceName: os.hostname(),
     localIp: getLocalIpAddress(),
+    candidateIps: getAllLocalIpAddresses(),
     port: DEFAULT_PORT,
     activePairingPin: pinRemaining > 0 ? activePairingPin : null,
     pinExpiresInSeconds: pinRemaining,
