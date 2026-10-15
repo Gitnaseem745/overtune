@@ -108,3 +108,11 @@ ui_main.png
 *.mkv
 *.webp.bak
 *.png.bak
+
+# AI & Scratch Planning Artifacts
+IOS_APP_PLAN.md
+WIFI_SYNC_IP_ISSUE.md
+*_PLAN.md
+*PLAN*.md
+scratch/
+ai_prompts/
