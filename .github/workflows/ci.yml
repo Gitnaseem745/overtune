@@ -11,8 +11,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  lint-and-typecheck:
-    name: Lint & Type Check
+  desktop-ci:
+    name: Desktop (Lint, Typecheck, Test, Build)
     runs-on: windows-latest
 
     steps:
@@ -34,10 +34,21 @@ jobs:
       - name: Run TypeScript Typecheck
         run: npm run typecheck
 
-  build-test:
-    name: Build Frontend & Electron Process
-    runs-on: windows-latest
-    needs: lint-and-typecheck
+      - name: Run Desktop Unit & Integration Tests
+        run: npm test
+
+      - name: Build Next.js static export
+        run: npm run build:next
+
+      - name: Build Electron main process
+        run: npm run build:electron
+
+  mobile-ci:
+    name: Mobile & iOS (Lint, Typecheck, Test, iOS Export)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
 
     steps:
       - name: Checkout repository
@@ -48,12 +59,19 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
+          cache-dependency-path: mobile/package-lock.json
 
-      - name: Install dependencies
+      - name: Install mobile dependencies
         run: npm ci
 
-      - name: Build Next.js static export
-        run: npm run build:next
+      - name: Run Mobile ESLint
+        run: npm run lint
 
-      - name: Build Electron main process
-        run: npm run build:electron
+      - name: Run Mobile TypeScript Typecheck
+        run: npm run typecheck
+
+      - name: Run Mobile Unit Tests
+        run: npm test
+
+      - name: Build & Export iOS Bundle
+        run: npx expo export --platform ios

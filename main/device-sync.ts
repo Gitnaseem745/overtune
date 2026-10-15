@@ -204,9 +204,10 @@ export function startDeviceSyncServer(
 
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ playlists }));
-        } catch (e: any) {
+        } catch (e: unknown) {
+          const errMsg = e instanceof Error ? e.message : 'Database error';
           res.writeHead(500, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: e?.message || 'Database error' }));
+          res.end(JSON.stringify({ error: errMsg }));
         }
         return;
       }

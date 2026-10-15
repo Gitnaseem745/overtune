@@ -1,0 +1,72 @@
+name: iOS App Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: 'EAS Build Profile'
+        required: true
+        default: 'preview'
+        type: choice
+        options:
+          - preview
+          - production
+          - development
+  push:
+    tags:
+      - 'ios-v*'
+      - 'mobile-v*'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-ios:
+    name: Build & Package iOS App
+    runs-on: macos-14
+    defaults:
+      run:
+        working-directory: mobile
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Quality Gate (Typecheck & Tests)
+        run: |
+          npm run typecheck
+          npm test
+
+      - name: Export iOS Bundle & Asset Manifest
+        run: npx expo export --platform ios
+
+      - name: Archive iOS Export Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: overtone-ios-bundle
+          path: mobile/dist
+          retention-days: 14
+
+      - name: Setup EAS CLI (if EXPO_TOKEN is provided)
+        if: env.EXPO_TOKEN != ''
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Trigger EAS iOS Cloud Build
+        if: env.EXPO_TOKEN != ''
+        run: eas build --platform ios --profile ${{ inputs.profile || 'production' }} --non-interactive
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
