@@ -112,7 +112,7 @@ export interface RelocateResult {
 export function generateBackupData(customDb?: Database.Database): BackupArchiveData {
   const db = customDb || getDb();
 
-  let appVersion = '0.2.0';
+  let appVersion = '0.2.1';
   try {
     appVersion = app.getVersion();
   } catch {

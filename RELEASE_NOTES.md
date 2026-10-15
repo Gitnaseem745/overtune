@@ -37,6 +37,20 @@ We are proud to introduce the official milestone release of the **Overtone iOS C
 
 ---
 
+## 🎵 Overtone Desktop v0.2.1 — Cross-Sync & Multi-Adapter Network Patch (2026-10-16)
+
+This maintenance and quality release delivers critical local-network fixes for desktop-to-mobile Wi-Fi synchronization, intelligent multi-adapter detection, and robust server lifecycle handling.
+
+### 🛠️ What's Fixed & Enhanced in v0.2.1
+- **Intelligent Physical Network Adapter Detection**: Automatically filters out virtual host-only adapters (`vEthernet`, `docker`, `wsl`, `tailscale`, `virtual`, `loopback`) and prioritizes actual physical Wi-Fi/Ethernet adapters. Prevents unroutable internal IP addresses from being advertised to mobile clients during Wi-Fi pairing.
+- **Multi-Adapter Fallback Support**: Inspects all active network interfaces and exposes candidate physical IPs so multi-NIC machines can select their active LAN interface.
+- **Cryptographically Secure PIN Generation**: Upgraded numeric 6-digit pairing PIN generation using `crypto.randomInt` for cryptographic randomness and timing safety.
+- **Resilient Sync Server Binding**: Enhanced server error listeners to gracefully handle occupied ports (`EADDRINUSE`) and socket teardowns during app reload without crashing the main Electron process.
+- **Strict TypeScript & Linter Compliance**: Resolved `catch (e: unknown)` type safety in the sync layer, ensuring 0 lint warnings and 0 type errors.
+- **In-App Versioning**: Updated About & Settings modal to reflect Desktop `v0.2.1`.
+
+---
+
 ## 🎵 Overtone Desktop v0.2.0 — Personal Music Hub Launch! (2026-09-24)
 
 I am thrilled to announce the official milestone release of **Overtone v0.2.0 — Personal Music Hub**! 

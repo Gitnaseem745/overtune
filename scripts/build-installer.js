@@ -178,7 +178,12 @@ async function build() {
 
     // ── STEP 6: Package Windows NSIS .exe Installer ──
     logHeader(6, TOTAL_STEPS, 'Packaging Windows NSIS .exe Installer via electron-builder');
-    await runCommand('npx', ['electron-builder', '--win', 'nsis', '--publish', 'never'], 'Electron Builder Packaging');
+    const builderArgs = ['electron-builder', '--win', 'nsis', '--publish', 'never'];
+    const localElectronDist = path.join(rootDir, 'node_modules', 'electron', 'dist');
+    if (fs.existsSync(localElectronDist)) {
+      builderArgs.push(`--config.electronDist=${path.relative(rootDir, localElectronDist)}`);
+    }
+    await runCommand('npx', builderArgs, 'Electron Builder Packaging');
 
     // ── Completion & Output Analysis ──
     const releaseDir = path.join(rootDir, 'release');

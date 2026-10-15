@@ -280,7 +280,7 @@ describe('Personal Music Hub (Stability Milestone 0.2.0)', () => {
         format: 'overtone-backup',
         schemaVersion: '1.0',
         exportedAt: new Date().toISOString(),
-        appVersion: '0.2.0',
+        appVersion: '0.2.1',
         data: {
           playlists,
           smartPlaylists: [],
@@ -316,7 +316,7 @@ describe('Personal Music Hub (Stability Milestone 0.2.0)', () => {
         format: 'overtone-backup',
         schemaVersion: '1.0',
         exportedAt: new Date().toISOString(),
-        appVersion: '0.2.0',
+        appVersion: '0.2.1',
         data: {
           playlists: [
             {

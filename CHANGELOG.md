@@ -30,6 +30,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.2.1] - 2026-10-16 — Patch: Cross-Sync LAN Network Multi-Adapter Fix
+
+### Fixed
+- **Intelligent Physical Network Adapter Detection**: Automatically filters out virtual network interfaces (`vEthernet`, `docker`, `wsl`, `tailscale`, `virtual`, `loopback`) and advertises reachable physical Wi-Fi/Ethernet IP addresses during local device pairing.
+- **Candidate Interface Exposer**: Exposes list of physical network adapter candidates for multi-NIC workstations and laptops.
+- **Cryptographic PIN Security**: Swapped insecure pseudo-random pairing PIN generation for cryptographically secure `crypto.randomInt` (6-digit numeric expiring PINs).
+- **Server Error Lifecycle Handling**: Added error event listeners to prevent unhandled `EADDRINUSE` exceptions and graceful restart handling for the sync server.
+- **TypeScript Error Handling**: Updated error catching to typed `catch (e: unknown)` with error message extraction.
+
+---
+
 ## [0.2.0] - 2026-09-24 — Milestone: Personal Music Hub
 
 ### Added

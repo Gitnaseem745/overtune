@@ -23,6 +23,7 @@ Overtune should make a personal music collection feel as polished and easy to ex
 | **0.1.8** | Desktop | Personal discovery | ✅ Delivered | Build useful mixes, smart playlists, and listening history from the local library |
 | **0.1.9** | Desktop | Desktop polish | ✅ Delivered | Use Overtune comfortably with global controls, shortcuts, accessibility, and reliable resume |
 | **0.2.0** | Desktop | Personal music hub | ✅ Delivered | Deliver a stable, portable library experience with optional device sync and a mature release foundation |
+| **0.2.1** | Desktop | Cross-sync network patch | ✅ Delivered | Filter virtual adapters, expose physical LAN IPs & error handling for device sync |
 | **1.0.0** | iOS | Sleek mobile companion | ✅ Delivered | Night Star Sleek UI, Dynamic Island, Live Activities, Home Widgets, Wi-Fi LAN sync & local SQLite |
 | **1.1.0** | iOS | Driving & acoustics | 🚀 Planned | Apple CarPlay support, crossfade DSP, graphic equalizer & interactive Lock Screen widgets |
 | **0.3.0** | Desktop | Audiophile acoustics | 🚀 Planned | ReplayGain loudness normalization, WASAPI exclusive mode & multi-room streaming |

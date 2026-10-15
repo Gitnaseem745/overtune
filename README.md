@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/gitnaseem745/overtune/releases"><img src="https://img.shields.io/badge/desktop-v0.2.0-blue.svg?style=flat-square" alt="Desktop Version"></a>
+  <a href="https://github.com/gitnaseem745/overtune/releases"><img src="https://img.shields.io/badge/desktop-v0.2.1-blue.svg?style=flat-square" alt="Desktop Version"></a>
   <a href="mobile/"><img src="https://img.shields.io/badge/ios-v1.0.0-purple.svg?style=flat-square&logo=apple" alt="iOS Version"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg?style=flat-square" alt="License"></a>
   <a href="https://www.electronjs.org/"><img src="https://img.shields.io/badge/Electron-32.0.0-47848F.svg?style=flat-square&logo=electron" alt="Electron"></a>
@@ -584,7 +584,7 @@ cd ..
 ```bash
 npm run build:installer
 ```
-*Output: `release/Overtone-Setup-0.2.0.exe`*
+*Output: `release/Overtone-Setup-0.2.1.exe`*
 
 ### iOS Production Bundle & Export
 ```bash
