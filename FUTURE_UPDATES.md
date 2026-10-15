@@ -16,13 +16,16 @@ Overtune should make a personal music collection feel as polished and easy to ex
 
 ## At a glance
 
-| Version | Theme | Main user outcome |
-|---|---|---|
-| **0.1.6** | Lyrics & listening focus | Read synchronized or plain local lyrics while a track plays |
-| **0.1.7** | Better library care | Fix tags and artwork safely, find duplicates, and understand scan health |
-| **0.1.8** | Personal discovery | Build useful mixes, smart playlists, and listening history from the local library |
-| **0.1.9** | Desktop polish | Use Overtune comfortably with global controls, shortcuts, accessibility, and reliable resume |
-| **0.2.0** | Personal music hub | Deliver a stable, portable library experience with optional device sync and a mature release foundation |
+| Version | Target | Theme | Status | Main user outcome |
+|---|---|---|---|---|
+| **0.1.6** | Desktop | Lyrics & listening focus | ✅ Delivered | Read synchronized or plain local lyrics while a track plays |
+| **0.1.7** | Desktop | Better library care | ✅ Delivered | Fix tags and artwork safely, find duplicates, and understand scan health |
+| **0.1.8** | Desktop | Personal discovery | ✅ Delivered | Build useful mixes, smart playlists, and listening history from the local library |
+| **0.1.9** | Desktop | Desktop polish | ✅ Delivered | Use Overtune comfortably with global controls, shortcuts, accessibility, and reliable resume |
+| **0.2.0** | Desktop | Personal music hub | ✅ Delivered | Deliver a stable, portable library experience with optional device sync and a mature release foundation |
+| **1.0.0** | iOS | Sleek mobile companion | ✅ Delivered | Night Star Sleek UI, Dynamic Island, Live Activities, Home Widgets, Wi-Fi LAN sync & local SQLite |
+| **1.1.0** | iOS | Driving & acoustics | 🚀 Planned | Apple CarPlay support, crossfade DSP, graphic equalizer & interactive Lock Screen widgets |
+| **0.3.0** | Desktop | Audiophile acoustics | 🚀 Planned | ReplayGain loudness normalization, WASAPI exclusive mode & multi-room streaming |
 
 ---
 

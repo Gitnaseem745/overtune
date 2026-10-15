@@ -5,19 +5,20 @@
 <h1 align="center">🎵 Overtone</h1>
 
 <p align="center">
-  <strong>A modern, local-first music player with Spotify-grade design, dual themes, dual layouts, synchronized lyrics, personal smart playlists, local Wi-Fi sync, and blazing-fast offline playback.</strong>
+  <strong>A modern, local-first music player for Desktop & iOS with Spotify-grade design, Sleek mobile architecture, synchronized lyrics, personal smart playlists, local Wi-Fi cross-sync, and blazing-fast offline playback.</strong>
 </p>
 
 <p align="center">
-  <a href="https://github.com/gitnaseem745/overtune/releases"><img src="https://img.shields.io/badge/version-0.2.0-blue.svg?style=flat-square" alt="Version"></a>
+  <a href="https://github.com/gitnaseem745/overtune/releases"><img src="https://img.shields.io/badge/desktop-v0.2.0-blue.svg?style=flat-square" alt="Desktop Version"></a>
+  <a href="mobile/"><img src="https://img.shields.io/badge/ios-v1.0.0-purple.svg?style=flat-square&logo=apple" alt="iOS Version"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg?style=flat-square" alt="License"></a>
   <a href="https://www.electronjs.org/"><img src="https://img.shields.io/badge/Electron-32.0.0-47848F.svg?style=flat-square&logo=electron" alt="Electron"></a>
   <a href="https://nextjs.org/"><img src="https://img.shields.io/badge/Next.js-16.2.10-000000.svg?style=flat-square&logo=next.js" alt="Next.js"></a>
-  <a href="https://react.dev/"><img src="https://img.shields.io/badge/React-19.2.4-61DAFB.svg?style=flat-square&logo=react" alt="React"></a>
+  <a href="https://reactnative.dev/"><img src="https://img.shields.io/badge/React%20Native-0.86-61DAFB.svg?style=flat-square&logo=react" alt="React Native"></a>
+  <a href="https://expo.dev/"><img src="https://img.shields.io/badge/Expo-57-000020.svg?style=flat-square&logo=expo" alt="Expo"></a>
   <a href="https://www.sqlite.org/"><img src="https://img.shields.io/badge/SQLite-WAL%20Mode-003B57.svg?style=flat-square&logo=sqlite" alt="SQLite"></a>
-  <a href="#-automated-tests"><img src="https://img.shields.io/badge/tests-90%20passing-brightgreen.svg?style=flat-square" alt="Tests"></a>
+  <a href="#-automated-tests"><img src="https://img.shields.io/badge/tests-133%20passing-brightgreen.svg?style=flat-square" alt="Tests"></a>
   <a href="CONTRIBUTING.md"><img src="https://img.shields.io/badge/PRs-Welcome-brightgreen.svg?style=flat-square" alt="PRs Welcome"></a>
-  <a href="CODE_OF_CONDUCT.md"><img src="https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg?style=flat-square" alt="Code of Conduct"></a>
 </p>
 
 ---
@@ -223,6 +224,59 @@ Tailor your listening environment with comprehensive modular settings, global sh
 
 ---
 
+### 📱 Overtone for iOS — Sleek UI Edition (v1.0.0 Milestone)
+
+Overtone on iOS is built from the ground up as a native-grade mobile companion with the signature **Sleek UI Design System (Night Star Theme)**, native iOS media services, and zero-compromise local-first performance:
+
+#### 🎨 Sleek UI/UX Design Language (Night Star Theme)
+- **Fluid 3D Perspective Drawer:** Smooth interactive drawer with 3D perspective rotation (`rotateY: -15deg`), spring physics, depth scaling (`scale: 0.88`), and corner rounding (`borderRadius: 36px`). Provides instant navigation to Home, Discover, Playlists, Library, Search, Wi-Fi Sync, and Settings with swipe gestures.
+- **Ambient Animated Amber Wave Header:** The top header section features an animated flowing amber wave backdrop (`#f59e0b` / `#d97706`) with micro-fluctuating organic contours, personalized greeting ("Welcome back"), user avatar, and instant search access.
+- **Frosted Now Playing Capsule with Live Equalizer:** An elevated translucent frosted glass capsule centered in the header section, featuring a real-time animated multi-bar equalizer (`SleekLiveEqualizer`) simulating audio spectrum resonance during playback.
+- **Fullscreen Sleek Player Screen:**
+  - **Circular Radial Volume Arc:** Tactile radial arc volume controller surrounding the album art with haptic feedback ticks, replacing standard linear sliders with a luxury audio equipment feel.
+  - **Rotating Vinyl Disc & Artwork:** Album art embedded into a precision-rendered vinyl record with subtle concentric grooving and smooth rotational momentum during playback.
+  - **Waveform Seekbar:** Responsive touch-scrubbable timeline with high-precision time markers and elapsed duration readout.
+  - **Playback Speed Controller:** Instant audio rate toggle (0.5x, 0.75x, 1.0x, 1.25x, 1.5x, 2.0x).
+  - **Lyric Timing Offset:** Real-time 100ms timing offset calibration directly from the player view.
+- **Dynamic MiniPlayer Card & Live Audio Visualizer:**
+  - Persistent miniplayer hovering seamlessly above the navigation bar.
+  - Interactive live equalizer bars replace static music notes on the miniplayer card and on currently playing track rows across all song lists for lively visual feedback.
+  - Swipe gestures for track skipping and tap-to-expand transitions into the Fullscreen Sleek Player.
+- **Playlist Duplicate Protection & Warning Modal:**
+  - Real-time duplicate detection when adding songs to playlists.
+  - Displays a clean warning modal showing track title, artist, artwork, and destination playlist, alerting the user that the song already exists and preventing accidental double-entries.
+- **Inline Playlist Detail Editor:**
+  - Dedicated pencil edit action on the playlist card header.
+  - In-place editing of playlist title and description.
+  - Interactive track management with quick single-song swipe removal and bulk track management.
+
+#### 🍏 Native iOS System Integrations
+- **Background Audio Playback:** Seamless playback continuity using iOS `AVAudioSession` (`AVAudioSessionCategoryPlayback`), maintaining audio stream when the app is backgrounded, the screen is locked, or when switching between apps.
+- **Live Activities & Dynamic Island Integration:**
+  - Native Swift `ActivityKit` implementation (`OvertoneLiveActivity.swift`, `MusicActivityAttributes.swift`).
+  - **Dynamic Island Compact View:** Miniature album artwork on the leading side and animated soundwave equalizer on the trailing side.
+  - **Dynamic Island Expanded View:** Full track title, artist name, progress bar with elapsed/remaining timestamps, and responsive transport controls.
+  - **Lock Screen Live Activity Banner:** Beautiful ambient banner with album art, scrubbable progress, and direct playback controls.
+- **Lock Screen & Control Center Integration:** Native `MPNowPlayingInfoCenter` and `MPRemoteCommandCenter` integration displaying track title, artist, album, high-resolution artwork, and system media command handlers (Play, Pause, Skip, Seek).
+- **Interactive Home Screen Widgets:**
+  - Native iOS WidgetKit bundle (`OvertoneWidgetBundle.swift`, `OvertoneNowPlayingWidget.swift`).
+  - Supports **Small**, **Medium**, and **Large** widget layouts with real-time playback state updates via App Group shared storage (`group.com.overtone.music` / `SharedPlaybackData.swift`).
+- **100% Cloud-Free Local Wi-Fi Cross-Sync:**
+  - Peer-to-peer sync pairing directly with desktop Overtone over the local Wi-Fi / LAN network.
+  - Expiring 6-digit numeric PIN authentication.
+  - Two-way playlist exchange: pull playlists from desktop to iPhone, or send iPhone playlists to desktop.
+  - Pre-import track matching preview (`matching.ts`) comparing title and artist against local files without transmitting audio over the internet.
+- **Local-First SQLite Database Engine:**
+  - High-performance `expo-sqlite` database running in WAL mode.
+  - Transactional migration system (`001_initial.ts`) managing tables for tracks, artists, albums, playlists, playlist tracks, and favorites.
+- **Non-Destructive File Import:**
+  - Apple Files document picker (`expo-document-picker`) allows importing local audio files into sandboxed app storage.
+  - Automatic metadata and ID3 parsing (`music-metadata-browser`) extracting cover art, title, artist, album, and duration.
+- **Synchronized LRC Lyrics Engine:**
+  - Real-time parsing of synchronized `.lrc` and `.txt` files with line-by-line auto-scroll, current line emphasis, and tap-to-seek.
+
+---
+
 ## 🎼 Supported Audio Formats
 
 | Format | Extension | Embedded Artwork | Gapless Seeking |
@@ -282,6 +336,7 @@ graph TD
 
 ## 🛠️ Tech Stack
 
+### Desktop App
 | Layer | Technology | Description |
 |---|---|---|
 | **Desktop Runtime** | [Electron 32](https://www.electronjs.org/) | Cross-platform desktop shell with secure IPC |
@@ -294,6 +349,19 @@ graph TD
 | **Packaging** | [electron-builder](https://www.electron.build/) | NSIS Windows installer generation & bundling |
 | **Test Runner** | Node.js Test Runner | Native unit test suite with 90/90 passing tests |
 
+### iOS Companion App
+| Layer | Technology | Description |
+|---|---|---|
+| **Mobile Runtime** | [React Native 0.86](https://reactnative.dev/) & [Expo 57](https://expo.dev/) | High-performance native iOS runtime with Hermes engine |
+| **Navigation** | [Expo Router 57](https://docs.expo.dev/router/introduction/) | File-based navigation with deep linking |
+| **Audio Playback** | [expo-audio 57](https://docs.expo.dev/versions/latest/sdk/audio/) | Background audio playback with lock screen & Control Center integration |
+| **Animations & Gestures** | [React Native Reanimated 4](https://docs.swmansion.com/react-native-reanimated/) | 60fps native spring physics, 3D perspective drawer & vinyl rotation |
+| **Database** | [expo-sqlite 57](https://docs.expo.dev/versions/latest/sdk/sqlite/) | Local-first SQLite database in WAL mode with migration tracking |
+| **Native iOS Widgets** | Swift / [ActivityKit](https://developer.apple.com/documentation/activitykit) / WidgetKit | Live Activities, Dynamic Island, and Home Screen widgets |
+| **File Management** | [expo-document-picker](https://docs.expo.dev/versions/latest/sdk/document-picker/) | Sandboxed audio file importing via Apple Files |
+| **P2P Sync** | Native HTTP & Bonjour (`react-native-zeroconf`) | 100% cloud-free local Wi-Fi cross-sync with desktop |
+| **Test Runner** | Jest & Testing Library | 43/43 automated tests passing across 7 suites |
+
 ---
 
 ## 📂 Project Structure
@@ -301,17 +369,20 @@ graph TD
 ```
 overtune/
 ├── .github/                    # GitHub CI/CD workflows and issue/PR templates
-│   ├── workflows/              # GitHub Actions (CI & automated release builder)
+│   ├── workflows/
+│   │   ├── ci.yml              # Dual-runner Desktop (Windows) + Mobile (Ubuntu) quality pipeline
+│   │   ├── ios.yml             # Dedicated iOS build, export & EAS workflow
+│   │   └── release.yml         # Automated multi-platform release packager
 │   ├── ISSUE_TEMPLATE/         # Bug report & feature request issue forms
 │   └── PULL_REQUEST_TEMPLATE.md# Pull request checklist
 │
-├── main/                       # Electron Main Process
+├── main/                       # Electron Main Process (Desktop)
 │   ├── db.ts                   # SQLite schema, queries, favorites, playlist CRUD & M3U
 │   ├── scanner.ts              # ID3 scanner, folder watcher & artwork cache
 │   ├── lyrics.ts               # LRC/TXT parser, sidecar matching & embedded lyrics reader
 │   ├── metadata-editor.ts      # Tag editing & node-id3 writing
 │   ├── backup.ts               # overtone-backup v1.0 JSON export/import & rollback snapshots
-│   ├── device-sync.ts          # Local-network Wi-Fi P2P device synchronization
+│   ├── device-sync.ts          # Local-network Wi-Fi P2P device synchronization server
 │   ├── migration.ts            # Versioned schema migrations & library relocation wizard
 │   ├── diagnostics.ts          # Privacy-sanitized diagnostics report generator
 │   ├── shortcuts.ts            # Global keyboard shortcuts with conflict detection
@@ -319,11 +390,11 @@ overtune/
 │   ├── preload.ts              # Secure IPC ContextBridge API
 │   └── main.ts                 # Window management, custom protocol & IPC handlers
 │
-├── src/                        # Next.js Frontend
+├── src/                        # Next.js Frontend (Desktop)
 │   ├── app/
 │   │   ├── layout.tsx          # Root Next.js layout & metadata
 │   │   └── page.tsx            # Master orchestrator for layouts & views
-│   ├── components/             # Modular UI Components
+│   ├── components/             # Modular Desktop UI Components
 │   │   ├── AudioEngine.tsx     # Headless HTML5 audio engine synced with Zustand
 │   │   ├── TopHeader.tsx       # Search bar, history navigation & quick toggles
 │   │   ├── Sidebar.tsx         # Dual-mode sidebar (Classic & Spotify 3-column)
@@ -355,12 +426,44 @@ overtune/
 │   └── lib/
 │       └── utils.ts            # Helper functions (time formatting, local:// URLs)
 │
+├── mobile/                     # iOS Companion App (React Native + Expo)
+│   ├── app/                    # Expo Router file-based screens
+│   │   ├── (tabs)/             # Tab layout (Home, Library, Search, Settings)
+│   │   ├── album/[id].tsx      # Album detail view
+│   │   ├── artist/[id].tsx     # Artist detail view
+│   │   ├── playlist/[id].tsx   # Single playlist screen with inline editing & duplicate warnings
+│   │   ├── sync/               # Wi-Fi pairing & playlist preview screens
+│   │   └── now-playing.tsx     # Fullscreen Sleek player route
+│   ├── src/
+│   │   ├── components/sleek/   # Sleek UI Design System Components
+│   │   │   ├── SleekAppShell.tsx        # Master shell orchestrating 3D drawer & navigation
+│   │   │   ├── SleekDrawer.tsx          # 3D perspective slide-in drawer
+│   │   │   ├── SleekDrawerLayout.tsx    # Gesture handler & spring animation layout
+│   │   │   ├── SleekHeader.tsx          # Amber wave header with avatar & search
+│   │   │   ├── SleekHomeScreen.tsx      # Night Star home dashboard with mixes & pills
+│   │   │   ├── SleekPlayerScreen.tsx    # Fullscreen player with vinyl disc & radial volume arc
+│   │   │   ├── SleekMiniPlayer.tsx      # Docked miniplayer with live equalizer bars
+│   │   │   ├── SleekLiveEqualizer.tsx   # Multi-bar animated audio equalizer visualizer
+│   │   │   ├── SleekTrackRow.tsx        # Track item with dynamic playing equalizer indicator
+│   │   │   ├── SleekPlaylistCard.tsx    # Visual playlist card with quick edit pencil
+│   │   │   └── SleekTrackActionSheet.tsx# Bottom sheet for track actions & playlist add
+│   │   ├── db/                 # Local SQLite database (expo-sqlite) & migrations
+│   │   ├── services/           # Audio, backup, file import, lyrics & Wi-Fi sync services
+│   │   ├── store/              # Zustand state stores (player, library, drawer, theme)
+│   │   └── design/             # Color tokens, typography, spacing & spring motion configs
+│   ├── targets/widgets/        # Native Swift WidgetKit & ActivityKit extension targets
+│   │   ├── OvertoneLiveActivity.swift      # Dynamic Island & Lock Screen Live Activity
+│   │   ├── OvertoneNowPlayingWidget.swift  # Home Screen Small/Medium/Large widgets
+│   │   └── SharedPlaybackData.swift        # App Group shared data bridge
+│   ├── plugins/                # Custom Expo config plugins (withWidgets.js)
+│   └── __tests__/              # 43 Mobile unit tests (Jest)
+│
 ├── public/                     # Static Assets & Documentation Visuals
-│   ├── software_images/        # 25 High-Resolution Renamed UI Screen Captures
+│   ├── software_images/        # 25 High-Resolution Desktop UI Screen Captures
 │   ├── overtune_logo.png       # High-resolution brand logo
 │   ├── icon.png & favicon.ico  # Desktop and browser icons
 │
-├── tests/                      # Comprehensive Automated Test Suites
+├── tests/                      # Automated Desktop Test Suites (90 Tests)
 │   ├── backup.test.js          # Backup archive integrity & conflict policies
 │   ├── desktop-polish.test.js  # Global hotkeys, display geometry & sanitization
 │   ├── discovery.test.js       # Play history, 5-star ratings & smart playlists
@@ -380,12 +483,12 @@ overtune/
 
 ## 🧪 Automated Tests
 
-Overtone maintains a comprehensive automated test suite with **90/90 tests passing** across 20 suites covering all core systems:
+Overtone maintains a comprehensive automated testing suite with **133/133 passing tests** across desktop and iOS:
 
+### 1. Desktop Test Suite (90/90 Passing)
 ```bash
 npm test
 ```
-
 ```
 # tests 90
 # suites 20
@@ -395,7 +498,6 @@ npm test
 # skipped 0
 # todo 0
 ```
-
 - **Backup & Migration**: JSON archive format, pre-restore database rollback snapshots, path relocation, and conflict policies (`tests/backup.test.js`).
 - **Duplicates & Deduplication**: Cryptographic SHA-256 hash deduplication, cross-artist duplicate grouping, and "Stay" persistence (`tests/duplicates-extended.test.js`).
 - **Discovery & Smart Playlists**: Play count aggregation, 5-star ratings, custom tags, smart mix generation, and queue exports (`tests/discovery.test.js`).
@@ -404,6 +506,24 @@ npm test
 - **Desktop Polish**: Hotkey accelerator conflicts, display geometry safety bounds, and path masking (`tests/desktop-polish.test.js`).
 - **Playlist Imports**: Subdirectory scanning and strict playlist scoping (`tests/playlist-import.test.js`).
 
+### 2. Mobile iOS Test Suite (43/43 Passing)
+```bash
+cd mobile && npm test
+```
+```
+Test Suites: 7 passed, 7 total
+Tests:       43 passed, 43 total
+Snapshots:   0 total
+Time:        3.42 s
+```
+- **Sleek Player & UI State**: Radial volume arc, vinyl rotation, playback controls, and track timing (`mobile/__tests__/sleek_player.test.ts`).
+- **3D Perspective Drawer**: Navigation drawer gestures, route selection, and spring animation transforms (`mobile/__tests__/sleek_sidebar.test.ts`).
+- **Playlist Duplicate Protection**: Duplicate detection on playlist additions and warning dialog dispatch (`mobile/__tests__/playlist_duplicates.test.ts`).
+- **Track Matching Engine**: Fuzzy matching title and artist for local Wi-Fi cross-sync imports (`mobile/__tests__/matching.test.ts`).
+- **Widget & Live Activity Services**: App Group shared storage payload formatting and ActivityKit state updates (`mobile/__tests__/widget_service.test.ts`).
+- **LRC Synchronized Lyrics Service**: Parsing, timestamp sorting, and click-to-seek (`mobile/__tests__/lyrics_service.test.ts`).
+- **Backup & Portability**: Mobile archive generation, schema compatibility, and conflict resolution (`mobile/__tests__/backup_service.test.ts`).
+
 ---
 
 ## 🚀 Getting Started
@@ -411,48 +531,71 @@ npm test
 ### Prerequisites
 - **Node.js**: `v20.x` or higher
 - **npm**: `v10.x` or higher
-- **Windows / macOS / Linux** (Windows recommended for `.exe` NSIS installer)
+- **Desktop**: Windows / macOS / Linux (Windows recommended for `.exe` NSIS installer)
+- **Mobile**: iOS 16.0+ physical iPhone or Simulator, Expo Go / EAS Build tools
 
 ### 1. Installation
-Clone the repository and install dependencies:
+Clone the repository and install dependencies for both desktop and mobile:
 ```bash
 git clone https://github.com/gitnaseem745/overtune.git
 cd overtune
+
+# Install Desktop Dependencies
 npm install
+
+# Install Mobile Dependencies
+cd mobile && npm install && cd ..
 ```
 
-### 2. Running in Development Mode
+### 2. Running Desktop in Development Mode
 Launch Next.js dev server and Electron concurrently:
 ```bash
 npm run dev
 ```
 
-### 3. Running Linters, Type Checking & Tests
+### 3. Running iOS Companion App in Development Mode
+Launch the Expo development server:
 ```bash
+cd mobile
+npx expo start -c
+```
+Press `i` to launch in the iOS Simulator, or scan the terminal QR code with the Expo Go app or a Development Build on your iPhone.
+
+### 4. Running Linters, Type Checking & Tests
+```bash
+# Desktop Quality Checks
 npm run lint
 npm run typecheck
 npm test
+
+# Mobile Quality Checks
+cd mobile
+npm run lint
+npm run typecheck
+npm test
+cd ..
 ```
 
 ---
 
-## 📦 Building the `.EXE` Installer
+## 📦 Building Production Packages
 
-Overtone includes an automated build pipeline that handles Next.js static compilation, Electron bundling, native module rebuilding, and NSIS setup creation:
-
-### Option A: Via NPM Script
+### Desktop Windows `.EXE` Installer
 ```bash
 npm run build:installer
 ```
+*Output: `release/Overtone-Setup-0.2.0.exe`*
 
-### Option B: 1-Click Windows Batch Script
-Double-click `build-installer.bat` in the root folder, or run:
-```cmd
-build-installer.bat
+### iOS Production Bundle & Export
+```bash
+cd mobile
+# Export static Hermes JavaScript bytecode and bundled assets
+npx expo export --platform ios
+
+# Trigger native cloud build via EAS (requires Expo account)
+eas build --profile production --platform ios
+cd ..
 ```
-
-The generated installer will be placed in the `release/` directory:
-- `release/Overtone-Setup-0.2.0.exe`
 
 ---
 

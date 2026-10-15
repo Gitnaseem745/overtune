@@ -5,3 +5,14 @@
 .expo/
 expo-env.d.ts
 # @end expo-cli
+
+node_modules/
+dist/
+ios/
+android/
+*.hbc
+*.ipa
+*.apk
+*.aab
+*.tsbuildinfo
+.DS_Store

@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.0-mobile] - 2026-10-16 — Milestone: iOS Companion App (Sleek UI Edition)
+
+### Added
+- **Major Milestone: Overtone for iOS**: Built from the ground up as a native-grade, offline-first iOS music player with the signature Sleek UI (Night Star Theme), native iOS system integrations, and local-network Wi-Fi pairing with desktop Overtone.
+- **Fluid 3D Perspective Drawer Navigation**: Gesture-driven slide-in navigation drawer with 3D perspective rotation (`rotateY: -15deg`), spring physics, depth scaling, and corner rounding (`SleekDrawer.tsx`, `SleekDrawerLayout.tsx`).
+- **Ambient Animated Amber Wave Header**: Flowing organic amber wave dynamics (`#f59e0b` / `#d97706`), avatar greeting ("Welcome back"), and search integration (`SleekHeader.tsx`).
+- **Frosted Now Playing Capsule with Live Equalizer**: Centered frosted glass capsule featuring real-time multi-bar audio frequency bars (`SleekLiveEqualizer.tsx`) with randomized micro-fluctuations during playback.
+- **Fullscreen Sleek Player Screen**: Fullscreen listening stage featuring a tactile circular radial volume arc around the artwork, rotating turntable vinyl record, waveform scrubbable seekbar, playback speed switcher (0.5x - 2.0x), and 100ms lyric offset adjustment (`SleekPlayerScreen.tsx`).
+- **Dynamic MiniPlayer Card & Moving Equalizer**: Docked translucent card hovering above the navigation bar featuring live animated equalizer bars in place of static music notes on the miniplayer card and on currently playing track rows across all song lists (`SleekMiniPlayer.tsx`, `SleekTrackRow.tsx`).
+- **Playlist Duplicate Protection Shield**: Real-time duplicate check when adding songs to playlists with an informative warning dialog displaying track artwork, title, artist, and playlist name to prevent accidental double-adds (`SleekTrackActionSheet.tsx`).
+- **Inline Playlist Detail Editor**: Dedicated pencil edit action on the playlist card header for in-place title and description editing, with single-song quick swipe removal and bulk track management (`app/playlist/[id].tsx`, `SleekPlaylistCard.tsx`).
+- **Background Audio Playback**: Configured via `AVAudioSessionCategoryPlayback` for uninterrupted listening during app multitasking, screen locks, and route changes (`AudioService.ts`).
+- **Live Activities & Dynamic Island**: Native Swift `ActivityKit` integration (`OvertoneLiveActivity.swift`, `MusicActivityAttributes.swift`) displaying compact leading artwork, trailing animated soundwave, expanded Dynamic Island controls, and lock-screen live activity banner.
+- **Lock Screen & Control Center Media Controls**: Native `MPNowPlayingInfoCenter` and `MPRemoteCommandCenter` integration with high-resolution artwork and scrubbing timeline.
+- **Interactive Home Screen Widgets**: Native Swift `WidgetKit` bundle (`OvertoneWidgetBundle.swift`, `OvertoneNowPlayingWidget.swift`) supporting Small, Medium, and Large widgets powered by `SharedPlaybackData.swift` and App Group `group.com.overtone.music`.
+- **100% Cloud-Free Local Wi-Fi Cross-Sync**: Peer-to-peer sync with desktop Overtone over LAN using secure expiring 6-digit PINs, track title/artist fuzzy matching (`matching.ts`), sidecar preview, and recipient import confirmation (`SyncService.ts`, `app/sync/`).
+- **Local-First SQLite Database Engine**: Embedded `expo-sqlite` database running in WAL mode with transactional schema migrations (`001_initial.ts`) and repositories (`repositories/index.ts`).
+- **Apple Files Document Picker Import**: Sandboxed audio importing via `expo-document-picker` with automatic ID3/metadata extraction (`FileImportService.ts`, `MetadataExtractor.ts`).
+- **Synchronized LRC Lyrics Engine**: Real-time parsing of `.lrc` and `.txt` files with line-by-line auto-scroll, current line emphasis, and tap-to-seek (`LyricsService.ts`).
+- **Automated Test Suite**: 43/43 tests passing across 7 suites covering player controls, 3D drawer, duplicate protection, track matching, widget bridges, lyrics, and backups.
+
+---
+
 ## [0.2.0] - 2026-09-24 — Milestone: Personal Music Hub
 
 ### Added

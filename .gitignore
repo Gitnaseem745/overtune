@@ -89,8 +89,22 @@ desktop.ini
 
 # Vercel & Deployment
 .vercel
-MOBILE_APPS.md
 
 # Mobile Dev Artifacts & Reference Media
 mobile/.expo/
+mobile/dist/
+mobile/ios/
+mobile/android/
+*.hbc
+*.ipa
+*.apk
+*.aab
 public/ios_app_ui/
+ios_app_ui/
+ui_main.png
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.webp.bak
+*.png.bak

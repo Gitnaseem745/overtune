@@ -1,6 +1,43 @@
-# Overtone v0.2.0 — Personal Music Hub
+# Overtone Release Notes
 
-## 🎵 Overtone v0.2.0 — Official Personal Music Hub Launch!
+---
+
+## 📱 Overtone iOS Companion App v1.0.0 — Sleek UI Edition (2026-10-16)
+
+We are proud to introduce the official milestone release of the **Overtone iOS Companion App (v1.0.0)** — an exquisite, local-first mobile listening experience crafted with the signature **Sleek UI (Night Star Theme)**, native iOS media architecture, and local-network Wi-Fi sync with desktop Overtone!
+
+### 🌟 Key Highlights & Features in iOS v1.0.0
+
+#### 🎨 Sleek UI/UX Design Language
+- **Fluid 3D Perspective Drawer Navigation:** Interactive drawer with 3D spatial rotation (`rotateY: -15deg`), spring physics, depth scaling, and corner rounding. Quick-switch between Home, Discover, Playlists, Library, Search, Wi-Fi Sync, and Settings.
+- **Ambient Animated Amber Wave Header:** Top header featuring continuous flowing amber wave dynamics (`#f59e0b` / `#d97706`), customized avatar greeting ("Welcome back"), and instant search access.
+- **Frosted Now Playing Capsule with Live Equalizer:** Centered frosted glass capsule featuring real-time multi-bar audio frequency bars (`SleekLiveEqualizer`) with randomized micro-fluctuations during playback.
+- **Fullscreen Sleek Player Screen:**
+  - **Circular Radial Volume Arc:** Rotary volume controller enclosing the album art with tactile haptic ticks.
+  - **Rotating Vinyl Disc:** Turntable vinyl record styling with concentric grooves and authentic rotational momentum.
+  - **Waveform Seekbar:** Touch-scrubbable timeline with high-precision time markers.
+  - **Speed Controller & Lyric Offsets:** Instant audio speed switching (0.5x - 2.0x) and 100ms lyric offset adjustment.
+- **Dynamic MiniPlayer Card & Moving Equalizer:**
+  - Docked translucent card hovering above the navigation bar.
+  - Replaced static musical note icon with animated live equalizer bars on the miniplayer card and on currently playing track rows across all song lists.
+  - Swipe gestures for track skipping and tap-to-expand transitions.
+- **Playlist Duplicate Protection Shield:** Real-time duplicate inspection when adding songs to playlists with an informative warning dialog displaying track artwork, title, artist, and playlist name to prevent accidental double-adds.
+- **Inline Playlist Detail Editor:** Dedicated pencil icon on the playlist card header for in-place title and description editing, with single-song quick swipe removal and bulk track management.
+
+#### 🍏 Native iOS System Integrations
+- **Background Audio Playback:** Configured via `AVAudioSessionCategoryPlayback` for uninterrupted listening during app multitasking, screen locks, and route changes.
+- **Live Activities & Dynamic Island:** Native Swift `ActivityKit` integration (`OvertoneLiveActivity.swift`) displaying compact leading artwork, trailing animated soundwave, expanded Dynamic Island controls, and lock-screen live activity banner.
+- **Lock Screen & Control Center Media Controls:** Native `MPNowPlayingInfoCenter` and `MPRemoteCommandCenter` integration with high-resolution artwork and scrubbing timeline.
+- **Interactive Home Screen Widgets:** Native Swift `WidgetKit` bundle (`OvertoneWidgetBundle.swift`, `OvertoneNowPlayingWidget.swift`) supporting Small, Medium, and Large widgets powered by `SharedPlaybackData.swift` and App Group `group.com.overtone.music`.
+- **100% Cloud-Free Local Wi-Fi Cross-Sync:** Peer-to-peer sync with desktop Overtone over LAN using secure expiring 6-digit PINs, track title/artist fuzzy matching (`matching.ts`), sidecar preview, and recipient import confirmation.
+- **Local-First SQLite Database Engine:** Embedded `expo-sqlite` database running in WAL mode with transactional schema migrations (`001_initial.ts`).
+- **Apple Files Document Picker Import:** Sandboxed audio importing via `expo-document-picker` with automatic ID3/metadata extraction (`music-metadata-browser`).
+- **Synchronized LRC Lyrics Engine:** Real-time parsing of `.lrc` and `.txt` files with line-by-line auto-scroll, current line emphasis, and tap-to-seek.
+- **Automated Test Suite:** 43/43 tests passing across 7 suites covering player controls, 3D drawer, duplicate protection, track matching, widget bridges, lyrics, and backups.
+
+---
+
+## 🎵 Overtone Desktop v0.2.0 — Personal Music Hub Launch! (2026-09-24)
 
 I am thrilled to announce the official milestone release of **Overtone v0.2.0 — Personal Music Hub**! 
 
