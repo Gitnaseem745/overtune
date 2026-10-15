@@ -4,7 +4,7 @@
  * Precisely refined sidebar matching target reference Image 2.
  * Contains:
  * 1. Compact squircle avatar with restrained violet glow aura
- * 2. "Hi!" greeting and bold stacked username with refined typography
+ * 2. "Welcome" greeting and bold stacked username with refined typography
  * 3. Exactly 5 navigation items: Home, Favorites, Playlists, Search, Settings
  * 4. Active item pill-shaped purple highlight with 100% aligned icon column
  * 5. Clean, professional dark purple gradient with zero clutter
@@ -86,7 +86,7 @@ export function SleekDrawer({ userName: propUserName, onSelectTab }: SleekDrawer
 
           {/* Greeting & Dynamic Username */}
           <View style={styles.nameBlock}>
-            <Text style={styles.greetingText}>Hi!</Text>
+            <Text style={styles.greetingText}>Welcome</Text>
             <Text style={styles.nameText} numberOfLines={2}>
               {userName}
             </Text>

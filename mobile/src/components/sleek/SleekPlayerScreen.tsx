@@ -20,9 +20,10 @@ import {
   Alert,
   Animated,
   BackHandler,
+  Easing,
 } from 'react-native';
 import { Image } from 'expo-image';
-import Svg, { Path, Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
+import Svg, { Path, Circle, Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import {
@@ -49,6 +50,39 @@ import { usePlayerStore } from '../../store/usePlayerStore';
 import { useDatabase } from '../../hooks/useDatabase';
 import { sleekTokens } from '../../design/colors';
 import { formatDuration } from '../../services/files/FileImportService';
+
+// Mathematically seamless looping cubic bezier wave paths
+// Wave 1: Wavelength = 120, Total Width = 360 (3 full waves)
+// Translating from 0 to -120 creates an infinite continuous flowing wave
+const WAVE1_PATH = [
+  'M 0 16',
+  'C 25 10, 35 10, 60 16',
+  'C 85 22, 95 22, 120 16',
+  'C 145 10, 155 10, 180 16',
+  'C 205 22, 215 22, 240 16',
+  'C 265 10, 275 10, 300 16',
+  'C 325 22, 335 22, 360 16',
+  'L 360 44',
+  'L 0 44',
+  'Z',
+].join(' ');
+
+// Wave 2: Wavelength = 90, Total Width = 360 (4 full waves)
+// Translating from -90 to 0 creates an organic counter-flow liquid interference
+const WAVE2_PATH = [
+  'M 0 20',
+  'C 18.75 14, 26.25 14, 45 20',
+  'C 63.75 26, 71.25 26, 90 20',
+  'C 108.75 14, 116.25 14, 135 20',
+  'C 153.75 26, 161.25 26, 180 20',
+  'C 198.75 14, 206.25 14, 225 20',
+  'C 243.75 26, 251.25 26, 270 20',
+  'C 288.75 14, 296.25 14, 315 20',
+  'C 333.75 26, 341.25 26, 360 20',
+  'L 360 44',
+  'L 0 44',
+  'Z',
+].join(' ');
 
 interface SleekPlayerScreenProps {
   onDismiss?: () => void;
@@ -144,6 +178,107 @@ export function SleekPlayerScreen({ onDismiss }: SleekPlayerScreenProps = {}) {
 
     return () => clearInterval(timer);
   }, [pillFadeAnim, pillTranslateAnim]);
+
+  // Continuous waterflow wave animations in yellow/amber theme
+  const wave1Anim = useRef(new Animated.Value(0)).current;
+  const wave2Anim = useRef(new Animated.Value(0)).current;
+  const shapesAnim = useRef(new Animated.Value(0)).current;
+
+  // Mini live equalizer visualizer bars for "Now playing"
+  const eq1Scale = useRef(new Animated.Value(0.4)).current;
+  const eq2Scale = useRef(new Animated.Value(0.85)).current;
+  const eq3Scale = useRef(new Animated.Value(0.5)).current;
+
+  useEffect(() => {
+    // 1. Continuous wave loop 1 (period 120, duration 3600ms)
+    const wave1Loop = Animated.loop(
+      Animated.timing(wave1Anim, {
+        toValue: 1,
+        duration: 3600,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    );
+
+    // 2. Continuous counter-wave loop 2 (period 90, duration 5000ms)
+    const wave2Loop = Animated.loop(
+      Animated.timing(wave2Anim, {
+        toValue: 1,
+        duration: 5000,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    );
+
+    // 3. Gentle breathing/floating motion for scattered organic shapes
+    const shapesLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(shapesAnim, {
+          toValue: 1,
+          duration: 2200,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(shapesAnim, {
+          toValue: 0,
+          duration: 2200,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    wave1Loop.start();
+    wave2Loop.start();
+    shapesLoop.start();
+
+    return () => {
+      wave1Loop.stop();
+      wave2Loop.stop();
+      shapesLoop.stop();
+    };
+  }, [wave1Anim, wave2Anim, shapesAnim]);
+
+  // Animate mini equalizer bars when playing
+  useEffect(() => {
+    if (!isPlaying) {
+      Animated.parallel([
+        Animated.timing(eq1Scale, { toValue: 0.35, duration: 250, useNativeDriver: true }),
+        Animated.timing(eq2Scale, { toValue: 0.5, duration: 250, useNativeDriver: true }),
+        Animated.timing(eq3Scale, { toValue: 0.35, duration: 250, useNativeDriver: true }),
+      ]).start();
+      return;
+    }
+
+    const anim1 = Animated.loop(
+      Animated.sequence([
+        Animated.timing(eq1Scale, { toValue: 1.0, duration: 320, useNativeDriver: true }),
+        Animated.timing(eq1Scale, { toValue: 0.3, duration: 380, useNativeDriver: true }),
+      ])
+    );
+    const anim2 = Animated.loop(
+      Animated.sequence([
+        Animated.timing(eq2Scale, { toValue: 0.35, duration: 280, useNativeDriver: true }),
+        Animated.timing(eq2Scale, { toValue: 1.0, duration: 340, useNativeDriver: true }),
+      ])
+    );
+    const anim3 = Animated.loop(
+      Animated.sequence([
+        Animated.timing(eq3Scale, { toValue: 0.9, duration: 350, useNativeDriver: true }),
+        Animated.timing(eq3Scale, { toValue: 0.25, duration: 290, useNativeDriver: true }),
+      ])
+    );
+
+    anim1.start();
+    anim2.start();
+    anim3.start();
+
+    return () => {
+      anim1.stop();
+      anim2.stop();
+      anim3.stop();
+    };
+  }, [isPlaying, eq1Scale, eq2Scale, eq3Scale]);
 
   const isDismissing = useRef(false);
 
@@ -351,7 +486,7 @@ export function SleekPlayerScreen({ onDismiss }: SleekPlayerScreenProps = {}) {
       <View
         style={[
           styles.topHeaderArea,
-          { paddingTop: headerVerticalPadding, paddingBottom: headerVerticalPadding },
+          { paddingTop: Math.max(insets.top, 24), paddingBottom: 14 },
         ]}
       >
         <Pressable
@@ -361,6 +496,129 @@ export function SleekPlayerScreen({ onDismiss }: SleekPlayerScreenProps = {}) {
           accessibilityRole="button"
           accessibilityLabel={pillMode === 'now_playing' ? 'Now playing, tap to dismiss' : 'Go back, tap to dismiss'}
         >
+          {/* Continuous Moving Waterflow Waves & Scattered Shapes Background */}
+          <View style={StyleSheet.absoluteFill} pointerEvents="none">
+            {/* Base warm ivory / amber gradient background */}
+            <Svg width="100%" height="100%" style={StyleSheet.absoluteFill}>
+              <Defs>
+                <LinearGradient id="pillBaseGrad" x1="0" y1="0" x2="0" y2="1">
+                  <Stop offset="0" stopColor="#FFFDF7" stopOpacity="1" />
+                  <Stop offset="0.5" stopColor="#FEF3C7" stopOpacity="0.95" />
+                  <Stop offset="1" stopColor="#FDE68A" stopOpacity="0.9" />
+                </LinearGradient>
+              </Defs>
+              <Rect x="0" y="0" width="100%" height="100%" rx={19} fill="url(#pillBaseGrad)" />
+            </Svg>
+
+            {/* Moving Wave Layer 2 (Background Golden Flow - counter-direction) */}
+            <Animated.View
+              style={[
+                styles.waveContainer,
+                {
+                  transform: [
+                    {
+                      translateX: wave2Anim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [-90, 0],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            >
+              <Svg width={360} height={38} viewBox="0 0 360 38">
+                <Defs>
+                  <LinearGradient id="wave2Grad" x1="0" y1="0" x2="0" y2="1">
+                    <Stop offset="0" stopColor="#FDE68A" stopOpacity="0.5" />
+                    <Stop offset="1" stopColor="#F59E0B" stopOpacity="0.22" />
+                  </LinearGradient>
+                </Defs>
+                <Path d={WAVE2_PATH} fill="url(#wave2Grad)" />
+              </Svg>
+            </Animated.View>
+
+            {/* Moving Wave Layer 1 (Foreground Amber Flow) */}
+            <Animated.View
+              style={[
+                styles.waveContainer,
+                {
+                  transform: [
+                    {
+                      translateX: wave1Anim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0, -120],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            >
+              <Svg width={360} height={38} viewBox="0 0 360 38">
+                <Defs>
+                  <LinearGradient id="wave1Grad" x1="0" y1="0" x2="0" y2="1">
+                    <Stop offset="0" stopColor="#F59E0B" stopOpacity="0.28" />
+                    <Stop offset="1" stopColor="#D97706" stopOpacity="0.4" />
+                  </LinearGradient>
+                </Defs>
+                <Path d={WAVE1_PATH} fill="url(#wave1Grad)" />
+              </Svg>
+            </Animated.View>
+
+            {/* Scattered Organic & Geometric Floating Shapes */}
+            <Animated.View
+              style={[
+                StyleSheet.absoluteFill,
+                {
+                  opacity: shapesAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.75, 1],
+                  }),
+                  transform: [
+                    {
+                      translateY: shapesAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [1, -1],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            >
+              <Svg width={148} height={38} viewBox="0 0 148 38" style={StyleSheet.absoluteFill}>
+                {/* Subtle sparkle 4-pt star on upper left */}
+                <Path
+                  d="M 17,9 Q 17,12 20,12 Q 17,12 17,15 Q 17,12 14,12 Q 17,12 17,9 Z"
+                  fill="#F59E0B"
+                  opacity={0.45}
+                />
+                {/* Floating amber droplet */}
+                <Circle cx={32} cy={27} r={2.2} fill="#D97706" opacity={0.35} />
+                {/* Micro sunshine speck */}
+                <Circle cx={74} cy={7} r={1.5} fill="#F59E0B" opacity={0.5} />
+                {/* Floating diamond shape on right */}
+                <Path
+                  d="M 120,8 L 123,11 L 120,14 L 117,11 Z"
+                  fill="#D97706"
+                  opacity={0.38}
+                />
+                {/* Floating droplet ring on far right */}
+                <Circle
+                  cx={133}
+                  cy={24}
+                  r={2.8}
+                  stroke="#F59E0B"
+                  strokeWidth={1}
+                  fill="none"
+                  opacity={0.38}
+                />
+              </Svg>
+            </Animated.View>
+
+            {/* Glassmorphic Top Gloss Highlight */}
+            <View style={styles.pillTopGleam} />
+          </View>
+
+          {/* Morphing Foreground Content: Equalizer + "Now playing" or Chevron + "Go back" */}
           <Animated.View
             style={{
               opacity: pillFadeAnim,
@@ -368,14 +626,22 @@ export function SleekPlayerScreen({ onDismiss }: SleekPlayerScreenProps = {}) {
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: 5,
+              gap: 6,
+              zIndex: 2,
             }}
           >
             {pillMode === 'now_playing' ? (
-              <Text style={styles.nowPlayingPillText}>Now playing</Text>
+              <>
+                <View style={styles.equalizerContainer}>
+                  <Animated.View style={[styles.eqBar, { transform: [{ scaleY: eq1Scale }] }]} />
+                  <Animated.View style={[styles.eqBar, { transform: [{ scaleY: eq2Scale }] }]} />
+                  <Animated.View style={[styles.eqBar, { transform: [{ scaleY: eq3Scale }] }]} />
+                </View>
+                <Text style={styles.nowPlayingPillText}>Now playing</Text>
+              </>
             ) : (
               <>
-                <SleekChevronDownIcon size={15} color="#171424" />
+                <SleekChevronDownIcon size={14} color="#451A03" />
                 <Text style={styles.nowPlayingPillText}>Go back</Text>
               </>
             )}
@@ -661,26 +927,58 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
-    height: 25
+    minHeight: 46,
   },
   nowPlayingPill: {
-    width: 140,
+    width: 148,
     height: 38,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FFFDF7',
     borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#1A0B36',
+    overflow: 'hidden',
+    borderWidth: 1.2,
+    borderColor: 'rgba(245, 158, 11, 0.32)',
+    shadowColor: '#B45309',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.16,
     shadowRadius: 10,
-    elevation: 3,
+    elevation: 4,
+  },
+  waveContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: 360,
+    height: 38,
+  },
+  pillTopGleam: {
+    position: 'absolute',
+    top: 1.5,
+    left: 20,
+    right: 20,
+    height: 1.2,
+    borderRadius: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.75)',
+  },
+  equalizerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 12,
+    gap: 2.2,
+    marginRight: 2,
+  },
+  eqBar: {
+    width: 2.2,
+    height: 12,
+    borderRadius: 1.1,
+    backgroundColor: '#92400E',
   },
   nowPlayingPillText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#171424',
-    letterSpacing: 0.2,
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: '#451A03',
+    letterSpacing: 0.25,
     includeFontPadding: false,
     textAlignVertical: 'center',
   },
