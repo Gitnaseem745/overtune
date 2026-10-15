@@ -15,6 +15,7 @@ import {
 import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
 import { SleekMoreIcon, SleekMusicNoteIcon } from './SleekIcons';
+import { SleekLiveEqualizer } from './SleekLiveEqualizer';
 import { sleekTokens } from '../../design/colors';
 import { formatDuration } from '../../services/files/FileImportService';
 
@@ -65,10 +66,23 @@ export function SleekTrackRow({
       {/* Squircle Artwork */}
       <View style={styles.artworkContainer}>
         {source ? (
-          <Image source={source} style={styles.artwork} contentFit="cover" transition={150} />
+          <>
+            <Image source={source} style={styles.artwork} contentFit="cover" transition={150} />
+            {isPlaying && (
+              <View style={styles.playingOverlay} pointerEvents="none">
+                <View style={styles.playingOverlayBadge}>
+                  <SleekLiveEqualizer isPlaying={true} color="#F9A826" size={14} barWidth={2.2} gap={2} />
+                </View>
+              </View>
+            )}
+          </>
         ) : (
           <View style={styles.fallbackArtwork}>
-            <SleekMusicNoteIcon size={22} color="#D97706" />
+            {isPlaying ? (
+              <SleekLiveEqualizer isPlaying={true} color="#D97706" size={18} barWidth={2.6} gap={2.2} />
+            ) : (
+              <SleekMusicNoteIcon size={22} color="#D97706" />
+            )}
           </View>
         )}
       </View>
@@ -132,6 +146,20 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     backgroundColor: '#FDE68A',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  playingOverlay: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(0, 0, 0, 0.32)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  playingOverlayBadge: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(26, 17, 8, 0.75)',
     alignItems: 'center',
     justifyContent: 'center',
   },
