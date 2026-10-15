@@ -29,3 +29,7 @@ jest.mock('expo-document-picker', () => ({
 jest.mock('react-native/Libraries/Share/Share', () => ({
   share: jest.fn().mockResolvedValue({ action: 'sharedAction' }),
 }));
+
+jest.mock('@react-native-async-storage/async-storage', () =>
+  require('@react-native-async-storage/async-storage/jest/async-storage-mock')
+);

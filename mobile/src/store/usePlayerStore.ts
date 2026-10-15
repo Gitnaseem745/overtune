@@ -8,6 +8,7 @@
 
 import { create } from 'zustand';
 import { AudioService } from '../services/audio/AudioService';
+import { WidgetService, LiveActivityService } from '../services/widgets';
 import type { MobileTrack, RepeatMode } from '../domain/models';
 
 interface PlayerState {
@@ -147,6 +148,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
     try {
       await AudioService.loadTrack(track);
+      LiveActivityService.start(track, true, track.duration || 0);
+      WidgetService.updatePlayback(track, true, 0, track.duration || 0, tracks);
     } catch (error) {
       console.error('[Player] Failed to load track:', error);
       set({ isPlaying: false, isBuffering: false });
@@ -154,12 +157,16 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   },
 
   togglePlayPause: async () => {
-    const { isPlaying, currentTrack } = get();
+    const { isPlaying, currentTrack, currentTime, duration, queue } = get();
     if (!currentTrack) return;
 
     try {
       await AudioService.togglePlayPause();
-      set({ isPlaying: !isPlaying });
+      const newPlaying = !isPlaying;
+      set({ isPlaying: newPlaying });
+      AudioService.updateLockScreen(currentTrack, newPlaying);
+      LiveActivityService.update(currentTrack, newPlaying, currentTime, duration);
+      WidgetService.updatePlayback(currentTrack, newPlaying, currentTime, duration, queue);
     } catch (error) {
       console.error('[Player] Toggle error:', error);
     }
@@ -169,6 +176,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     try {
       await AudioService.seekTo(seconds);
       set({ currentTime: seconds });
+      const { currentTrack, isPlaying, duration, queue } = get();
+      if (currentTrack) {
+        LiveActivityService.update(currentTrack, isPlaying, seconds, duration);
+        WidgetService.updatePlayback(currentTrack, isPlaying, seconds, duration, queue);
+      }
     } catch (error) {
       console.error('[Player] Seek error:', error);
     }
@@ -198,6 +210,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       } else {
         // End of queue, stop
         set({ isPlaying: false });
+        LiveActivityService.end();
+        WidgetService.updatePlayback(null, false, 0, 0, []);
         return;
       }
     }
@@ -215,6 +229,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
     try {
       await AudioService.loadTrack(nextTrack);
+      LiveActivityService.start(nextTrack, true, nextTrack.duration || 0);
+      WidgetService.updatePlayback(nextTrack, true, 0, nextTrack.duration || 0, queue);
     } catch (error) {
       console.error('[Player] Next track error:', error);
       set({ isPlaying: false, isBuffering: false });
@@ -247,6 +263,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
     try {
       await AudioService.loadTrack(prevTrack);
+      LiveActivityService.start(prevTrack, true, prevTrack.duration || 0);
+      WidgetService.updatePlayback(prevTrack, true, 0, prevTrack.duration || 0, queue);
     } catch (error) {
       console.error('[Player] Previous track error:', error);
       set({ isPlaying: false, isBuffering: false });
@@ -374,6 +392,12 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     }
 
     set(updates);
+
+    const activeTrack = updates.currentTrack || currentTrack;
+    if (activeTrack) {
+      LiveActivityService.update(activeTrack, playing, time, validDuration);
+      WidgetService.updatePlayback(activeTrack, playing, time, validDuration, updates.queue || queue);
+    }
   },
 
   handleTrackEnded: async () => {

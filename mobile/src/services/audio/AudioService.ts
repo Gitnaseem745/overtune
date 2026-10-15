@@ -96,11 +96,20 @@ class AudioServiceImpl {
 
       try {
         const anyTrack = track as any;
-        player.setActiveForLockScreen(true, {
-          title: track.title,
-          artist: anyTrack.artist || anyTrack.artistName || undefined,
-          albumTitle: anyTrack.album || anyTrack.albumTitle || undefined,
-        });
+        player.setActiveForLockScreen(
+          true,
+          {
+            title: track.title,
+            artist: anyTrack.artist || anyTrack.artistName || undefined,
+            albumTitle: anyTrack.album || anyTrack.albumTitle || undefined,
+            artworkUrl: track.artworkUri || undefined,
+          },
+          {
+            showSeekForward: true,
+            showSeekBackward: true,
+            isLiveStream: false,
+          }
+        );
       } catch {
         // Lock Screen controls optional in dev environments
       }
@@ -108,6 +117,32 @@ class AudioServiceImpl {
       this.player = player;
     } catch (err: any) {
       this.events?.onError(`Failed to load track: ${err?.message || err}`);
+    }
+  }
+
+  /**
+   * Update Lock Screen & Control Center Now Playing metadata and playback options.
+   */
+  updateLockScreen(track?: MobileTrack | null, isPlaying?: boolean): void {
+    if (!this.player || !track) return;
+    try {
+      const anyTrack = track as any;
+      this.player.setActiveForLockScreen(
+        true,
+        {
+          title: track.title,
+          artist: anyTrack.artist || anyTrack.artistName || undefined,
+          albumTitle: anyTrack.album || anyTrack.albumTitle || undefined,
+          artworkUrl: track.artworkUri || undefined,
+        },
+        {
+          showSeekForward: true,
+          showSeekBackward: true,
+          isLiveStream: false,
+        }
+      );
+    } catch {
+      // Optional
     }
   }
 

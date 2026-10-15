@@ -18,9 +18,14 @@
       "bundleIdentifier": "com.overtone.music",
       "infoPlist": {
         "UIBackgroundModes": ["audio"],
+        "NSSupportsLiveActivities": true,
+        "NSSupportsLiveActivitiesFrequentUpdates": true,
         "NSLocalNetworkUsageDescription": "Overtone uses your local network to sync playlists with the Overtone desktop app on the same Wi-Fi network.",
         "NSBonjourServices": ["_overtune._tcp."],
         "NSAppleMusicUsageDescription": "Overtone does not access Apple Music. It plays music files you import."
+      },
+      "entitlements": {
+        "com.apple.security.application-groups": ["group.com.overtone.music"]
       },
       "config": {
         "usesNonExemptEncryption": false
@@ -46,7 +51,8 @@
       [
         "expo-sqlite",
         {}
-      ]
+      ],
+      "./plugins/withWidgets"
     ],
     "experiments": {
       "typedRoutes": true
