@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.1-mobile] - 2026-10-16 — Patch: Cross-Device Audio Streaming & Safe Area Enhancements
+
+### Fixed
+- **iOS AVPlayer Streaming Compatibility**: Eliminated unsupported `stream://` scheme fallbacks that caused `Playback error: unsupported URL`.
+- **SQLite Database Self-Healer**: Automatically fixes corrupted stream URLs and outdated desktop IP addresses on app startup.
+- **Dynamic Pre-Flight IP Resolution**: Auto-corrects streaming endpoints before passing to player when desktop IP changes on Wi-Fi.
+- **Responsive Playlist Actions**: Converted playlist action buttons into a smooth horizontally scrollable action bar.
+- **SafeAreaView Deprecation**: Migrated from `react-native` to `react-native-safe-area-context`.
+- **Render Hook Stability**: Resolved conditional hook rendering in playlist detail views.
+
+---
+
+## [0.2.2] - 2026-10-16 — Patch: Streaming Routes, Playlist Deletion & Hover Fixes
+
+### Added
+- **By-Title Audio & Artwork Streaming**: Added `/api/sync/audio/by-title/:encodedTitle` and `/api/sync/artwork/by-title/:encodedTitle` server endpoints.
+- **Desktop Playlist Deletion**: Added dedicated delete playlist action with confirmation dialog.
+- **Desktop Track Metadata Editor**: Added `EditTrackModal.tsx` for quick desktop editing of track titles, artists, albums, and genres.
+- **Accurate Duration Counting**: Fixed cumulative duration calculations across all playlist views.
+
+### Fixed
+- **Track Row Menu Hover**: Prevented three-dots context menu button from disappearing on row hover.
+- **Now-Playing Sync Payload**: Explicitly included `desktopTrackId` in now-playing broadcasts.
+
+---
+
 ## [1.0.0-mobile] - 2026-10-16 — Milestone: iOS Companion App (Sleek UI Edition)
 
 ### Added

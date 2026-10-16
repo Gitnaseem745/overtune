@@ -130,11 +130,40 @@ export interface PairedDevice {
 }
 
 export interface SyncPlaylistTrack {
+  desktopTrackId?: number;
   title: string;
   artist: string;
   album: string;
   duration: number;
   genre?: string;
+  trackNumber?: number;
+  artworkUri?: string;
+  fileUri?: string;
+}
+
+export interface SyncNowPlayingState {
+  isPlaying: boolean;
+  currentTime: number;
+  duration: number;
+  track: {
+    id: number;
+    title: string;
+    artist: string;
+    album: string;
+    duration: number;
+    coverArt?: string;
+  } | null;
+  updatedAt: number;
+}
+
+export interface SyncTrackPayload {
+  desktopTrackId: number;
+  title: string;
+  artist: string;
+  album: string;
+  duration: number;
+  genre?: string;
+  trackNumber?: number;
 }
 
 export interface SyncPlaylistPayload {

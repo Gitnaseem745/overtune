@@ -38,7 +38,7 @@ interface PlayerState {
   setVolume: (vol: number) => Promise<void>;
 
   // Actions
-  loadAndPlay: (track: MobileTrack, queue?: MobileTrack[], startIndex?: number) => Promise<void>;
+  loadAndPlay: (track: MobileTrack, queue?: MobileTrack[], startIndex?: number, startPosition?: number) => Promise<void>;
   togglePlayPause: () => Promise<void>;
   seekTo: (seconds: number) => Promise<void>;
   startSeeking: (position: number) => void;
@@ -97,9 +97,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     }
   },
 
-  loadAndPlay: async (track, queue, startIndex) => {
+  loadAndPlay: async (track, queue, startIndex, startPosition) => {
     const tracks = queue || [track];
     const index = startIndex ?? tracks.findIndex((t) => t.id === track.id);
+    const initialTime = startPosition && startPosition > 0 ? startPosition : 0;
 
     set({
       currentTrack: track,
@@ -109,7 +110,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       isMiniPlayerVisible: true,
       isPlaying: true,
       isBuffering: true,
-      currentTime: 0,
+      currentTime: initialTime,
       duration: track.duration || 0,
     });
 
@@ -147,9 +148,9 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     }
 
     try {
-      await AudioService.loadTrack(track);
+      await AudioService.loadTrack(track, startPosition);
       LiveActivityService.start(track, true, track.duration || 0);
-      WidgetService.updatePlayback(track, true, 0, track.duration || 0, tracks);
+      WidgetService.updatePlayback(track, true, initialTime, track.duration || 0, tracks);
     } catch (error) {
       console.error('[Player] Failed to load track:', error);
       set({ isPlaying: false, isBuffering: false });

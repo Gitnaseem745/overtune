@@ -18,8 +18,33 @@ import type {
 import { matchPlaylistTracks } from '../../domain/matching';
 
 const DEFAULT_PORT = 47848;
-const TIMEOUT_MS = 8000;
+const TIMEOUT_MS = 10000;
 const SECURE_STORE_PREFIX = 'overtune_sync_';
+
+function formatConnectionError(error: unknown, fallback: string): string {
+  if (error instanceof Error) {
+    const msg = error.message;
+    const lower = msg.toLowerCase();
+    if (
+      lower.includes('aborted') ||
+      lower.includes('canceled') ||
+      lower.includes('cancelled') ||
+      lower.includes('fetchrequestcanceledexception') ||
+      error.name === 'AbortError'
+    ) {
+      return 'Connection timed out. Ensure your computer and iPhone are on the same Wi-Fi and that you entered the Wi-Fi IP address shown on Desktop.';
+    }
+    if (
+      lower.includes('network request failed') ||
+      lower.includes('connection refused') ||
+      lower.includes('failed to fetch')
+    ) {
+      return 'Could not connect to desktop server. Verify the IP address and make sure Overtone Desktop has Wi-Fi sync enabled.';
+    }
+    return msg;
+  }
+  return fallback;
+}
 
 export interface PairResult {
   success: boolean;
@@ -48,7 +73,7 @@ class SyncServiceImpl {
   async ping(host: string, port: number = DEFAULT_PORT): Promise<{ ok: boolean; deviceName?: string; error?: string }> {
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 5000);
+      const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
       const response = await fetch(`http://${host}:${port}/api/sync/ping`, {
         signal: controller.signal,
@@ -63,8 +88,7 @@ class SyncServiceImpl {
       }
       return { ok: false, error: 'Not an Overtone server' };
     } catch (error) {
-      const msg = error instanceof Error ? error.message : 'Connection failed';
-      return { ok: false, error: msg.includes('aborted') ? 'Connection timed out' : msg };
+      return { ok: false, error: formatConnectionError(error, 'Connection failed') };
     }
   }
 
@@ -105,8 +129,7 @@ class SyncServiceImpl {
 
       return { success: false, error: data.error || 'Pairing rejected' };
     } catch (error) {
-      const msg = error instanceof Error ? error.message : 'Connection failed';
-      return { success: false, error: msg.includes('aborted') ? 'Connection timed out' : msg };
+      return { success: false, error: formatConnectionError(error, 'Connection failed') };
     }
   }
 
@@ -147,8 +170,47 @@ class SyncServiceImpl {
 
       return { success: false, error: data.error || 'Desktop rejected the playlist' };
     } catch (error) {
-      const msg = error instanceof Error ? error.message : 'Transfer failed';
-      return { success: false, error: msg.includes('aborted') ? 'Transfer timed out' : msg };
+      return { success: false, error: formatConnectionError(error, 'Transfer failed') };
+    }
+  }
+
+  /**
+   * Send a single track to a paired desktop device.
+   */
+  async sendTrack(
+    device: PairedDevice,
+    track: SyncPlaylistTrack
+  ): Promise<SyncResult> {
+    try {
+      const authToken = await this.getStoredToken(device.id);
+      if (!authToken) return { success: false, error: 'No credentials found. Please re-pair.' };
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+      const response = await fetch(`http://${device.ip}:${device.port}/api/sync/track`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({ track }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
+      const data = await response.json();
+      if (response.ok && data.success) {
+        return { success: true, pendingId: data.pendingId };
+      }
+
+      if (response.status === 403) {
+        return { success: false, error: 'Device is no longer paired. Please re-pair.' };
+      }
+
+      return { success: false, error: data.error || 'Desktop rejected the track' };
+    } catch (error) {
+      return { success: false, error: formatConnectionError(error, 'Transfer failed') };
     }
   }
 
@@ -181,8 +243,7 @@ class SyncServiceImpl {
       const data = await response.json();
       return { playlists: data.playlists || [] };
     } catch (error) {
-      const msg = error instanceof Error ? error.message : 'Failed to fetch playlists';
-      return { playlists: [], error: msg };
+      return { playlists: [], error: formatConnectionError(error, 'Failed to fetch playlists') };
     }
   }
 
@@ -214,9 +275,253 @@ class SyncServiceImpl {
       const data = await response.json();
       return { payload: data };
     } catch (error) {
-      const msg = error instanceof Error ? error.message : 'Failed to fetch playlist';
-      return { payload: null, error: msg };
+      return { payload: null, error: formatConnectionError(error, 'Failed to fetch playlist') };
     }
+  }
+
+  /**
+   * Fetch current now-playing state from desktop.
+   */
+  async fetchNowPlaying(
+    device: PairedDevice
+  ): Promise<{ state: import('../../domain/models').SyncNowPlayingState | null; error?: string }> {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3000);
+
+      const response = await fetch(`http://${device.ip}:${device.port}/api/sync/now-playing`, {
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
+      if (!response.ok) return { state: null, error: `HTTP ${response.status}` };
+      const data = await response.json();
+      return { state: data.nowPlaying || null };
+    } catch (error) {
+      return { state: null, error: formatConnectionError(error, 'Failed to fetch now playing') };
+    }
+  }
+
+  /**
+   * Send remote control playback action to desktop (play, pause, next, prev, seek, toggle).
+   */
+  async sendRemoteControl(
+    device: PairedDevice,
+    action: string,
+    extraData: Record<string, unknown> = {}
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3000);
+
+      const response = await fetch(`http://${device.ip}:${device.port}/api/sync/now-playing`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, ...extraData }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
+      if (!response.ok) return { success: false, error: `HTTP ${response.status}` };
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: formatConnectionError(error, 'Failed to send remote control') };
+    }
+  }
+
+  /**
+   * Fetch pending transfers from desktop inbox for this device.
+   */
+  async fetchInbox(
+    device: PairedDevice
+  ): Promise<{ items: any[]; error?: string }> {
+    try {
+      const authToken = await this.getStoredToken(device.id);
+      if (!authToken) return { items: [] };
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 4000);
+
+      const response = await fetch(`http://${device.ip}:${device.port}/api/sync/inbox`, {
+        headers: { 'Authorization': `Bearer ${authToken}` },
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
+      if (!response.ok) return { items: [] };
+      const data = await response.json();
+      return { items: data.items || [] };
+    } catch {
+      return { items: [] };
+    }
+  }
+
+  /**
+   * Fetch/Search desktop library songs over Wi-Fi.
+   */
+  async fetchDesktopTracks(
+    device: PairedDevice,
+    query = '',
+    limit = 60
+  ): Promise<{ tracks: import('../../domain/models').SyncPlaylistTrack[]; error?: string }> {
+    try {
+      const authToken = await this.getStoredToken(device.id);
+      if (!authToken) return { tracks: [], error: 'Not authenticated' };
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+      const url = `http://${device.ip}:${device.port}/api/sync/tracks?q=${encodeURIComponent(query)}&limit=${limit}`;
+      const response = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${authToken}` },
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
+      if (!response.ok) return { tracks: [], error: `HTTP ${response.status}` };
+      const data = await response.json();
+      return { tracks: data.tracks || [] };
+    } catch (error) {
+      return { tracks: [], error: formatConnectionError(error, 'Failed to fetch tracks') };
+    }
+  }
+
+  /**
+   * Import a playlist and ensure ALL its songs are added to the mobile library & playlist.
+   */
+  importPlaylistWithTracks(
+    device: PairedDevice,
+    playlistName: string,
+    tracks: import('../../domain/models').SyncPlaylistTrack[],
+    db: any
+  ): { playlistId: number; totalTracks: number } {
+    const playlistId = db.playlists.create(playlistName, 'synced', device.name);
+
+    for (const tr of tracks) {
+      const artistId = tr.artist ? db.artists.findOrCreate(tr.artist) : null;
+      const albumId = tr.album ? db.albums.findOrCreate(tr.album, artistId) : null;
+
+      const desktopId = tr.desktopTrackId ?? (tr as any).id ?? (tr as any).desktop_track_id;
+      const fileUri =
+        (tr.fileUri && !tr.fileUri.startsWith('stream://'))
+          ? tr.fileUri
+          : (desktopId
+            ? `http://${device.ip}:${device.port}/api/sync/audio/${desktopId}`
+            : `http://${device.ip}:${device.port}/api/sync/audio/by-title/${encodeURIComponent(tr.title)}`);
+
+      const artworkUri =
+        tr.artworkUri ||
+        (desktopId
+          ? `http://${device.ip}:${device.port}/api/sync/artwork/${desktopId}`
+          : `http://${device.ip}:${device.port}/api/sync/artwork/by-title/${encodeURIComponent(tr.title)}`);
+
+      // Check if this song already exists locally
+      const localTracks = db.tracks.getAll();
+      const existing = localTracks.find(
+        (t: any) =>
+          t.title.toLowerCase() === tr.title.toLowerCase() &&
+          (artistId === null || t.artistId === artistId)
+      );
+
+      if (existing) {
+        // Heal corrupted or stale streaming URI in SQLite
+        if (!existing.fileUri || existing.fileUri.startsWith('stream://') || (device.ip && existing.fileUri.startsWith('http://') && !existing.fileUri.includes(device.ip))) {
+          if (typeof db.tracks.updateFileUri === 'function') {
+            db.tracks.updateFileUri(existing.id, fileUri, 'stream', undefined, artworkUri);
+          }
+          existing.fileUri = fileUri;
+          existing.artworkUri = artworkUri;
+        }
+        db.playlists.addTrack(playlistId, existing.id);
+      } else {
+        const newId = db.tracks.insert({
+          title: tr.title,
+          artistId,
+          albumId,
+          fileUri,
+          artworkUri,
+          duration: tr.duration || 0,
+          genre: tr.genre || null,
+          trackNumber: tr.trackNumber || null,
+          fileHash: null,
+          fileSize: 0,
+          format: 'stream',
+          sampleRate: 44100,
+          bitRate: 320,
+          channels: 2,
+          importedAt: new Date().toISOString(),
+          lastPlayedAt: null,
+        });
+
+        db.playlists.addTrack(playlistId, newId);
+      }
+    }
+
+    return { playlistId, totalTracks: tracks.length };
+  }
+
+  /**
+   * Import a single track received from desktop into mobile library.
+   */
+  importSingleTrack(
+    device: PairedDevice,
+    tr: import('../../domain/models').SyncPlaylistTrack,
+    db: any
+  ): number {
+    const artistId = tr.artist ? db.artists.findOrCreate(tr.artist) : null;
+    const albumId = tr.album ? db.albums.findOrCreate(tr.album, artistId) : null;
+
+    const desktopId = tr.desktopTrackId ?? (tr as any).id ?? (tr as any).desktop_track_id;
+    const fileUri =
+      (tr.fileUri && !tr.fileUri.startsWith('stream://'))
+        ? tr.fileUri
+        : (desktopId
+          ? `http://${device.ip}:${device.port}/api/sync/audio/${desktopId}`
+          : `http://${device.ip}:${device.port}/api/sync/audio/by-title/${encodeURIComponent(tr.title)}`);
+
+    const artworkUri =
+      tr.artworkUri ||
+      (desktopId
+        ? `http://${device.ip}:${device.port}/api/sync/artwork/${desktopId}`
+        : `http://${device.ip}:${device.port}/api/sync/artwork/by-title/${encodeURIComponent(tr.title)}`);
+
+    const localTracks = db.tracks.getAll();
+    const existing = localTracks.find(
+      (t: any) =>
+        t.title.toLowerCase() === tr.title.toLowerCase() &&
+        (artistId === null || t.artistId === artistId)
+    );
+
+    if (existing) {
+      // Heal corrupted or stale streaming URI in SQLite
+      if (!existing.fileUri || existing.fileUri.startsWith('stream://') || (device.ip && existing.fileUri.startsWith('http://') && !existing.fileUri.includes(device.ip))) {
+        if (typeof db.tracks.updateFileUri === 'function') {
+          db.tracks.updateFileUri(existing.id, fileUri, 'stream', undefined, artworkUri);
+        }
+        existing.fileUri = fileUri;
+        existing.artworkUri = artworkUri;
+      }
+      return existing.id;
+    }
+
+    return db.tracks.insert({
+      title: tr.title,
+      artistId,
+      albumId,
+      fileUri,
+      artworkUri,
+      duration: tr.duration || 0,
+      genre: tr.genre || null,
+      trackNumber: tr.trackNumber || null,
+      fileHash: null,
+      fileSize: 0,
+      format: 'stream',
+      sampleRate: 44100,
+      bitRate: 320,
+      channels: 2,
+      importedAt: new Date().toISOString(),
+      lastPlayedAt: null,
+    });
   }
 
   /**

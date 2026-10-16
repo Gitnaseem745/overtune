@@ -2,12 +2,11 @@
   "expo": {
     "name": "Overtone",
     "slug": "overtune",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "overtune",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -16,13 +15,18 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.overtone.music",
+      "buildNumber": "2",
       "infoPlist": {
         "UIBackgroundModes": ["audio"],
         "NSSupportsLiveActivities": true,
         "NSSupportsLiveActivitiesFrequentUpdates": true,
         "NSLocalNetworkUsageDescription": "Overtone uses your local network to sync playlists with the Overtone desktop app on the same Wi-Fi network.",
         "NSBonjourServices": ["_overtune._tcp."],
-        "NSAppleMusicUsageDescription": "Overtone does not access Apple Music. It plays music files you import."
+        "NSAppleMusicUsageDescription": "Overtone does not access Apple Music. It plays music files you import.",
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true,
+          "NSAllowsLocalNetworking": true
+        }
       },
       "entitlements": {
         "com.apple.security.application-groups": ["group.com.overtone.music"]

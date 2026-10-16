@@ -180,6 +180,35 @@ export class TrackRepository {
     return result.changes > 0;
   }
 
+  updateFileUri(
+    id: number,
+    fileUri: string,
+    format?: string,
+    fileSize?: number,
+    artworkUri?: string
+  ): boolean {
+    const fields = ['file_uri = ?'];
+    const values: any[] = [fileUri];
+    if (format) {
+      fields.push('format = ?');
+      values.push(format);
+    }
+    if (fileSize !== undefined) {
+      fields.push('file_size = ?');
+      values.push(fileSize);
+    }
+    if (artworkUri) {
+      fields.push('artwork_uri = ?');
+      values.push(artworkUri);
+    }
+    values.push(id);
+    const result = this.db.runSync(
+      `UPDATE tracks SET ${fields.join(', ')} WHERE id = ?`,
+      values
+    );
+    return result.changes > 0;
+  }
+
   delete(id: number): boolean {
     try {
       this.db.runSync('DELETE FROM playlist_tracks WHERE track_id = ?', [id]);

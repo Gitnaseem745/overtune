@@ -6,7 +6,7 @@ import { ActiveTab } from '../types/music';
 import { 
   Compass, Music, Disc3, Mic2, Folder, FolderDown,
   Library, Plus, Heart, ListMusic,
-  PanelLeftClose, EyeOff, ShieldCheck, History, Sparkles
+  PanelLeftClose, EyeOff, ShieldCheck, History, Sparkles, Trash2
 } from 'lucide-react';
 import { getAccentColorHex } from '../lib/utils';
 import { OvertoneLogo } from './OvertoneLogo';
@@ -120,6 +120,7 @@ export function Sidebar() {
   const selectedPlaylist = usePlayerStore((s) => s.selectedPlaylist);
   const favorites = usePlayerStore((s) => s.favorites);
   const selectPlaylist = usePlayerStore((s) => s.selectPlaylist);
+  const deletePlaylist = usePlayerStore((s) => s.deletePlaylist);
   const setCreatePlaylistOpen = usePlayerStore((s) => s.setCreatePlaylistOpen);
   const accentColor = usePlayerStore((s) => s.accentColor);
 
@@ -413,9 +414,15 @@ export function Sidebar() {
                 <div
                   key={playlist.id}
                   onClick={() => selectPlaylist(playlist)}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    if (confirm(`Are you sure you want to delete playlist "${playlist.name}"? This action cannot be undone.`)) {
+                      deletePlaylist(playlist.id);
+                    }
+                  }}
                   title={`${playlist.name} (${playlist.track_count || 0} songs)`}
-                  className={`flex items-center rounded-xl cursor-pointer transition-all ${
-                    isSidebarCollapsed ? 'justify-center p-1.5' : 'gap-3 p-2'
+                  className={`group flex items-center rounded-xl cursor-pointer transition-all ${
+                    isSidebarCollapsed ? 'justify-center p-1.5' : 'justify-between gap-2 p-2'
                   } ${
                     isSelected
                       ? isDark ? 'bg-neutral-800 text-white font-bold' : 'bg-gray-100 font-bold'
@@ -423,19 +430,37 @@ export function Sidebar() {
                   }`}
                   style={{ color: isSelected ? accentHex : undefined }}
                 >
-                  <div 
-                    className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                    style={{ backgroundColor: `${accentHex}20`, color: accentHex }}
-                  >
-                    <ListMusic size={18} />
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div 
+                      className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                      style={{ backgroundColor: `${accentHex}20`, color: accentHex }}
+                    >
+                      <ListMusic size={18} />
+                    </div>
+                    {!isSidebarCollapsed && (
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-semibold text-xs truncate">{playlist.name}</span>
+                        <span className={`text-[11px] truncate ${isDark ? 'text-neutral-400' : 'text-gray-400'}`}>
+                          Playlist • {playlist.track_count || 0} songs
+                        </span>
+                      </div>
+                    )}
                   </div>
                   {!isSidebarCollapsed && (
-                    <div className="flex flex-col min-w-0">
-                      <span className="font-semibold text-xs truncate">{playlist.name}</span>
-                      <span className={`text-[11px] truncate ${isDark ? 'text-neutral-400' : 'text-gray-400'}`}>
-                        Playlist • {playlist.track_count || 0} songs
-                      </span>
-                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm(`Are you sure you want to delete playlist "${playlist.name}"? This action cannot be undone.`)) {
+                          deletePlaylist(playlist.id);
+                        }
+                      }}
+                      className={`p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-1 ${
+                        isDark ? 'hover:bg-neutral-700 text-neutral-400 hover:text-red-400' : 'hover:bg-gray-200 text-gray-400 hover:text-red-600'
+                      }`}
+                      title={`Delete playlist "${playlist.name}"`}
+                    >
+                      <Trash2 size={14} />
+                    </button>
                   )}
                 </div>
               );
@@ -677,6 +702,12 @@ export function Sidebar() {
                     )}
                     <button 
                       onClick={() => selectPlaylist(playlist)}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        if (confirm(`Are you sure you want to delete playlist "${playlist.name}"? This action cannot be undone.`)) {
+                          deletePlaylist(playlist.id);
+                        }
+                      }}
                       title={`${playlist.name} (${playlist.track_count || 0} songs)`}
                       className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all ${
                         isActive 
@@ -696,15 +727,25 @@ export function Sidebar() {
               }
 
               return (
-                <li key={playlist.id} className="relative" onClick={() => selectPlaylist(playlist)}>
+                <li 
+                  key={playlist.id} 
+                  className="relative group" 
+                  onClick={() => selectPlaylist(playlist)}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    if (confirm(`Are you sure you want to delete playlist "${playlist.name}"? This action cannot be undone.`)) {
+                      deletePlaylist(playlist.id);
+                    }
+                  }}
+                >
                   {isActive && (
                     <div 
                       className="absolute inset-y-0 left-0 w-1.5 rounded-r-full"
                       style={{ backgroundColor: accentHex }}
                     />
                   )}
-                  <button 
-                    className={`w-full flex items-center justify-between px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+                  <div 
+                    className={`w-full flex items-center justify-between px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                       isActive 
                         ? isDark 
                           ? 'bg-neutral-800 text-white font-bold' 
@@ -715,16 +756,32 @@ export function Sidebar() {
                     }`}
                     style={{ color: isActive ? accentHex : undefined }}
                   >
-                    <div className="flex items-center gap-2.5 truncate">
+                    <div className="flex items-center gap-2.5 truncate min-w-0 flex-1">
                       <ListMusic size={15} style={{ color: isActive ? accentHex : undefined }} />
                       <span className="truncate">{playlist.name}</span>
                     </div>
-                    {playlist.track_count !== undefined && playlist.track_count > 0 && (
-                      <span className="text-[10px] font-mono text-neutral-400">
-                        {playlist.track_count}
-                      </span>
-                    )}
-                  </button>
+                    <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                      {playlist.track_count !== undefined && playlist.track_count > 0 && (
+                        <span className="text-[10px] font-mono text-neutral-400 group-hover:hidden">
+                          {playlist.track_count}
+                        </span>
+                      )}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (confirm(`Are you sure you want to delete playlist "${playlist.name}"? This action cannot be undone.`)) {
+                            deletePlaylist(playlist.id);
+                          }
+                        }}
+                        className={`p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity ${
+                          isDark ? 'hover:bg-neutral-700 text-neutral-400 hover:text-red-400' : 'hover:bg-gray-200 text-gray-400 hover:text-red-600'
+                        }`}
+                        title={`Delete playlist "${playlist.name}"`}
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </div>
                 </li>
               );
             })}

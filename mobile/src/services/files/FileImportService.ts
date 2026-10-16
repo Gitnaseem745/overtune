@@ -258,6 +258,51 @@ class FileImportServiceImpl {
   }
 
   /**
+   * Download a remote audio stream to local device storage for offline playback.
+   */
+  async downloadRemoteTrack(
+    remoteUri: string,
+    trackId: number,
+    title: string
+  ): Promise<{ localUri: string; fileSize: number } | null> {
+    try {
+      await this.ensureDirectories();
+      const safeTitle = this.sanitizeFileName(title || `track_${trackId}`);
+      const destUri = `${AUDIO_DIR}${trackId}_${safeTitle}.mp3`;
+
+      const downloadResult = await FileSystem.downloadAsync(remoteUri, destUri);
+      if (downloadResult.status === 200) {
+        const info = await FileSystem.getInfoAsync(destUri);
+        return {
+          localUri: destUri,
+          fileSize: info.exists && info.size ? info.size : 0,
+        };
+      }
+      return null;
+    } catch (err) {
+      console.warn('[FileImportService] downloadRemoteTrack failed:', err);
+      return null;
+    }
+  }
+
+  /**
+   * Download remote artwork to local cache.
+   */
+  async downloadRemoteArtwork(remoteUri: string, trackId: number): Promise<string | null> {
+    try {
+      await this.ensureDirectories();
+      const destUri = `${ARTWORK_DIR}art_${trackId}.jpg`;
+      const downloadResult = await FileSystem.downloadAsync(remoteUri, destUri);
+      if (downloadResult.status === 200) {
+        return destUri;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * Get storage usage in bytes.
    */
   async getStorageUsage(): Promise<{ audioBytes: number; artworkBytes: number; totalBytes: number }> {
@@ -303,14 +348,29 @@ export function formatBytes(bytes: number): string {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 }
 
-/** Format seconds (or milliseconds) to mm:ss or h:mm:ss. */
+/** Format seconds to mm:ss or h:mm:ss. */
 export function formatDuration(seconds: number): string {
   if (!seconds || isNaN(seconds) || seconds <= 0) return '0:00';
-  // If duration is provided in milliseconds (e.g., > 10,000s = ~2.7 hours), convert to seconds
-  const totalSeconds = seconds > 10000 ? Math.round(seconds / 1000) : Math.round(seconds);
+  const totalSeconds = Math.max(0, Math.round(seconds));
   const h = Math.floor(totalSeconds / 3600);
   const m = Math.floor((totalSeconds % 3600) / 60);
   const s = Math.floor(totalSeconds % 60);
   if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+/** Format seconds to human-readable total duration for playlists, albums, and library (e.g. "4 hr 15 min" or "25 min"). */
+export function formatTotalDuration(seconds: number): string {
+  if (!seconds || isNaN(seconds) || seconds <= 0) return '0 min';
+  const totalSeconds = Math.max(0, Math.round(seconds));
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = Math.floor(totalSeconds % 60);
+  if (h > 0) {
+    return m > 0 ? `${h} hr ${m} min` : `${h} hr`;
+  }
+  if (m > 0) {
+    return s > 0 ? `${m} min ${s} sec` : `${m} min`;
+  }
+  return `${s} sec`;
 }

@@ -75,9 +75,46 @@ class AudioServiceImpl {
       this.player = null;
     }
 
+    // Proactively heal corrupted stream:// or stale desktop IP addresses
+    let playUri = track.fileUri;
+    if (!playUri || playUri.startsWith('stream://') || (playUri.startsWith('http://') && playUri.includes('/api/sync/audio/'))) {
+      try {
+        const { getDatabaseRepos } = require('../../hooks/useDatabase');
+        const repos = getDatabaseRepos?.();
+        const pairedDevices = repos?.pairedDevices?.getAll?.() || [];
+        const activeDevice = pairedDevices[0];
+        if (activeDevice) {
+          if (!playUri || playUri.startsWith('stream://')) {
+            const encodedTitle = encodeURIComponent(track.title);
+            playUri = `http://${activeDevice.ip}:${activeDevice.port}/api/sync/audio/by-title/${encodedTitle}`;
+            track.fileUri = playUri;
+            if (repos?.tracks?.updateFileUri) {
+              const artUri = `http://${activeDevice.ip}:${activeDevice.port}/api/sync/artwork/by-title/${encodedTitle}`;
+              repos.tracks.updateFileUri(track.id, playUri, 'stream', undefined, artUri);
+              track.artworkUri = artUri;
+            }
+          } else if (playUri.startsWith('http://') && !playUri.includes(activeDevice.ip)) {
+            // Live desktop IP changed on local WiFi
+            playUri = playUri.replace(/http:\/\/[^/]+(?::\d+)?/, `http://${activeDevice.ip}:${activeDevice.port}`);
+            track.fileUri = playUri;
+            if (repos?.tracks?.updateFileUri) {
+              repos.tracks.updateFileUri(track.id, playUri);
+            }
+          }
+        }
+      } catch {
+        // Ignore resolution error
+      }
+    }
+
+    if (!playUri || playUri.startsWith('stream://')) {
+      this.events?.onError(`Playback error: invalid audio URL (${playUri || 'empty'})`);
+      return;
+    }
+
     try {
       const player = createAudioPlayer(
-        { uri: track.fileUri },
+        { uri: playUri },
         { updateInterval: 250 }
       );
 

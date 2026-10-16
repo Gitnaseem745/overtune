@@ -493,7 +493,7 @@ export function DiscoverView() {
         {tracks.length > 0 ? (
           <div className="w-full text-sm">
             {/* Table Header */}
-            <div className={`grid grid-cols-[auto_1fr_1.2fr_90px_60px_40px] gap-4 text-[11px] uppercase font-bold pb-2.5 px-3 border-b ${
+            <div className={`grid grid-cols-[auto_1fr_1.2fr_90px_60px_72px] gap-4 text-[11px] uppercase font-bold pb-2.5 px-3 border-b ${
               isDark ? 'border-neutral-800 text-neutral-400' : 'border-gray-100 text-gray-400'
             }`}>
               <div className="w-7 text-center">#</div>
@@ -501,7 +501,7 @@ export function DiscoverView() {
               <div>Album</div>
               <div>Genre</div>
               <div>Time</div>
-              <div className="text-right">Like</div>
+              <div className="text-right"></div>
             </div>
 
             <div className="mt-2 space-y-1">

@@ -144,12 +144,15 @@ declare global {
       generatePairingPin: () => Promise<{ pin: string; expiresInSeconds: number }>;
       pairWithPeer: (targetIp: string, pin: string, targetPort?: number) => Promise<{ success: boolean; hostDeviceName?: string; error?: string }>;
       sendPlaylistToPeer: (deviceId: string, playlistId: number, targetPort?: number) => Promise<{ success: boolean; error?: string }>;
+      sendTrackToPeer: (deviceId: string, trackId: number, targetPort?: number) => Promise<{ success: boolean; error?: string }>;
+      updateSyncNowPlaying: (state: unknown) => Promise<boolean>;
       acceptIncomingPlaylist: (pendingId: string) => Promise<{ success: boolean; playlistId?: number; matchedTracks?: number; error?: string }>;
       declineIncomingPlaylist: (pendingId: string) => Promise<boolean>;
       revokePairedDevice: (deviceId: string) => Promise<boolean>;
 
       onDevicePaired: (callback: (device: { id: string; name: string; ip: string }) => void) => () => void;
       onPlaylistReceived: (callback: (playlist: import('./music').PendingSharedPlaylist) => void) => () => void;
+      onRemotePlaybackAction: (callback: (action: { action: string; currentTime?: number }) => void) => () => void;
 
       getAppInfo: () => Promise<import('./music').AppInfo>;
     };

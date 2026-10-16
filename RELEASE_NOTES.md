@@ -2,6 +2,30 @@
 
 ---
 
+## 📱 Overtone iOS Companion App v1.0.1 & 🎵 Desktop v0.2.2 — Cross-Device Streaming & Quality Release (2026-10-16)
+
+This major release introduces robust multi-device synchronization, seamless iPhone streaming from desktop players, auto-healing SQLite audio databases, responsive mobile action bars, and essential desktop playlist and track management improvements.
+
+### 🌟 Key Highlights & Fixes
+
+#### 🍏 iOS Companion App v1.0.1
+- **Seamless Desktop-to-iPhone Audio Streaming**: Completely eliminated invalid `stream://` fake scheme fallbacks that caused iOS `AVPlayer` to fail with `unsupported URL`. All streams now resolve to fully compliant HTTP streaming endpoints.
+- **SQLite Database Self-Healer on Launch**: Embedded `healCorruptedStreamUris` in the SQLite database initialization pipeline, automatically scanning and repairing any existing corrupted streaming records or stale desktop IP addresses on app launch.
+- **Dynamic Pre-Flight IP Resolution**: `AudioService` now verifies and updates the target streaming URI against live paired device IPs prior to invoking `createAudioPlayer`, ensuring seamless playback even when Wi-Fi IP addresses change.
+- **Scrollable Playlist Action Bar**: Re-engineered playlist detail action buttons (Play, Shuffle, Edit, Download All) into a smooth, horizontal scrollable container with bounce physics, ensuring buttons never overflow off-screen on smaller devices.
+- **Accurate Playlist Durations**: Unified total duration calculation across all views, correctly summing track durations without skew or truncation.
+- **React Native Safe Area Context**: Fully migrated all screens from deprecated `SafeAreaView` in `react-native` to `react-native-safe-area-context`.
+- **Render Hook Stability**: Eliminated hook order inconsistencies across playlist detail rendering cycles.
+
+#### 🖥️ Overtone Desktop v0.2.2
+- **By-Title Streaming & Artwork Server**: Expanded the device sync HTTP server in `device-sync.ts` with `/api/sync/audio/by-title/:encodedTitle` and `/api/sync/artwork/by-title/:encodedTitle` endpoints, allowing songs to stream reliably even when client requests lack numeric database IDs.
+- **Three-Dots Menu Hover Stability**: Fixed hover behavior on track rows to ensure the three-dots action menu remains visible and interactive without disappearing.
+- **Full Playlist Deletion**: Added a comprehensive playlist deletion flow with confirmation dialogs, removing playlists cleanly while keeping underlying library tracks intact.
+- **Direct Track Metadata Editor**: Introduced `EditTrackModal.tsx` for quick desktop editing of track titles, artists, albums, and genres with immediate database updates.
+- **Enhanced Sync State Broadcasting**: Explicitly broadcast `desktopTrackId` in both initial and periodic now-playing sync payloads.
+
+---
+
 ## 📱 Overtone iOS Companion App v1.0.0 — Sleek UI Edition (2026-10-16)
 
 We are proud to introduce the official milestone release of the **Overtone iOS Companion App (v1.0.0)** — an exquisite, local-first mobile listening experience crafted with the signature **Sleek UI (Night Star Theme)**, native iOS media architecture, and local-network Wi-Fi sync with desktop Overtone!

@@ -2,12 +2,12 @@
 
 import { useState, useMemo } from 'react';
 import { usePlayerStore } from '../store/usePlayerStore';
-import { getLocalUrl, getAccentColorHex } from '../lib/utils';
+import { getLocalUrl, getAccentColorHex, formatTotalDuration } from '../lib/utils';
 import { TrackRow } from './TrackRow';
 import { 
   ListMusic, Play, Shuffle, Download, Trash2, 
   Edit3, ChevronLeft, Check, X, Music, ChevronUp, ChevronDown,
-  ArrowUpDown, CheckSquare, Square, ListPlus
+  ArrowUpDown, CheckSquare, Square, ListPlus, Smartphone
 } from 'lucide-react';
 
 type SortField = 'default' | 'title' | 'artist' | 'album' | 'duration';
@@ -24,12 +24,16 @@ export function PlaylistDetailView() {
   const renamePlaylist = usePlayerStore((s) => s.renamePlaylist);
   const deletePlaylist = usePlayerStore((s) => s.deletePlaylist);
   const exportPlaylistM3U = usePlayerStore((s) => s.exportPlaylistM3U);
+  const sendPlaylistToPeerDevice = usePlayerStore((s) => s.sendPlaylistToPeerDevice);
+  const syncStatus = usePlayerStore((s) => s.syncStatus);
+  const setSettingsOpen = usePlayerStore((s) => s.setSettingsOpen);
   const removeTrackFromPlaylist = usePlayerStore((s) => s.removeTrackFromPlaylist);
   const reorderPlaylistTracks = usePlayerStore((s) => s.reorderPlaylistTracks);
 
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState('');
   const [exportSuccess, setExportSuccess] = useState(false);
+  const [sendSuccess, setSendSuccess] = useState(false);
   const [sortField, setSortField] = useState<SortField>('default');
   const [sortAsc, setSortAsc] = useState(true);
   const [selectedTrackIds, setSelectedTrackIds] = useState<Set<number>>(new Set());
@@ -39,8 +43,7 @@ export function PlaylistDetailView() {
 
   const totalDuration = useMemo(() => {
     const sec = playlistTracks.reduce((acc, t) => acc + (t.duration || 0), 0);
-    const mins = Math.floor(sec / 60);
-    return `${mins} min`;
+    return formatTotalDuration(sec);
   }, [playlistTracks]);
 
   // Sorted tracks view
@@ -78,8 +81,9 @@ export function PlaylistDetailView() {
   };
 
   const handleDelete = async () => {
-    if (confirm(`Are you sure you want to delete "${selectedPlaylist.name}"?`)) {
+    if (confirm(`Are you sure you want to delete playlist "${selectedPlaylist.name}"? This action cannot be undone.`)) {
       await deletePlaylist(selectedPlaylist.id);
+      navigateBack();
     }
   };
 
@@ -88,6 +92,22 @@ export function PlaylistDetailView() {
     if (success) {
       setExportSuccess(true);
       setTimeout(() => setExportSuccess(false), 3000);
+    }
+  };
+
+  const handleSendToMobile = async () => {
+    if (!syncStatus?.pairedDevices || syncStatus.pairedDevices.length === 0) {
+      alert('No paired mobile devices found. Open Settings → Device Sync to pair your iPhone.');
+      setSettingsOpen(true);
+      return;
+    }
+    const device = syncStatus.pairedDevices[0];
+    const res = await sendPlaylistToPeerDevice(device.id, selectedPlaylist.id);
+    if (res.success) {
+      setSendSuccess(true);
+      setTimeout(() => setSendSuccess(false), 3000);
+    } else {
+      alert(res.error || 'Failed to send playlist to mobile device');
     }
   };
 
@@ -317,11 +337,30 @@ export function PlaylistDetailView() {
             </button>
 
             <button
-              onClick={handleDelete}
-              className="p-2.5 rounded-full border border-neutral-700/60 hover:border-red-500/80 text-neutral-400 hover:text-red-500 transition-colors"
-              title="Delete Playlist"
+              onClick={handleSendToMobile}
+              disabled={playlistTracks.length === 0}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-full font-bold text-xs border transition-all disabled:opacity-40 ${
+                isDark
+                  ? 'border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400'
+                  : 'border-amber-500/30 bg-amber-50 hover:bg-amber-100 text-amber-700'
+              }`}
+              title="Send playlist to paired mobile device"
             >
-              <Trash2 size={16} />
+              <Smartphone size={14} />
+              {sendSuccess ? 'Sent to Mobile!' : 'Send to Mobile'}
+            </button>
+
+            <button
+              onClick={handleDelete}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-full font-bold text-xs border transition-all ${
+                isDark
+                  ? 'border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:border-red-500/60'
+                  : 'border-red-200 bg-red-50 hover:bg-red-100 text-red-600 hover:border-red-300'
+              }`}
+              title="Delete this playlist"
+            >
+              <Trash2 size={14} />
+              <span>Delete Playlist</span>
             </button>
           </div>
         </div>
@@ -382,10 +421,10 @@ export function PlaylistDetailView() {
         {/* Tracks List */}
         {displayTracks.length > 0 ? (
           <div className="w-full text-sm">
-            <div className={`grid grid-cols-[36px_auto_1fr_1.2fr_90px_60px_110px] gap-3 text-[11px] uppercase font-bold pb-2.5 px-3 border-b ${
+            <div className={`flex items-center gap-3 text-[11px] uppercase font-bold pb-2.5 px-3 border-b ${
               isDark ? 'border-neutral-800 text-neutral-400' : 'border-gray-100 text-gray-400'
             }`}>
-              <div className="flex items-center justify-center">
+              <div className="w-9 flex items-center justify-center shrink-0">
                 <button 
                   onClick={handleSelectAll} 
                   className="text-neutral-400 hover:text-white"
@@ -394,12 +433,17 @@ export function PlaylistDetailView() {
                   {selectedTrackIds.size === playlistTracks.length ? <CheckSquare size={14} /> : <Square size={14} />}
                 </button>
               </div>
-              <div className="w-7 text-center">#</div>
-              <div>Title / Artist</div>
-              <div>Album</div>
-              <div>Genre</div>
-              <div>Time</div>
-              <div className="text-right">Order / Manage</div>
+              <div className="flex-1 grid grid-cols-[auto_1fr_1.2fr_90px_60px_72px] items-center gap-4">
+                <div className="w-7 text-center">#</div>
+                <div>Title / Artist</div>
+                <div>Album</div>
+                <div>Genre</div>
+                <div>Time</div>
+                <div className="text-right">Like</div>
+              </div>
+              {sortField === 'default' && (
+                <div className="w-16 text-center text-[10px] text-neutral-400 shrink-0">Order</div>
+              )}
             </div>
 
             <div className="mt-2 space-y-1">
@@ -415,7 +459,7 @@ export function PlaylistDetailView() {
                     }`}
                   >
                     {/* Checkbox */}
-                    <div className="pl-3 py-2 flex items-center justify-center shrink-0">
+                    <div className="w-9 flex items-center justify-center shrink-0">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -434,49 +478,41 @@ export function PlaylistDetailView() {
                         track={track}
                         index={idx}
                         contextQueue={displayTracks}
+                        onRemove={() => removeTrackFromPlaylist(selectedPlaylist.id, track.id)}
                       />
                     </div>
 
-                    {/* Order & Remove Track Buttons */}
-                    <div className="absolute right-12 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
-                      {sortField === 'default' && (
-                        <>
-                          <button
-                            disabled={idx === 0}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleMoveTrack(idx, 'up');
-                            }}
-                            className="p-1 rounded-md bg-neutral-800 text-neutral-400 hover:text-white disabled:opacity-30"
-                            title="Move track up"
-                          >
-                            <ChevronUp size={13} />
-                          </button>
-                          <button
-                            disabled={idx === playlistTracks.length - 1}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleMoveTrack(idx, 'down');
-                            }}
-                            className="p-1 rounded-md bg-neutral-800 text-neutral-400 hover:text-white disabled:opacity-30"
-                            title="Move track down"
-                          >
-                            <ChevronDown size={13} />
-                          </button>
-                        </>
-                      )}
-
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          removeTrackFromPlaylist(selectedPlaylist.id, track.id);
-                        }}
-                        className="p-1.5 rounded-lg bg-neutral-800/80 text-neutral-400 hover:text-red-400 transition ml-1"
-                        title="Remove from playlist"
-                      >
-                        <X size={14} />
-                      </button>
-                    </div>
+                    {/* Order buttons in normal flow (does not overlap three dots) */}
+                    {sortField === 'default' && (
+                      <div className="w-16 flex items-center justify-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          disabled={idx === 0}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleMoveTrack(idx, 'up');
+                          }}
+                          className={`p-1 rounded-md transition disabled:opacity-20 ${
+                            isDark ? 'bg-neutral-800 text-neutral-400 hover:text-white' : 'bg-gray-100 text-gray-500 hover:text-gray-900'
+                          }`}
+                          title="Move track up"
+                        >
+                          <ChevronUp size={13} />
+                        </button>
+                        <button
+                          disabled={idx === playlistTracks.length - 1}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleMoveTrack(idx, 'down');
+                          }}
+                          className={`p-1 rounded-md transition disabled:opacity-20 ${
+                            isDark ? 'bg-neutral-800 text-neutral-400 hover:text-white' : 'bg-gray-100 text-gray-500 hover:text-gray-900'
+                          }`}
+                          title="Move track down"
+                        >
+                          <ChevronDown size={13} />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 );
               })}

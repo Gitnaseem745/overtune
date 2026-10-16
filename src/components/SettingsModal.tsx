@@ -1087,8 +1087,13 @@ export function SettingsModal() {
                       <div className={`p-2.5 rounded-xl border ${
                         isDark ? 'bg-neutral-800/40 border-neutral-700/40' : 'bg-white border-gray-200 shadow-2xs'
                       }`}>
-                        <span className={`text-[10px] block font-bold ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>Local IP</span>
-                        <span className={`font-mono ${isDark ? 'text-white' : 'text-gray-900'}`}>{syncStatus.localIp}</span>
+                        <span className={`text-[10px] block font-bold ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>Local IP (Wi-Fi)</span>
+                        <span className={`font-mono font-bold text-amber-500`}>{syncStatus.localIp}</span>
+                        {syncStatus.candidateIps && syncStatus.candidateIps.length > 1 && (
+                          <span className="text-[9px] text-neutral-400 block mt-0.5 truncate" title={syncStatus.candidateIps.join(', ')}>
+                            Also: {syncStatus.candidateIps.filter((ip: string) => ip !== syncStatus.localIp).join(', ')}
+                          </span>
+                        )}
                       </div>
                       <div className={`p-2.5 rounded-xl border ${
                         isDark ? 'bg-neutral-800/40 border-neutral-700/40' : 'bg-white border-gray-200 shadow-2xs'
@@ -1289,7 +1294,7 @@ export function SettingsModal() {
                   <OvertoneLogo size={48} />
                   <div>
                     <h3 className="text-base font-extrabold tracking-tight">Overtone</h3>
-                    <p className="text-xs text-amber-500 font-bold">Version 0.2.1 • Personal Music Hub</p>
+                    <p className="text-xs text-amber-500 font-bold">Version 0.2.2 • Personal Music Hub</p>
                     <p className={`text-[11px] ${isDark ? 'text-neutral-400' : 'text-gray-500'} mt-0.5`}>
                       Local-first desktop music player with Spotify-grade UI and offline reliability.
                     </p>

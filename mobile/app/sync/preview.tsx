@@ -12,9 +12,9 @@ import {
   StyleSheet,
   FlatList,
   Pressable,
-  SafeAreaView,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useTheme } from '../../src/hooks/useTheme';
@@ -22,6 +22,7 @@ import { useDatabase } from '../../src/hooks/useDatabase';
 import { spacing, radii, layout, MIN_TOUCH_TARGET } from '../../src/design/spacing';
 import { typography } from '../../src/design/typography';
 import { formatDuration } from '../../src/services/files/FileImportService';
+import { SyncService } from '../../src/services/sync/SyncService';
 import type { TrackMatchResult } from '../../src/domain/models';
 
 export default function PlaylistPreviewScreen() {
@@ -48,20 +49,29 @@ export default function PlaylistPreviewScreen() {
     setIsCommitting(true);
 
     try {
+      const pairedDevices = db.pairedDevices.getAll();
+      const device =
+        pairedDevices.find((d: any) => d.name === sourceDevice) ||
+        pairedDevices[0] || { id: 'desktop', name: sourceDevice, ip: '127.0.0.1', port: 47848 };
+
       // 1. Create playlist
       const playlistId = db.playlists.create(playlistName, 'synced', sourceDevice);
 
-      // 2. Add matched tracks
+      // 2. Add all tracks (local matched + Wi-Fi streamable)
       matches.forEach((m) => {
         if (m.localTrackId !== null) {
           db.playlists.addTrack(playlistId, m.localTrackId);
+        } else {
+          // Create track in library with stream URL from desktop
+          const trackId = SyncService.importSingleTrack(device, m.syncTrack, db);
+          db.playlists.addTrack(playlistId, trackId);
         }
       });
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert(
         'Playlist Imported',
-        `"${playlistName}" with ${matchedCount} matched track${matchedCount === 1 ? '' : 's'} has been added to your Library.`,
+        `"${playlistName}" with ${matches.length} track${matches.length === 1 ? '' : 's'} has been added to your Library.`,
         [
           {
             text: 'View Playlist',
@@ -93,22 +103,22 @@ export default function PlaylistPreviewScreen() {
         <View style={styles.statsRow}>
           <View style={styles.statBox}>
             <Text style={[typography.title3, { color: colors.textPrimary }]}>{matches.length}</Text>
-            <Text style={[typography.caption2, { color: colors.textSecondary }]}>Total</Text>
+            <Text style={[typography.caption2, { color: colors.textSecondary }]}>Total Songs</Text>
           </View>
           <View style={styles.statBox}>
             <Text style={[typography.title3, { color: colors.success }]}>{matchedCount}</Text>
-            <Text style={[typography.caption2, { color: colors.textSecondary }]}>Matched</Text>
+            <Text style={[typography.caption2, { color: colors.textSecondary }]}>Local Files</Text>
           </View>
           <View style={styles.statBox}>
-            <Text style={[typography.title3, { color: unmatchedCount > 0 ? colors.warning : colors.textTertiary }]}>
+            <Text style={[typography.title3, { color: unmatchedCount > 0 ? colors.accent : colors.textTertiary }]}>
               {unmatchedCount}
             </Text>
-            <Text style={[typography.caption2, { color: colors.textSecondary }]}>Unmatched</Text>
+            <Text style={[typography.caption2, { color: colors.textSecondary }]}>Wi-Fi Stream</Text>
           </View>
         </View>
 
         <Text style={[typography.caption2, styles.noticeText, { color: colors.textTertiary }]}>
-          Wi-Fi Sync transfers playlist metadata only. Unmatched tracks will be omitted until audio files are imported.
+          All songs will be imported. Tracks not yet stored on your phone stream seamlessly over Wi-Fi from your computer.
         </Text>
       </View>
 
@@ -147,17 +157,17 @@ export default function PlaylistPreviewScreen() {
                   {
                     backgroundColor: isMatched
                       ? colors.success + '20'
-                      : colors.warning + '20',
+                      : colors.accent + '20',
                   },
                 ]}
               >
                 <Text
                   style={[
                     styles.badgeText,
-                    { color: isMatched ? colors.success : colors.warning },
+                    { color: isMatched ? colors.success : colors.accent },
                   ]}
                 >
-                  {isMatched ? 'Matched' : 'Missing'}
+                  {isMatched ? 'Local File' : 'Wi-Fi Stream'}
                 </Text>
               </View>
             </View>
@@ -169,14 +179,14 @@ export default function PlaylistPreviewScreen() {
       <View style={[styles.footer, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
         <Pressable
           onPress={handleImport}
-          disabled={isCommitting || matchedCount === 0}
+          disabled={isCommitting || matches.length === 0}
           style={[
             styles.commitBtn,
-            { backgroundColor: matchedCount > 0 ? colors.accent : colors.surfaceElevated },
+            { backgroundColor: matches.length > 0 ? colors.accent : colors.surfaceElevated },
           ]}
         >
           <Text style={styles.commitText}>
-            {isCommitting ? 'Importing...' : `Import ${matchedCount} Matched Track${matchedCount === 1 ? '' : 's'}`}
+            {isCommitting ? 'Importing...' : `Import Playlist (${matches.length} Track${matches.length === 1 ? '' : 's'})`}
           </Text>
         </Pressable>
       </View>

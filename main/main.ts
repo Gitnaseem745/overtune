@@ -9,8 +9,9 @@ import { runMigrations, getMigrationStatus } from './migration';
 import { exportBackupToFile, previewBackupData, restoreBackupData, relocateLibraryPaths } from './backup';
 import { 
   startDeviceSyncServer, stopDeviceSyncServer, generatePairingPin, 
-  pairWithPeer, sendPlaylistToPeer, acceptIncomingPlaylist, 
-  declineIncomingPlaylist, revokePairedDevice, getDeviceSyncStatus 
+  pairWithPeer, sendPlaylistToPeer, sendTrackToPeer, acceptIncomingPlaylist, 
+  declineIncomingPlaylist, revokePairedDevice, getDeviceSyncStatus,
+  updateNowPlayingSyncState
 } from './device-sync';
 
 // Ensure consistent application name and Windows AppUserModelID for taskbar pinning and persistent userData
@@ -327,7 +328,7 @@ if (!gotTheLock) {
     try {
       initDb();
       runMigrations();
-      if (getSetting('device_sync_enabled') === 'true') {
+      if (getSetting('device_sync_enabled') !== 'false') {
         startDeviceSyncServer(() => mainWindow);
       }
     } catch (e) {
@@ -990,6 +991,15 @@ ipcMain.handle('sync:pairWithPeer', async (_event, targetIp: string, pin: string
 
 ipcMain.handle('sync:sendPlaylist', async (_event, deviceId: string, playlistId: number, targetPort?: number) => {
   return await sendPlaylistToPeer(deviceId, playlistId, targetPort);
+});
+
+ipcMain.handle('sync:sendTrack', async (_event, deviceId: string, trackId: number, targetPort?: number) => {
+  return await sendTrackToPeer(deviceId, trackId, targetPort);
+});
+
+ipcMain.handle('sync:updateNowPlaying', (_event, state: unknown) => {
+  updateNowPlayingSyncState(state as Parameters<typeof updateNowPlayingSyncState>[0], mainWindow);
+  return true;
 });
 
 ipcMain.handle('sync:acceptPlaylist', (_event, pendingId: string) => {

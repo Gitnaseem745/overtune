@@ -9,6 +9,21 @@ export function formatTime(seconds: number): string {
   return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
 }
 
+export function formatTotalDuration(seconds: number): string {
+  if (!seconds || !isFinite(seconds) || seconds <= 0) return '0 min';
+  const totalSeconds = Math.max(0, Math.round(seconds));
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = Math.floor(totalSeconds % 60);
+  if (h > 0) {
+    return m > 0 ? `${h} hr ${m} min` : `${h} hr`;
+  }
+  if (m > 0) {
+    return `${m} min`;
+  }
+  return `${s} sec`;
+}
+
 export function getAccentColorHex(accent: AccentColor = 'orange'): string {
   switch (accent) {
     case 'green':

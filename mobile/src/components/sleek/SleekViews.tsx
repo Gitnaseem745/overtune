@@ -18,6 +18,7 @@ import {
   Switch,
   Alert,
   ActivityIndicator,
+  Modal,
   useWindowDimensions,
 } from 'react-native';
 import { Image } from 'expo-image';
@@ -39,6 +40,7 @@ import {
   SleekTrashIcon,
   SleekShareIcon,
   SleekMoreIcon,
+  SleekPlaylistsIcon,
 } from './SleekIcons';
 import { SleekEmptyState } from './SleekEmptyState';
 import { SleekTrackActionSheet } from './SleekTrackActionSheet';
@@ -46,11 +48,11 @@ import { useDatabase } from '../../hooks/useDatabase';
 import { usePlayerStore } from '../../store/usePlayerStore';
 import { useUserStore } from '../../store/useUserStore';
 import { useDrawerStore } from '../../store/useDrawerStore';
-import { FileImportService, formatBytes, formatDuration } from '../../services/files/FileImportService';
+import { FileImportService, formatBytes, formatDuration, formatTotalDuration } from '../../services/files/FileImportService';
 import { BackupService } from '../../services/backup/BackupService';
-import { SyncService } from '../../services/sync/SyncService';
+import { SyncService, type DesktopPlaylistInfo } from '../../services/sync/SyncService';
 import { sleekTokens } from '../../design/colors';
-import type { MobileTrack, MobilePlaylist, SearchResults, PairedDevice } from '../../domain/models';
+import type { MobileTrack, MobilePlaylist, SearchResults, PairedDevice, SyncPlaylistTrack } from '../../domain/models';
 
 // ── 0. All Songs View (Desktop Overtone SongsView for iOS) ─────────────
 export function SleekSongsView() {
@@ -144,7 +146,7 @@ export function SleekSongsView() {
                 All Tracks ({filteredTracks.length})
               </Text>
               <Text style={styles.songsSubtitle}>
-                {formatDuration(totalDuration)} total listening time
+                {formatTotalDuration(totalDuration)} total listening time
               </Text>
             </View>
 
@@ -808,6 +810,16 @@ export function SleekSettingsView() {
   const [isImporting, setIsImporting] = useState(false);
   const [importProgress, setImportProgress] = useState<string | null>(null);
 
+  // Desktop music browsing & inbox state
+  const [isBrowseModalOpen, setIsBrowseModalOpen] = useState(false);
+  const [browseDevice, setBrowseDevice] = useState<PairedDevice | null>(null);
+  const [browseTab, setBrowseTab] = useState<'playlists' | 'songs'>('playlists');
+  const [desktopPlaylists, setDesktopPlaylists] = useState<DesktopPlaylistInfo[]>([]);
+  const [desktopTracks, setDesktopTracks] = useState<SyncPlaylistTrack[]>([]);
+  const [desktopSearchQuery, setDesktopSearchQuery] = useState('');
+  const [isFetchingDesktop, setIsFetchingDesktop] = useState(false);
+  const [isCheckingInbox, setIsCheckingInbox] = useState(false);
+
   const loadSettingsData = useCallback(async () => {
     if (!db.isReady) return;
     try {
@@ -949,6 +961,131 @@ export function SleekSettingsView() {
         },
       ]
     );
+  };
+
+  const handleCheckInbox = async (dev: PairedDevice) => {
+    if (isCheckingInbox || !db.isReady) return;
+    try {
+      setIsCheckingInbox(true);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      const res = await SyncService.fetchInbox(dev);
+      setIsCheckingInbox(false);
+
+      if (!res.items || res.items.length === 0) {
+        Alert.alert('Inbox Up to Date', `No pending transfers from "${dev.name}".`);
+        return;
+      }
+
+      let importedCount = 0;
+      for (const item of res.items) {
+        const payload = item.payload || item;
+        const tracks = payload.tracks || item.tracks;
+        const playlistName = payload.playlistName || item.playlistName;
+        const track = payload.track || item.track;
+        if (tracks && playlistName) {
+          SyncService.importPlaylistWithTracks(dev, playlistName, tracks, db);
+          importedCount++;
+        } else if (track) {
+          SyncService.importSingleTrack(dev, track, db);
+          importedCount++;
+        }
+      }
+
+      loadSettingsData();
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert(
+        'Transfers Received',
+        `Successfully imported ${importedCount} item${importedCount !== 1 ? 's' : ''} from "${dev.name}".`
+      );
+    } catch (err: any) {
+      setIsCheckingInbox(false);
+      Alert.alert('Inbox Check Failed', err?.message || 'Could not reach desktop.');
+    }
+  };
+
+  const handleOpenBrowseDesktop = async (dev: PairedDevice) => {
+    setBrowseDevice(dev);
+    setBrowseTab('playlists');
+    setDesktopSearchQuery('');
+    setIsBrowseModalOpen(true);
+    setIsFetchingDesktop(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    try {
+      const plRes = await SyncService.fetchDesktopPlaylists(dev);
+      setDesktopPlaylists(plRes.playlists || []);
+      const trRes = await SyncService.fetchDesktopTracks(dev, '', 60);
+      setDesktopTracks(trRes.tracks || []);
+    } catch (err) {
+      console.warn('[BrowseDesktop] Error fetching initial data:', err);
+    } finally {
+      setIsFetchingDesktop(false);
+    }
+  };
+
+  const handleSearchDesktopTracks = async (q: string) => {
+    setDesktopSearchQuery(q);
+    if (!browseDevice) return;
+    try {
+      setIsFetchingDesktop(true);
+      const res = await SyncService.fetchDesktopTracks(browseDevice, q, 60);
+      setDesktopTracks(res.tracks || []);
+    } catch (err) {
+      console.warn('[BrowseDesktop] Search error:', err);
+    } finally {
+      setIsFetchingDesktop(false);
+    }
+  };
+
+  const handleImportDesktopPlaylist = async (playlist: DesktopPlaylistInfo) => {
+    if (!browseDevice || !db.isReady) return;
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      const res = await SyncService.fetchDesktopPlaylist(browseDevice, playlist.id);
+      if (res.payload && res.payload.tracks) {
+        const imp = SyncService.importPlaylistWithTracks(
+          browseDevice,
+          res.payload.playlistName || playlist.name,
+          res.payload.tracks,
+          db
+        );
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Alert.alert(
+          'Playlist Imported',
+          `"${playlist.name}" (${imp.totalTracks} songs) has been added to your Library!`
+        );
+      } else {
+        Alert.alert('Import Failed', res.error || 'Could not fetch playlist from desktop.');
+      }
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'Failed to import playlist');
+    }
+  };
+
+  const handleImportDesktopSong = (tr: SyncPlaylistTrack) => {
+    if (!browseDevice || !db.isReady) return;
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      SyncService.importSingleTrack(browseDevice, tr, db);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert('Added to Library', `"${tr.title}" has been saved to your songs!`);
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'Failed to add song');
+    }
+  };
+
+  const handlePlayDesktopSong = (tr: SyncPlaylistTrack) => {
+    if (!browseDevice || !db.isReady) return;
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      const trackId = SyncService.importSingleTrack(browseDevice, tr, db);
+      const localTrack = db.tracks.getById(trackId);
+      if (localTrack) {
+        usePlayerStore.getState().loadAndPlay(localTrack, [localTrack]);
+      }
+    } catch (err: any) {
+      Alert.alert('Playback Error', err?.message || 'Could not stream song from desktop');
+    }
   };
 
   return (
@@ -1187,27 +1324,244 @@ export function SleekSettingsView() {
             </View>
 
             {pairedDevices.length > 0 && (
-              <View style={{ marginTop: 8, borderTopWidth: 1, borderTopColor: '#FDE68A', paddingTop: 8 }}>
-                <Text style={[styles.profileLabel, { marginBottom: 8 }]}>PAIRED DESKTOPS</Text>
+              <View style={{ marginTop: 10, borderTopWidth: 1, borderTopColor: '#FDE68A', paddingTop: 10 }}>
+                <Text style={[styles.profileLabel, { marginBottom: 10 }]}>PAIRED DESKTOPS</Text>
                 {pairedDevices.map((dev) => (
-                  <View key={dev.id} style={styles.deviceRow}>
-                    <View style={{ flex: 1, paddingRight: 12 }}>
-                      <Text style={styles.deviceNameText}>{dev.name}</Text>
-                      <Text style={styles.deviceIpText}>{dev.ip}:{dev.port}</Text>
+                  <View key={dev.id} style={styles.pairedDeviceCard}>
+                    <View style={styles.pairedDeviceInfo}>
+                      <View style={styles.desktopSquircle}>
+                        <SleekDesktopSyncIcon size={16} color="#D97706" />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.deviceNameText}>{dev.name}</Text>
+                        <Text style={styles.deviceIpText}>{dev.ip}:{dev.port}</Text>
+                      </View>
                     </View>
-                    <Pressable
-                      onPress={() => handleRevokeDevice(dev)}
-                      style={styles.disconnectBtn}
-                      hitSlop={8}
-                    >
-                      <SleekTrashIcon size={13} color="#DC2626" />
-                      <Text style={styles.disconnectText}>Disconnect</Text>
-                    </Pressable>
+
+                    {/* Action buttons: Row 1 (Browse Music & Check Inbox) + Row 2 (Unpair) */}
+                    <View style={styles.deviceActionContainer}>
+                      <View style={styles.deviceActionRow1}>
+                        <Pressable
+                          onPress={() => handleOpenBrowseDesktop(dev)}
+                          style={({ pressed }) => [
+                            styles.deviceActionBtnHalf,
+                            styles.deviceBrowseBtn,
+                            pressed && { opacity: 0.75 },
+                          ]}
+                          hitSlop={6}
+                        >
+                          <SleekSearchIcon size={14} color="#92400E" />
+                          <Text style={styles.deviceActionBtnText}>Browse Music</Text>
+                        </Pressable>
+
+                        <Pressable
+                          onPress={() => handleCheckInbox(dev)}
+                          disabled={isCheckingInbox}
+                          style={({ pressed }) => [
+                            styles.deviceActionBtnHalf,
+                            styles.deviceInboxBtn,
+                            pressed && { opacity: 0.75 },
+                          ]}
+                          hitSlop={6}
+                        >
+                          <SleekDesktopSyncIcon size={14} color="#2563EB" />
+                          <Text style={[styles.deviceActionBtnText, { color: '#1E40AF' }]}>
+                            {isCheckingInbox ? 'Checking...' : 'Check Inbox'}
+                          </Text>
+                        </Pressable>
+                      </View>
+
+                      <Pressable
+                        onPress={() => handleRevokeDevice(dev)}
+                        style={({ pressed }) => [
+                          styles.deviceUnpairBigBtn,
+                          pressed && { opacity: 0.75 },
+                        ]}
+                        hitSlop={6}
+                      >
+                        <SleekTrashIcon size={14} color="#DC2626" />
+                        <Text style={styles.deviceUnpairBigBtnText}>Unpair</Text>
+                      </Pressable>
+                    </View>
                   </View>
                 ))}
               </View>
             )}
           </View>
+
+          {/* Browse Desktop Music Library Modal */}
+          <Modal
+            visible={isBrowseModalOpen}
+            animationType="slide"
+            presentationStyle="pageSheet"
+            onRequestClose={() => setIsBrowseModalOpen(false)}
+          >
+            <View style={styles.browseModalContainer}>
+              {/* Header */}
+              <View style={styles.browseModalHeader}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.browseModalTitle} numberOfLines={1}>
+                    {browseDevice?.name || 'Desktop'}&apos;s Music
+                  </Text>
+                  <Text style={styles.browseModalSubtitle}>
+                    Browse 700+ songs & playlists over Wi-Fi
+                  </Text>
+                </View>
+                <Pressable
+                  onPress={() => setIsBrowseModalOpen(false)}
+                  style={styles.browseCloseBtn}
+                  hitSlop={8}
+                >
+                  <SleekCloseIcon size={18} color="#968D7B" />
+                </Pressable>
+              </View>
+
+              {/* Segmented Control Tabs */}
+              <View style={styles.browseTabsRow}>
+                <Pressable
+                  onPress={() => setBrowseTab('playlists')}
+                  style={[
+                    styles.browseTabBtn,
+                    browseTab === 'playlists' && styles.browseTabBtnActive,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.browseTabBtnText,
+                      browseTab === 'playlists' && styles.browseTabBtnTextActive,
+                    ]}
+                  >
+                    Playlists ({desktopPlaylists.length})
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => setBrowseTab('songs')}
+                  style={[
+                    styles.browseTabBtn,
+                    browseTab === 'songs' && styles.browseTabBtnActive,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.browseTabBtnText,
+                      browseTab === 'songs' && styles.browseTabBtnTextActive,
+                    ]}
+                  >
+                    All Songs ({desktopTracks.length})
+                  </Text>
+                </Pressable>
+              </View>
+
+              {isFetchingDesktop ? (
+                <View style={styles.browseLoadingContainer}>
+                  <ActivityIndicator size="large" color="#F9A826" />
+                  <Text style={styles.browseLoadingText}>Connecting to desktop...</Text>
+                </View>
+              ) : browseTab === 'playlists' ? (
+                <ScrollView
+                  contentContainerStyle={styles.browseListContent}
+                  showsVerticalScrollIndicator={false}
+                >
+                  {desktopPlaylists.length === 0 ? (
+                    <View style={styles.browseEmptyBox}>
+                      <Text style={styles.browseEmptyTitle}>No Playlists Found</Text>
+                      <Text style={styles.browseEmptyDesc}>
+                        Create playlists in Overtone on your computer to browse them here.
+                      </Text>
+                    </View>
+                  ) : (
+                    desktopPlaylists.map((pl) => (
+                      <View key={pl.id} style={styles.browseItemCard}>
+                        <View style={styles.browseItemSquircle}>
+                          <SleekPlaylistsIcon size={20} color="#D97706" />
+                        </View>
+                        <View style={{ flex: 1, paddingRight: 8 }}>
+                          <Text style={styles.browseItemTitle} numberOfLines={1}>
+                            {pl.name}
+                          </Text>
+                          <Text style={styles.browseItemSubtitle}>
+                            {pl.trackCount} {pl.trackCount === 1 ? 'song' : 'songs'}
+                          </Text>
+                        </View>
+                        <Pressable
+                          onPress={() => handleImportDesktopPlaylist(pl)}
+                          style={styles.browseImportBtn}
+                          hitSlop={6}
+                        >
+                          <SleekImportIcon size={12} color="#FFFFFF" />
+                          <Text style={styles.browseImportBtnText}>Import</Text>
+                        </Pressable>
+                      </View>
+                    ))
+                  )}
+                </ScrollView>
+              ) : (
+                <View style={{ flex: 1 }}>
+                  {/* Search Bar */}
+                  <View style={styles.browseSearchBar}>
+                    <SleekSearchIcon size={16} color="#B5AC98" />
+                    <TextInput
+                      style={styles.browseSearchInput}
+                      placeholder="Search songs, artists, albums on desktop..."
+                      placeholderTextColor="#B5AC98"
+                      value={desktopSearchQuery}
+                      onChangeText={handleSearchDesktopTracks}
+                      returnKeyType="search"
+                      clearButtonMode="while-editing"
+                    />
+                  </View>
+
+                  <ScrollView
+                    contentContainerStyle={styles.browseListContent}
+                    showsVerticalScrollIndicator={false}
+                  >
+                    {desktopTracks.length === 0 ? (
+                      <View style={styles.browseEmptyBox}>
+                        <Text style={styles.browseEmptyTitle}>No Songs Found</Text>
+                        <Text style={styles.browseEmptyDesc}>
+                          Try typing a different artist, song, or album name.
+                        </Text>
+                      </View>
+                    ) : (
+                      desktopTracks.map((tr, idx) => (
+                        <View key={`${tr.desktopTrackId || idx}`} style={styles.browseItemCard}>
+                          <View style={[styles.browseItemSquircle, { backgroundColor: '#FEF3C7' }]}>
+                            <SleekMusicNoteIcon size={18} color="#D97706" />
+                          </View>
+                          <View style={{ flex: 1, paddingRight: 8 }}>
+                            <Text style={styles.browseItemTitle} numberOfLines={1}>
+                              {tr.title}
+                            </Text>
+                            <Text style={styles.browseItemSubtitle} numberOfLines={1}>
+                              {tr.artist || 'Unknown Artist'} · {formatDuration(tr.duration || 0)}
+                            </Text>
+                          </View>
+                          <View style={styles.browseActionBtnsRow}>
+                            <Pressable
+                              onPress={() => handlePlayDesktopSong(tr)}
+                              style={styles.browsePlayBtn}
+                              hitSlop={6}
+                            >
+                              <SleekPlayIcon size={12} color="#059669" />
+                            </Pressable>
+                            <Pressable
+                              onPress={() => handleImportDesktopSong(tr)}
+                              style={styles.browseImportBtn}
+                              hitSlop={6}
+                            >
+                              <SleekPlusIcon size={12} color="#FFFFFF" />
+                              <Text style={styles.browseImportBtnText}>Add</Text>
+                            </Pressable>
+                          </View>
+                        </View>
+                      ))
+                    )}
+                  </ScrollView>
+                </View>
+              )}
+            </View>
+          </Modal>
 
           {/* About */}
           <Text style={styles.sectionHeader}>About</Text>
@@ -1217,7 +1571,7 @@ export function SleekSettingsView() {
                 <Text style={styles.settingLabel}>Version</Text>
               </View>
               <View style={styles.storageBadge}>
-                <Text style={styles.storageBadgeText}>1.0.0 (Overtone iOS)</Text>
+                <Text style={styles.storageBadgeText}>1.0.1 (Overtone iOS)</Text>
               </View>
             </View>
             <View style={styles.rowDivider} />
@@ -1807,5 +2161,246 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     color: '#786C5A',
     marginTop: 1,
+  },
+  pairedDeviceCard: {
+    backgroundColor: '#FFFDF5',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    padding: 12,
+    marginBottom: 10,
+  },
+  pairedDeviceInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 10,
+  },
+  desktopSquircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: '#FEF3C7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deviceActionContainer: {
+    paddingTop: 10,
+    marginTop: 4,
+    borderTopWidth: 1,
+    borderTopColor: '#FEF3C7',
+    gap: 8,
+  },
+  deviceActionRow1: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    width: '100%',
+  },
+  deviceActionBtnHalf: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 9,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+  },
+  deviceBrowseBtn: {
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  deviceInboxBtn: {
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  deviceActionBtnText: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#92400E',
+  },
+  deviceUnpairBigBtn: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: '#FEE2E2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  deviceUnpairBigBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#DC2626',
+  },
+  browseModalContainer: {
+    flex: 1,
+    backgroundColor: '#FAF7EE',
+    paddingTop: 20,
+    paddingHorizontal: 18,
+  },
+  browseModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  browseModalTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#1F180B',
+  },
+  browseModalSubtitle: {
+    fontSize: 13,
+    color: '#786C5A',
+    marginTop: 2,
+  },
+  browseCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#EAE3D2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  browseTabsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 16,
+  },
+  browseTabBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 14,
+    backgroundColor: '#EAE3D2',
+    alignItems: 'center',
+  },
+  browseTabBtnActive: {
+    backgroundColor: '#F9A826',
+  },
+  browseTabBtnText: {
+    fontSize: 13.5,
+    fontWeight: '600',
+    color: '#786C5A',
+  },
+  browseTabBtnTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  browseLoadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  browseLoadingText: {
+    fontSize: 14,
+    color: '#92400E',
+    fontWeight: '600',
+  },
+  browseListContent: {
+    paddingBottom: 40,
+    gap: 8,
+  },
+  browseEmptyBox: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+    paddingHorizontal: 20,
+  },
+  browseEmptyTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1F180B',
+    marginBottom: 4,
+  },
+  browseEmptyDesc: {
+    fontSize: 13,
+    color: '#786C5A',
+    textAlign: 'center',
+  },
+  browseItemCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#EFE7D8',
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  browseItemSquircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#FEF3C7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  browseItemTitle: {
+    fontSize: 14.5,
+    fontWeight: '700',
+    color: '#1F180B',
+    marginBottom: 2,
+  },
+  browseItemSubtitle: {
+    fontSize: 12,
+    color: '#786C5A',
+  },
+  browseImportBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#F9A826',
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+  },
+  browseImportBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  browseActionBtnsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  browsePlayBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#D1FAE5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  browseSearchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#EFE7D8',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    height: 44,
+    marginBottom: 12,
+    gap: 10,
+  },
+  browseSearchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#1F180B',
+    paddingVertical: 0,
   },
 });

@@ -174,6 +174,10 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.invoke('sync:pairWithPeer', targetIp, pin, targetPort),
   sendPlaylistToPeer: (deviceId: string, playlistId: number, targetPort?: number) =>
     ipcRenderer.invoke('sync:sendPlaylist', deviceId, playlistId, targetPort),
+  sendTrackToPeer: (deviceId: string, trackId: number, targetPort?: number) =>
+    ipcRenderer.invoke('sync:sendTrack', deviceId, trackId, targetPort),
+  updateSyncNowPlaying: (state: unknown) =>
+    ipcRenderer.invoke('sync:updateNowPlaying', state),
   acceptIncomingPlaylist: (pendingId: string) =>
     ipcRenderer.invoke('sync:acceptPlaylist', pendingId),
   declineIncomingPlaylist: (pendingId: string) =>
@@ -190,6 +194,11 @@ contextBridge.exposeInMainWorld('api', {
     const handler = (_event: unknown, playlist: unknown) => callback(playlist);
     ipcRenderer.on('sync:playlistReceived', handler);
     return () => { ipcRenderer.removeListener('sync:playlistReceived', handler); };
+  },
+  onRemotePlaybackAction: (callback: (action: unknown) => void) => {
+    const handler = (_event: unknown, action: unknown) => callback(action);
+    ipcRenderer.on('sync:remotePlaybackAction', handler);
+    return () => { ipcRenderer.removeListener('sync:remotePlaybackAction', handler); };
   },
 
   getAppInfo: () => ipcRenderer.invoke('app:getInfo'),

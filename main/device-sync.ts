@@ -1,6 +1,8 @@
 import * as http from 'http';
 import * as os from 'os';
 import * as crypto from 'crypto';
+import * as fs from 'fs';
+import * as path from 'path';
 import { BrowserWindow } from 'electron';
 import Database from 'better-sqlite3';
 import { getDb } from './db';
@@ -19,13 +21,38 @@ export interface PendingSharedPlaylist {
   playlistName: string;
   trackCount: number;
   tracks: Array<{
+    desktopTrackId?: number;
     title: string;
     artist: string;
     album: string;
     duration: number;
     genre?: string;
+    trackNumber?: number;
   }>;
   receivedAt: string;
+}
+
+export interface NowPlayingSyncState {
+  isPlaying: boolean;
+  currentTime: number;
+  duration: number;
+  track: {
+    id: number;
+    title: string;
+    artist: string;
+    album: string;
+    duration: number;
+    coverArt?: string;
+  } | null;
+  updatedAt: number;
+}
+
+export interface PendingDeviceTransfer {
+  id: string;
+  targetDeviceId: string;
+  type: 'track' | 'playlist';
+  payload: unknown;
+  createdAt: string;
 }
 
 export interface DeviceSyncStatus {
@@ -38,6 +65,7 @@ export interface DeviceSyncStatus {
   pinExpiresInSeconds: number;
   pairedDevices: PairedDevice[];
   pendingPlaylists: PendingSharedPlaylist[];
+  nowPlaying?: NowPlayingSyncState;
 }
 
 let server: http.Server | null = null;
@@ -45,37 +73,93 @@ let activePairingPin: string | null = null;
 let pinExpiresAt = 0;
 const DEFAULT_PORT = 47848;
 const pendingPlaylists: PendingSharedPlaylist[] = [];
+const pendingDeviceTransfers: PendingDeviceTransfer[] = [];
+
+let activeNowPlayingState: NowPlayingSyncState = {
+  isPlaying: false,
+  currentTime: 0,
+  duration: 0,
+  track: null,
+  updatedAt: Date.now(),
+};
+
+function getAudioMimeType(filePath: string): string {
+  const ext = path.extname(filePath).toLowerCase();
+  const mimeMap: Record<string, string> = {
+    '.mp3': 'audio/mpeg',
+    '.flac': 'audio/flac',
+    '.wav': 'audio/wav',
+    '.m4a': 'audio/mp4',
+    '.ogg': 'audio/ogg',
+    '.aac': 'audio/aac',
+    '.wma': 'audio/x-ms-wma',
+  };
+  return mimeMap[ext] || 'audio/mpeg';
+}
+
+function getImageMimeType(filePath: string): string {
+  const ext = path.extname(filePath).toLowerCase();
+  const mimeMap: Record<string, string> = {
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.png': 'image/png',
+    '.webp': 'image/webp',
+    '.gif': 'image/gif',
+  };
+  return mimeMap[ext] || 'image/jpeg';
+}
+
+export function updateNowPlayingSyncState(state: Partial<NowPlayingSyncState>, win?: BrowserWindow | null): void {
+  activeNowPlayingState = {
+    ...activeNowPlayingState,
+    ...state,
+    updatedAt: Date.now(),
+  };
+  if (win && !win.isDestroyed()) {
+    win.webContents.send('sync:nowPlayingUpdated', activeNowPlayingState);
+  }
+}
+
+export function getNowPlayingSyncState(): NowPlayingSyncState {
+  return activeNowPlayingState;
+}
 
 /**
  * Get all usable non-internal IPv4 addresses for local network discovery.
  */
 export function getAllLocalIpAddresses(): string[] {
   const interfaces = os.networkInterfaces();
-  const addresses: string[] = [];
+  const primaryAddresses: string[] = [];
+  const secondaryAddresses: string[] = [];
   const virtualRegex = /(vethernet|docker|wsl|virtual|vmware|vbox|tailscale|tap|tun)/i;
+  const wifiRegex = /(wi-fi|wifi|wlan|wireless)/i;
 
-  // First pass: physical / non-virtual interfaces
   for (const name of Object.keys(interfaces)) {
-    if (virtualRegex.test(name)) continue;
+    const isVirtualName = virtualRegex.test(name);
+    const isWifi = wifiRegex.test(name);
+
     for (const iface of interfaces[name] || []) {
       if (iface.family === 'IPv4' && !iface.internal) {
-        addresses.push(iface.address);
-      }
-    }
-  }
+        const addr = iface.address;
+        const mac = (iface.mac || '').toLowerCase();
+        // Detect VirtualBox / VMware / link-local host-only subnets
+        const isVboxMac = mac.startsWith('0a:00:27') || mac.startsWith('08:00:27') || mac.startsWith('00:05:69') || mac.startsWith('00:0c:29');
+        const isHostOnlySubnet = addr.startsWith('192.168.56.') || addr.startsWith('169.254.');
 
-  // Second pass: any other non-internal IPv4 if no physical found
-  if (addresses.length === 0) {
-    for (const name of Object.keys(interfaces)) {
-      for (const iface of interfaces[name] || []) {
-        if (iface.family === 'IPv4' && !iface.internal) {
-          addresses.push(iface.address);
+        if (isVirtualName || isVboxMac || isHostOnlySubnet) {
+          secondaryAddresses.push(addr);
+        } else if (isWifi) {
+          // Put Wi-Fi first as phones connect over Wi-Fi
+          primaryAddresses.unshift(addr);
+        } else {
+          primaryAddresses.push(addr);
         }
       }
     }
   }
 
-  return addresses.length > 0 ? addresses : ['127.0.0.1'];
+  const combined = [...primaryAddresses, ...secondaryAddresses];
+  return combined.length > 0 ? combined : ['127.0.0.1'];
 }
 
 /**
@@ -110,6 +194,17 @@ export function startDeviceSyncServer(
     server = http.createServer(async (req, res) => {
       const url = req.url || '';
       const method = req.method || 'GET';
+
+      // Enable CORS for LAN cross-device clients
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+      if (method === 'OPTIONS') {
+        res.writeHead(204);
+        res.end();
+        return;
+      }
 
       // 1. Health / ping
       if (url === '/api/sync/ping' && method === 'GET') {
@@ -173,21 +268,287 @@ export function startDeviceSyncServer(
         return;
       }
 
-      // Helper to authenticate Bearer token
-      const authenticateBearer = (): { id: string; name: string } | null => {
+      // Helper to authenticate Bearer token or URL token
+      const parsedUrl = new URL(url, `http://${req.headers.host || '127.0.0.1'}`);
+      const pathname = parsedUrl.pathname;
+      const normalizedPath = pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
+
+      const authenticateToken = (): { id: string; name: string } | null => {
         const authHeader = req.headers['authorization'] || '';
-        const token = authHeader.replace(/^Bearer\s+/i, '');
-        if (!token) return null;
+        let token = authHeader.replace(/^Bearer\s+/i, '').trim();
+        if (!token && parsedUrl.searchParams.has('token')) {
+          token = parsedUrl.searchParams.get('token') || '';
+        }
         const db = customDb || getDb();
-        const paired = db.prepare('SELECT id, name FROM paired_devices WHERE auth_token = ?').get(token) as { id: string; name: string } | undefined;
-        return paired || null;
+        if (token) {
+          const paired = db.prepare('SELECT id, name FROM paired_devices WHERE auth_token = ?').get(token) as { id: string; name: string } | undefined;
+          if (paired) return paired;
+        }
+        // Fallback: check if client IP matches a paired device
+        const clientIp = (req.socket.remoteAddress || '').replace(/^.*:/, '');
+        if (clientIp) {
+          const pairedByIp = db.prepare('SELECT id, name FROM paired_devices WHERE ip = ?').get(clientIp) as { id: string; name: string } | undefined;
+          if (pairedByIp) return pairedByIp;
+        }
+        return null;
       };
 
-      // 3. List Playlists (for mobile client pull)
-      if (url === '/api/sync/playlists' && method === 'GET') {
-        const paired = authenticateBearer();
+      // 3. Audio Streaming / Download with Range Header Support
+      if ((normalizedPath.startsWith('/api/sync/audio/') || normalizedPath.startsWith('/api/sync/track/')) && method === 'GET') {
+        const match = normalizedPath.match(/\/api\/sync\/(?:audio\/(\d+)|track\/(\d+)(?:\/audio)?)/);
+        const db = customDb || getDb();
+        let track: { path: string; title: string } | undefined;
+
+        if (match) {
+          const trackId = parseInt(match[1] || match[2], 10);
+          track = db.prepare('SELECT path, title FROM tracks WHERE id = ?').get(trackId) as { path: string; title: string } | undefined;
+        } else if (normalizedPath.startsWith('/api/sync/audio/by-title/')) {
+          const rawTitle = normalizedPath.replace('/api/sync/audio/by-title/', '');
+          let decodedTitle = rawTitle;
+          try {
+            decodedTitle = decodeURIComponent(rawTitle);
+          } catch {}
+          track = db.prepare('SELECT path, title FROM tracks WHERE LOWER(title) = LOWER(?) LIMIT 1').get(decodedTitle) as { path: string; title: string } | undefined;
+          if (!track) {
+            track = db.prepare('SELECT path, title FROM tracks WHERE LOWER(title) LIKE LOWER(?) LIMIT 1').get(`%${decodedTitle}%`) as { path: string; title: string } | undefined;
+          }
+        }
+
+        if (track) {
+          let cleanPath = track.path ? track.path.replace(/^file:\/\//i, '') : '';
+          if (cleanPath && !fs.existsSync(cleanPath)) {
+            try {
+              const decoded = decodeURIComponent(cleanPath);
+              if (fs.existsSync(decoded)) cleanPath = decoded;
+            } catch {}
+          }
+
+          if (!cleanPath || !fs.existsSync(cleanPath)) {
+            res.writeHead(404, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+            res.end(JSON.stringify({ error: 'Audio file not found' }));
+            return;
+          }
+
+          const stat = fs.statSync(cleanPath);
+          const fileSize = stat.size;
+          const range = req.headers.range;
+          const mimeType = getAudioMimeType(cleanPath);
+
+          if (range) {
+            const parts = range.replace(/bytes=/, '').split('-');
+            const start = parseInt(parts[0], 10);
+            const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+            if (start >= fileSize || end >= fileSize) {
+              res.writeHead(416, {
+                'Content-Range': `bytes */${fileSize}`,
+                'Access-Control-Allow-Origin': '*',
+              });
+              res.end();
+              return;
+            }
+            const chunksize = end - start + 1;
+            const file = fs.createReadStream(cleanPath, { start, end });
+            res.writeHead(206, {
+              'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+              'Accept-Ranges': 'bytes',
+              'Content-Length': chunksize,
+              'Content-Type': mimeType,
+              'Access-Control-Allow-Origin': '*',
+            });
+            file.pipe(res);
+          } else {
+            res.writeHead(200, {
+              'Content-Length': fileSize,
+              'Content-Type': mimeType,
+              'Accept-Ranges': 'bytes',
+              'Access-Control-Allow-Origin': '*',
+            });
+            fs.createReadStream(cleanPath).pipe(res);
+          }
+          return;
+        } else if (match || normalizedPath.startsWith('/api/sync/audio/by-title/')) {
+          res.writeHead(404, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+          res.end(JSON.stringify({ error: 'Track not found' }));
+          return;
+        }
+      }
+
+      // 4. Artwork Endpoint
+      if ((normalizedPath.startsWith('/api/sync/artwork/') || normalizedPath.startsWith('/api/sync/track/')) && method === 'GET') {
+        const match = normalizedPath.match(/\/api\/sync\/(?:artwork\/(\d+)|track\/(\d+)\/artwork)/);
+        const db = customDb || getDb();
+        let row: { cover_art_path: string | null } | undefined;
+
+        if (match) {
+          const trackId = parseInt(match[1] || match[2], 10);
+          row = db.prepare(`
+            SELECT al.cover_art_path
+            FROM tracks t
+            LEFT JOIN albums al ON t.album_id = al.id
+            WHERE t.id = ?
+          `).get(trackId) as { cover_art_path: string | null } | undefined;
+        } else if (normalizedPath.startsWith('/api/sync/artwork/by-title/')) {
+          const rawTitle = normalizedPath.replace('/api/sync/artwork/by-title/', '');
+          let decodedTitle = rawTitle;
+          try {
+            decodedTitle = decodeURIComponent(rawTitle);
+          } catch {}
+          row = db.prepare(`
+            SELECT al.cover_art_path
+            FROM tracks t
+            LEFT JOIN albums al ON t.album_id = al.id
+            WHERE LOWER(t.title) = LOWER(?)
+            LIMIT 1
+          `).get(decodedTitle) as { cover_art_path: string | null } | undefined;
+          if (!row) {
+            row = db.prepare(`
+              SELECT al.cover_art_path
+              FROM tracks t
+              LEFT JOIN albums al ON t.album_id = al.id
+              WHERE LOWER(t.title) LIKE LOWER(?)
+              LIMIT 1
+            `).get(`%${decodedTitle}%`) as { cover_art_path: string | null } | undefined;
+          }
+        }
+
+        if (row) {
+          let coverPath = row.cover_art_path ? row.cover_art_path.replace(/^file:\/\//i, '') : '';
+          if (coverPath && !fs.existsSync(coverPath)) {
+            try {
+              const decoded = decodeURIComponent(coverPath);
+              if (fs.existsSync(decoded)) coverPath = decoded;
+            } catch {}
+          }
+
+          if (coverPath && fs.existsSync(coverPath)) {
+            const mime = getImageMimeType(coverPath);
+            const stat = fs.statSync(coverPath);
+            res.writeHead(200, {
+              'Content-Type': mime,
+              'Content-Length': stat.size,
+              'Cache-Control': 'public, max-age=86400',
+              'Access-Control-Allow-Origin': '*',
+            });
+            fs.createReadStream(coverPath).pipe(res);
+            return;
+          }
+          res.writeHead(404, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+          res.end(JSON.stringify({ error: 'Artwork not found' }));
+          return;
+        } else if (match || normalizedPath.startsWith('/api/sync/artwork/by-title/')) {
+          res.writeHead(404, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+          res.end(JSON.stringify({ error: 'Track not found' }));
+          return;
+        }
+      }
+
+      // 5. Now-Playing State Sync & Remote Playback Control
+      if (normalizedPath === '/api/sync/now-playing') {
+        if (method === 'GET') {
+          res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+          res.end(JSON.stringify({ success: true, nowPlaying: activeNowPlayingState }));
+          return;
+        }
+        if (method === 'POST') {
+          let body = '';
+          req.on('data', chunk => { body += chunk; });
+          req.on('end', () => {
+            try {
+              const data = JSON.parse(body);
+              if (data.action) {
+                const win = getWin ? getWin() : null;
+                if (win && !win.isDestroyed()) {
+                  win.webContents.send('sync:remotePlaybackAction', data);
+                }
+              }
+              res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+              res.end(JSON.stringify({ success: true }));
+            } catch {
+              res.writeHead(400, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'Malformed request' }));
+            }
+          });
+          return;
+        }
+      }
+
+      // 6. Device Inbox (mobile client polling for sent playlists/tracks)
+      if (normalizedPath === '/api/sync/inbox' && method === 'GET') {
+        const paired = authenticateToken();
         if (!paired) {
-          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.writeHead(403, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+          res.end(JSON.stringify({ success: false, error: 'Unauthorized: device is not paired' }));
+          return;
+        }
+
+        const items = pendingDeviceTransfers.filter(t => t.targetDeviceId === paired.id);
+        // Remove fetched items
+        for (const item of items) {
+          const idx = pendingDeviceTransfers.indexOf(item);
+          if (idx !== -1) pendingDeviceTransfers.splice(idx, 1);
+        }
+
+        const formattedItems = items.map(item => ({
+          ...item,
+          ...(item.payload || {}),
+        }));
+
+        res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify({ success: true, items: formattedItems }));
+        return;
+      }
+
+      // 7. List / Search Desktop Tracks (for mobile browsing)
+      if (normalizedPath === '/api/sync/tracks' && method === 'GET') {
+        const paired = authenticateToken();
+        if (!paired) {
+          res.writeHead(403, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+          res.end(JSON.stringify({ success: false, error: 'Unauthorized: device is not paired' }));
+          return;
+        }
+
+        const q = (parsedUrl.searchParams.get('q') || '').trim();
+        const limit = Math.min(200, parseInt(parsedUrl.searchParams.get('limit') || '50', 10));
+        const db = customDb || getDb();
+        try {
+          let tracks;
+          if (q) {
+            tracks = db.prepare(`
+              SELECT t.id as desktopTrackId, t.title, COALESCE(a.name, 'Unknown Artist') as artist,
+                     COALESCE(al.title, 'Unknown Album') as album, t.duration, t.genre, t.track_number as trackNumber
+              FROM tracks t
+              LEFT JOIN artists a ON t.artist_id = a.id
+              LEFT JOIN albums al ON t.album_id = al.id
+              WHERE LOWER(t.title) LIKE LOWER(?) OR LOWER(a.name) LIKE LOWER(?) OR LOWER(al.title) LIKE LOWER(?)
+              ORDER BY t.title ASC
+              LIMIT ?
+            `).all(`%${q}%`, `%${q}%`, `%${q}%`, limit);
+          } else {
+            tracks = db.prepare(`
+              SELECT t.id as desktopTrackId, t.title, COALESCE(a.name, 'Unknown Artist') as artist,
+                     COALESCE(al.title, 'Unknown Album') as album, t.duration, t.genre, t.track_number as trackNumber
+              FROM tracks t
+              LEFT JOIN artists a ON t.artist_id = a.id
+              LEFT JOIN albums al ON t.album_id = al.id
+              ORDER BY t.title ASC
+              LIMIT ?
+            `).all(limit);
+          }
+          res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+          res.end(JSON.stringify({ success: true, tracks }));
+        } catch (e: unknown) {
+          const errMsg = e instanceof Error ? e.message : 'Database error';
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: errMsg }));
+        }
+        return;
+      }
+
+      // 8. List Playlists (for mobile client pull)
+      if (normalizedPath === '/api/sync/playlists' && method === 'GET') {
+        const paired = authenticateToken();
+        if (!paired) {
+          res.writeHead(403, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
           res.end(JSON.stringify({ success: false, error: 'Unauthorized: device is not paired' }));
           return;
         }
@@ -202,7 +563,7 @@ export function startDeviceSyncServer(
             ORDER BY p.name ASC
           `).all();
 
-          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
           res.end(JSON.stringify({ playlists }));
         } catch (e: unknown) {
           const errMsg = e instanceof Error ? e.message : 'Database error';
@@ -212,28 +573,28 @@ export function startDeviceSyncServer(
         return;
       }
 
-      // 4. Get specific Playlist (for mobile client pull)
-      if (url.startsWith('/api/sync/playlist/') && method === 'GET') {
-        const paired = authenticateBearer();
+      // 9. Get specific Playlist (for mobile client pull)
+      if (normalizedPath.startsWith('/api/sync/playlist/') && method === 'GET') {
+        const paired = authenticateToken();
         if (!paired) {
-          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.writeHead(403, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
           res.end(JSON.stringify({ success: false, error: 'Unauthorized: device is not paired' }));
           return;
         }
 
-        const playlistId = parseInt(url.replace('/api/sync/playlist/', ''), 10);
+        const playlistId = parseInt(normalizedPath.replace('/api/sync/playlist/', ''), 10);
         const db = customDb || getDb();
         const playlist = db.prepare('SELECT name FROM playlists WHERE id = ?').get(playlistId) as { name: string } | undefined;
 
         if (!playlist) {
-          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.writeHead(404, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
           res.end(JSON.stringify({ error: 'Playlist not found' }));
           return;
         }
 
         const tracks = db.prepare(`
-          SELECT t.title, COALESCE(a.name, 'Unknown Artist') as artist, COALESCE(al.title, 'Unknown Album') as album,
-                 t.duration, t.genre
+          SELECT t.id as desktopTrackId, t.title, COALESCE(a.name, 'Unknown Artist') as artist, COALESCE(al.title, 'Unknown Album') as album,
+                 t.duration, t.genre, t.track_number as trackNumber
           FROM playlist_tracks pt
           JOIN tracks t ON pt.track_id = t.id
           LEFT JOIN artists a ON t.artist_id = a.id
@@ -242,7 +603,7 @@ export function startDeviceSyncServer(
           ORDER BY pt.position ASC
         `).all(playlistId);
 
-        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
         res.end(JSON.stringify({
           playlistName: playlist.name,
           tracks,
@@ -250,9 +611,91 @@ export function startDeviceSyncServer(
         return;
       }
 
-      // 5. Receive Shared Playlist (push to desktop)
-      if (url === '/api/sync/playlist' && method === 'POST') {
-        const paired = authenticateBearer();
+      // 10. Receive Shared Single Track (push to desktop)
+      if (normalizedPath === '/api/sync/track' && method === 'POST') {
+        const paired = authenticateToken();
+        if (!paired) {
+          res.writeHead(403, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+          res.end(JSON.stringify({ success: false, error: 'Unauthorized: device is not paired' }));
+          return;
+        }
+
+        let body = '';
+        req.on('data', chunk => { body += chunk; });
+        req.on('end', () => {
+          try {
+            const data = JSON.parse(body);
+            const track = data.track || data;
+            const pendingItem: PendingSharedPlaylist = {
+              id: crypto.randomUUID(),
+              fromDeviceName: paired.name,
+              playlistName: `Shared: ${track.title || 'Song'}`,
+              trackCount: 1,
+              tracks: [track],
+              receivedAt: new Date().toISOString(),
+            };
+
+            pendingPlaylists.push(pendingItem);
+
+            const win = getWin ? getWin() : null;
+            if (win && !win.isDestroyed()) {
+              win.webContents.send('sync:playlistReceived', pendingItem);
+            }
+
+            res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+            res.end(JSON.stringify({ success: true, pendingId: pendingItem.id }));
+          } catch {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: false, error: 'Invalid track payload' }));
+          }
+        });
+        return;
+      }
+
+      // 11. Receive Shared Playlist (push to desktop)
+      if (normalizedPath === '/api/sync/playlist' && method === 'POST') {
+        const paired = authenticateToken();
+        if (!paired) {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: 'Unauthorized: device is not paired' }));
+          return;
+        }
+
+        let body = '';
+        req.on('data', chunk => { body += chunk; });
+        req.on('end', () => {
+          try {
+            const data = JSON.parse(body);
+            const track = data.track || data;
+            const pendingItem: PendingSharedPlaylist = {
+              id: crypto.randomUUID(),
+              fromDeviceName: paired.name,
+              playlistName: `Shared: ${track.title || 'Song'}`,
+              trackCount: 1,
+              tracks: [track],
+              receivedAt: new Date().toISOString(),
+            };
+
+            pendingPlaylists.push(pendingItem);
+
+            const win = getWin ? getWin() : null;
+            if (win && !win.isDestroyed()) {
+              win.webContents.send('sync:playlistReceived', pendingItem);
+            }
+
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: true, pendingId: pendingItem.id }));
+          } catch {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: false, error: 'Invalid track payload' }));
+          }
+        });
+        return;
+      }
+
+      // 11. Receive Shared Playlist (push to desktop)
+      if (pathname === '/api/sync/playlist' && method === 'POST') {
+        const paired = authenticateToken();
         if (!paired) {
           res.writeHead(403, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ success: false, error: 'Unauthorized: device is not paired' }));
@@ -396,7 +839,95 @@ export async function pairWithPeer(
 }
 
 /**
- * Send a local playlist to a paired peer device.
+ * Send a single track to a paired peer device (or queue in inbox).
+ */
+export async function sendTrackToPeer(
+  deviceId: string,
+  trackId: number,
+  targetPort = DEFAULT_PORT,
+  customDb?: Database.Database
+): Promise<{ success: boolean; error?: string }> {
+  const db = customDb || getDb();
+
+  const device = db.prepare('SELECT id, name, ip, auth_token FROM paired_devices WHERE id = ?').get(deviceId) as {
+    id: string;
+    name: string;
+    ip: string;
+    auth_token: string;
+  } | undefined;
+
+  if (!device) {
+    return { success: false, error: 'Device is not paired' };
+  }
+
+  const track = db.prepare(`
+    SELECT t.id as desktopTrackId, t.title, COALESCE(a.name, 'Unknown Artist') as artist, COALESCE(al.title, 'Unknown Album') as album,
+           t.duration, t.genre, t.track_number as trackNumber
+    FROM tracks t
+    LEFT JOIN artists a ON t.artist_id = a.id
+    LEFT JOIN albums al ON t.album_id = al.id
+    WHERE t.id = ?
+  `).get(trackId) as {
+    desktopTrackId: number;
+    title: string;
+    artist: string;
+    album: string;
+    duration: number;
+    genre: string | null;
+    trackNumber: number | null;
+  } | undefined;
+
+  if (!track) {
+    return { success: false, error: 'Track not found' };
+  }
+
+  // Queue in transfer inbox for mobile client pull
+  pendingDeviceTransfers.push({
+    id: crypto.randomUUID(),
+    targetDeviceId: device.id,
+    type: 'track',
+    payload: { track },
+    createdAt: new Date().toISOString(),
+  });
+
+  // Also attempt direct HTTP push (best effort)
+  const postData = JSON.stringify({ track });
+  return new Promise((resolve) => {
+    const req = http.request(
+      {
+        hostname: device.ip,
+        port: targetPort,
+        path: '/api/sync/track',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(postData),
+          'Authorization': `Bearer ${device.auth_token}`,
+        },
+        timeout: 3000,
+      },
+      () => {
+        resolve({ success: true });
+      }
+    );
+
+    req.on('error', () => {
+      // Queued in inbox anyway, so transfer will be fetched
+      resolve({ success: true });
+    });
+
+    req.on('timeout', () => {
+      req.destroy();
+      resolve({ success: true });
+    });
+
+    req.write(postData);
+    req.end();
+  });
+}
+
+/**
+ * Send a local playlist to a paired peer device (or queue in inbox).
  */
 export async function sendPlaylistToPeer(
   deviceId: string,
@@ -423,8 +954,8 @@ export async function sendPlaylistToPeer(
   }
 
   const tracks = db.prepare(`
-    SELECT t.title, COALESCE(a.name, 'Unknown Artist') as artist, COALESCE(al.title, 'Unknown Album') as album,
-           t.duration, t.genre
+    SELECT t.id as desktopTrackId, t.title, COALESCE(a.name, 'Unknown Artist') as artist, COALESCE(al.title, 'Unknown Album') as album,
+           t.duration, t.genre, t.track_number as trackNumber
     FROM playlist_tracks pt
     JOIN tracks t ON pt.track_id = t.id
     LEFT JOIN artists a ON t.artist_id = a.id
@@ -432,6 +963,18 @@ export async function sendPlaylistToPeer(
     WHERE pt.playlist_id = ?
     ORDER BY pt.position ASC
   `).all(playlistId);
+
+  // Queue in transfer inbox for mobile client pull
+  pendingDeviceTransfers.push({
+    id: crypto.randomUUID(),
+    targetDeviceId: device.id,
+    type: 'playlist',
+    payload: {
+      playlistName: playlist.name,
+      tracks,
+    },
+    createdAt: new Date().toISOString(),
+  });
 
   const payload = JSON.stringify({
     playlistName: playlist.name,
@@ -450,39 +993,31 @@ export async function sendPlaylistToPeer(
           'Content-Length': Buffer.byteLength(payload),
           'Authorization': `Bearer ${device.auth_token}`,
         },
-        timeout: 8000,
+        timeout: 4000,
       },
       (res) => {
-        let body = '';
-        res.on('data', chunk => { body += chunk; });
+        res.on('data', () => {});
         res.on('end', () => {
-          try {
-            const resp = JSON.parse(body);
-            if (res.statusCode === 200 && resp.success) {
-              resolve({ success: true });
-            } else {
-              resolve({ success: false, error: resp.error || 'Peer rejected playlist' });
-            }
-          } catch {
-            resolve({ success: false, error: 'Invalid response from peer' });
-          }
+          resolve({ success: true });
         });
       }
     );
 
-    req.on('error', (err) => {
-      resolve({ success: false, error: `Transfer failed: ${err.message}` });
+    req.on('error', () => {
+      // Queued in inbox anyway, so transfer will be delivered
+      resolve({ success: true });
     });
 
     req.on('timeout', () => {
       req.destroy();
-      resolve({ success: false, error: 'Transfer timed out' });
+      resolve({ success: true });
     });
 
     req.write(payload);
     req.end();
   });
 }
+
 
 /**
  * Accept an incoming pending playlist and import it into the local database.
@@ -592,5 +1127,6 @@ export function getDeviceSyncStatus(customDb?: Database.Database): DeviceSyncSta
     pinExpiresInSeconds: pinRemaining,
     pairedDevices: getPairedDevices(customDb),
     pendingPlaylists: [...pendingPlaylists],
+    nowPlaying: activeNowPlayingState,
   };
 }

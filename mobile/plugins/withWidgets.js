@@ -2,7 +2,7 @@ const { withInfoPlist, withEntitlementsPlist, createRunOncePlugin } = require('@
 
 const APP_GROUP_IDENTIFIER = 'group.com.overtone.music';
 const PKG_NAME = 'withWidgets';
-const PKG_VERSION = '1.0.0';
+const PKG_VERSION = '1.0.1';
 
 /**
  * Expo Config Plugin to configure iOS Live Activities (Dynamic Island),

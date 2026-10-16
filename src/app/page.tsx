@@ -5,6 +5,7 @@ import { usePlayerStore } from '../store/usePlayerStore';
 import { AudioEngine } from '../components/AudioEngine';
 import { SettingsModal } from '../components/SettingsModal';
 import { CreatePlaylistModal } from '../components/CreatePlaylistModal';
+import { EditTrackModal } from '../components/EditTrackModal';
 import { Sidebar } from '../components/Sidebar';
 import { TopHeader } from '../components/TopHeader';
 import { RightPanel } from '../components/RightPanel';
@@ -71,6 +72,9 @@ export default function Home() {
 
       {/* Create Playlist Modal */}
       <CreatePlaylistModal />
+
+      {/* Edit Track Metadata Modal */}
+      <EditTrackModal />
 
       {/* ── Main Layout Body ── */}
       <div className={`flex flex-1 min-h-0 ${isSpotifyLayout ? (isDark ? 'p-2 gap-2 bg-black' : 'p-2 gap-2 bg-[#f4f5f8]') : ''}`}>

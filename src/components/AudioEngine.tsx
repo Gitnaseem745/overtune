@@ -9,6 +9,7 @@ export function AudioEngine() {
   const loadedTrackIdRef = useRef<number | null>(null);
   const hasRecordedPlayRef = useRef<boolean>(false);
   const playStartTimeRef = useRef<number>(0);
+  const lastSyncSecondRef = useRef<number>(-1);
 
   const currentTrack = usePlayerStore((s) => s.currentTrack);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
@@ -127,6 +128,22 @@ export function AudioEngine() {
       }));
     }
 
+    if (window.api.onRemotePlaybackAction) {
+      unsubs.push(window.api.onRemotePlaybackAction((action: { action: string; currentTime?: number }) => {
+        const store = usePlayerStore.getState();
+        if (!action) return;
+        if (action.action === 'play') store.setIsPlaying(true);
+        else if (action.action === 'pause') store.setIsPlaying(false);
+        else if (action.action === 'toggle') store.setIsPlaying(!store.isPlaying);
+        else if (action.action === 'next') store.handleNext();
+        else if (action.action === 'prev') store.handlePrev();
+        else if (action.action === 'seek' && typeof action.currentTime === 'number') {
+          if (audioRef.current) audioRef.current.currentTime = action.currentTime;
+          store.setCurrentTime(action.currentTime);
+        }
+      }));
+    }
+
     return () => {
       unsubs.forEach((u) => u());
     };
@@ -179,7 +196,7 @@ export function AudioEngine() {
     }
   }, [currentTrack, setIsPlaying, handleNext, handlePrev]);
 
-  // Update Tray and Desktop Notifications on Track / Play State change
+  // Update Tray, Desktop Notifications, and Device Sync on Track / Play State change
   useEffect(() => {
     if (typeof window !== 'undefined' && window.api) {
       if (window.api.updateTrayTrack) {
@@ -188,6 +205,22 @@ export function AudioEngine() {
           currentTrack?.artist || '',
           isPlaying
         );
+      }
+      if (window.api.updateSyncNowPlaying) {
+        window.api.updateSyncNowPlaying({
+          isPlaying,
+          currentTime: audioRef.current?.currentTime || 0,
+          duration: currentTrack?.duration || 0,
+          track: currentTrack ? {
+            id: currentTrack.id,
+            desktopTrackId: currentTrack.id,
+            title: currentTrack.title,
+            artist: currentTrack.artist,
+            album: currentTrack.album,
+            duration: currentTrack.duration,
+            coverArt: currentTrack.cover_art,
+          } : null,
+        });
       }
     }
   }, [currentTrack, isPlaying]);
@@ -268,6 +301,28 @@ export function AudioEngine() {
     if (audioRef.current) {
       const cur = audioRef.current.currentTime;
       setCurrentTime(cur);
+
+      // Periodically sync now-playing position every 2 seconds
+      const sec = Math.floor(cur);
+      if (sec !== lastSyncSecondRef.current && sec % 2 === 0) {
+        lastSyncSecondRef.current = sec;
+        if (typeof window !== 'undefined' && window.api?.updateSyncNowPlaying && currentTrack) {
+          window.api.updateSyncNowPlaying({
+            isPlaying: true,
+            currentTime: cur,
+            duration: currentTrack.duration || audioRef.current.duration || 0,
+            track: {
+              id: currentTrack.id,
+              desktopTrackId: currentTrack.id,
+              title: currentTrack.title,
+              artist: currentTrack.artist,
+              album: currentTrack.album,
+              duration: currentTrack.duration,
+              coverArt: currentTrack.cover_art,
+            },
+          });
+        }
+      }
 
       // Record play event if listened for at least 30 seconds
       if (cur >= 30 && !hasRecordedPlayRef.current && currentTrack) {

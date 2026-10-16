@@ -76,6 +76,44 @@ async function healMissingTrackDurations(trackRepo: TrackRepository): Promise<vo
   }
 }
 
+/**
+ * Background auto-healer: finds any existing tracks in SQLite with corrupted stream:// URIs
+ * or outdated desktop IP addresses, and repairs them using the paired desktop device.
+ */
+function healCorruptedStreamUris(
+  trackRepo: TrackRepository,
+  pairedRepo: PairedDeviceRepository
+): void {
+  try {
+    const tracks = trackRepo.getAll();
+    const paired = pairedRepo.getAll();
+    const activeDevice = paired[0];
+    if (!activeDevice) return;
+
+    for (const track of tracks) {
+      if (track.fileUri && track.fileUri.startsWith('stream://')) {
+        const encodedTitle = encodeURIComponent(track.title);
+        const validUri = `http://${activeDevice.ip}:${activeDevice.port}/api/sync/audio/by-title/${encodedTitle}`;
+        const validArtwork = `http://${activeDevice.ip}:${activeDevice.port}/api/sync/artwork/by-title/${encodedTitle}`;
+        trackRepo.updateFileUri(track.id, validUri, 'stream', undefined, validArtwork);
+      } else if (
+        track.fileUri &&
+        track.fileUri.startsWith('http://') &&
+        track.fileUri.includes('/api/sync/audio/') &&
+        !track.fileUri.includes(activeDevice.ip)
+      ) {
+        const updatedUri = track.fileUri.replace(
+          /http:\/\/[^/]+(?::\d+)?/,
+          `http://${activeDevice.ip}:${activeDevice.port}`
+        );
+        trackRepo.updateFileUri(track.id, updatedUri);
+      }
+    }
+  } catch (err) {
+    console.warn('[DB] Failed to heal stream URIs:', err);
+  }
+}
+
 export function useDatabase(): DatabaseContext {
   const [isReady, setIsReady] = useState(!!dbInstance);
 
@@ -103,8 +141,9 @@ export function useDatabase(): DatabaseContext {
       setIsReady(true);
       console.log('[DB] Database initialized successfully');
 
-      // Heal any existing tracks with duration = 0
+      // Heal any existing tracks with duration = 0 or corrupted stream:// URLs
       healMissingTrackDurations(repos.tracks);
+      healCorruptedStreamUris(repos.tracks, repos.pairedDevices);
     } catch (error) {
       console.error('[DB] Failed to initialize database:', error);
     }

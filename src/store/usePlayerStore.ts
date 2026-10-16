@@ -21,6 +21,7 @@ interface PlayerState {
   isRightPanelOpen: boolean;
   isSettingsOpen: boolean;
   isCreatePlaylistOpen: boolean;
+  editingTrack: Track | null;
   isMiniplayer: boolean;
   isLyricsPanelOpen: boolean;
 
@@ -112,6 +113,7 @@ interface PlayerState {
   toggleSettings: () => void;
   setSettingsOpen: (open: boolean) => void;
   setCreatePlaylistOpen: (open: boolean) => void;
+  setEditingTrack: (track: Track | null) => void;
   toggleMiniplayer: () => void;
   setMiniplayer: (mini: boolean) => void;
   toggleLyricsPanel: () => void;
@@ -236,6 +238,7 @@ interface PlayerState {
   generateSyncPin: () => Promise<{ pin: string; expiresInSeconds: number } | null>;
   pairWithPeerDevice: (ip: string, pin: string) => Promise<{ success: boolean; hostDeviceName?: string; error?: string }>;
   sendPlaylistToPeerDevice: (deviceId: string, playlistId: number) => Promise<{ success: boolean; error?: string }>;
+  sendTrackToPeerDevice: (deviceId: string, trackId: number) => Promise<{ success: boolean; error?: string }>;
   acceptSharedPlaylist: (pendingId: string) => Promise<boolean>;
   declineSharedPlaylist: (pendingId: string) => Promise<boolean>;
   revokeDevice: (deviceId: string) => Promise<boolean>;
@@ -256,6 +259,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   isRightPanelOpen: true,
   isSettingsOpen: false,
   isCreatePlaylistOpen: false,
+  editingTrack: null,
   isMiniplayer: false,
   isLyricsPanelOpen: (typeof window !== 'undefined' && localStorage.getItem('overtone_lyrics_panel') === 'true') || false,
 
@@ -427,6 +431,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   toggleSettings: () => set((state) => ({ isSettingsOpen: !state.isSettingsOpen })),
   setSettingsOpen: (isSettingsOpen) => set({ isSettingsOpen }),
   setCreatePlaylistOpen: (isCreatePlaylistOpen) => set({ isCreatePlaylistOpen }),
+  setEditingTrack: (editingTrack) => set({ editingTrack }),
   toggleMiniplayer: () => {
     const { isMiniplayer } = get();
     const next = !isMiniplayer;
@@ -1497,6 +1502,13 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   sendPlaylistToPeerDevice: async (deviceId, playlistId) => {
     if (typeof window !== 'undefined' && window.api?.sendPlaylistToPeer) {
       return await window.api.sendPlaylistToPeer(deviceId, playlistId);
+    }
+    return { success: false, error: 'API unavailable' };
+  },
+
+  sendTrackToPeerDevice: async (deviceId, trackId) => {
+    if (typeof window !== 'undefined' && window.api?.sendTrackToPeer) {
+      return await window.api.sendTrackToPeer(deviceId, trackId);
     }
     return { success: false, error: 'API unavailable' };
   },

@@ -6,16 +6,18 @@ import { Track } from '../types/music';
 import { getLocalUrl, formatTime, getAccentColorHex } from '../lib/utils';
 import { 
   Play, Heart, Music, Plus, 
-  MoreHorizontal, ListPlus, Radio, Check, Star, X
+  MoreHorizontal, ListPlus, Radio, Check, Star, X, Smartphone,
+  Edit3, Folder, Trash2
 } from 'lucide-react';
 
 interface TrackRowProps {
   track: Track;
   index: number;
   contextQueue?: Track[];
+  onRemove?: () => void;
 }
 
-export function TrackRow({ track, index, contextQueue }: TrackRowProps) {
+export function TrackRow({ track, index, contextQueue, onRemove }: TrackRowProps) {
   const currentTrack = usePlayerStore((s) => s.currentTrack);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
   const theme = usePlayerStore((s) => s.theme);
@@ -28,11 +30,15 @@ export function TrackRow({ track, index, contextQueue }: TrackRowProps) {
   const playNextInQueue = usePlayerStore((s) => s.playNextInQueue);
   const addTrackToPlaylist = usePlayerStore((s) => s.addTrackToPlaylist);
   const setCreatePlaylistOpen = usePlayerStore((s) => s.setCreatePlaylistOpen);
+  const setEditingTrack = usePlayerStore((s) => s.setEditingTrack);
   const trackRatings = usePlayerStore((s) => s.trackRatings);
   const trackTags = usePlayerStore((s) => s.trackTags);
   const setTrackRating = usePlayerStore((s) => s.setTrackRating);
   const addTrackTag = usePlayerStore((s) => s.addTrackTag);
   const removeTrackTag = usePlayerStore((s) => s.removeTrackTag);
+  const syncStatus = usePlayerStore((s) => s.syncStatus);
+  const sendTrackToPeerDevice = usePlayerStore((s) => s.sendTrackToPeerDevice);
+  const setSettingsOpen = usePlayerStore((s) => s.setSettingsOpen);
 
   const setIsPlaying = usePlayerStore((s) => s.setIsPlaying);
 
@@ -82,7 +88,7 @@ export function TrackRow({ track, index, contextQueue }: TrackRowProps) {
   return (
     <div
       onClick={handleRowClick}
-      className={`grid grid-cols-[auto_1fr_1.2fr_90px_60px_60px] items-center gap-4 py-2.5 px-3 cursor-pointer rounded-xl transition-all duration-150 group select-none relative ${
+      className={`grid grid-cols-[auto_1fr_1.2fr_90px_60px_72px] items-center gap-4 py-2.5 px-3 cursor-pointer rounded-xl transition-all duration-150 group select-none relative ${
         isActive
           ? isDark
             ? 'bg-neutral-800/90 text-white shadow-xs'
@@ -166,13 +172,19 @@ export function TrackRow({ track, index, contextQueue }: TrackRowProps) {
       </div>
 
       {/* Action: Like & More Menu */}
-      <div className="flex items-center justify-end gap-1.5 relative">
+      <div className="flex items-center justify-end gap-1 relative">
         <button
           onClick={(e) => {
             e.stopPropagation();
             toggleFavorite(track.id);
           }}
-          className="p-1 text-neutral-400 hover:text-red-500 transition-colors"
+          className={`p-1.5 rounded-lg transition-colors ${
+            isFav 
+              ? 'text-red-500' 
+              : isDark 
+                ? 'text-neutral-400 hover:text-red-500 hover:bg-neutral-700/60 opacity-0 group-hover:opacity-100' 
+                : 'text-neutral-500 hover:text-red-500 hover:bg-gray-200/80 opacity-0 group-hover:opacity-100'
+          }`}
           title={isFav ? 'Liked' : 'Like'}
         >
           <Heart fill={isFav ? '#ef4444' : 'none'} className={isFav ? 'text-red-500' : ''} size={15} />
@@ -184,7 +196,13 @@ export function TrackRow({ track, index, contextQueue }: TrackRowProps) {
             e.stopPropagation();
             setMenuOpen(!menuOpen);
           }}
-          className="p-1 text-neutral-400 hover:text-white transition-colors opacity-0 group-hover:opacity-100"
+          className={`p-1.5 rounded-lg transition-all duration-150 ${
+            menuOpen
+              ? isDark ? 'opacity-100 text-white bg-neutral-700/80 shadow-xs' : 'opacity-100 text-gray-900 bg-gray-200 shadow-xs'
+              : isDark
+                ? 'opacity-40 group-hover:opacity-100 text-neutral-400 hover:text-white hover:bg-neutral-700/60'
+                : 'opacity-40 group-hover:opacity-100 text-neutral-500 hover:text-gray-900 hover:bg-gray-200/80'
+          }`}
           title="More options"
         >
           <MoreHorizontal size={16} />
@@ -195,7 +213,7 @@ export function TrackRow({ track, index, contextQueue }: TrackRowProps) {
           <div
             ref={menuRef}
             onClick={(e) => e.stopPropagation()}
-            className={`absolute right-0 top-8 z-50 w-52 rounded-2xl shadow-2xl border p-1.5 text-xs animate-fadeIn ${
+            className={`absolute right-0 top-9 z-50 w-52 rounded-2xl shadow-2xl border p-1.5 text-xs animate-fadeIn ${
               isDark 
                 ? 'bg-[#242424] border-neutral-700 text-white' 
                 : 'bg-white border-gray-200 text-gray-900'
@@ -228,6 +246,81 @@ export function TrackRow({ track, index, contextQueue }: TrackRowProps) {
               <ListPlus size={14} />
               <span>Add to Queue</span>
             </button>
+
+            {/* Send to Mobile */}
+            <button
+              onClick={async () => {
+                setMenuOpen(false);
+                if (!syncStatus?.pairedDevices || syncStatus.pairedDevices.length === 0) {
+                  alert('No paired mobile devices found. Open Settings → Device Sync to pair your iPhone.');
+                  setSettingsOpen(true);
+                  return;
+                }
+                const device = syncStatus.pairedDevices[0];
+                const res = await sendTrackToPeerDevice(device.id, track.id);
+                if (res.success) {
+                  setAddedToast(`Sent to ${device.name}`);
+                  setTimeout(() => setAddedToast(null), 2500);
+                } else {
+                  alert(res.error || 'Failed to send track to mobile');
+                }
+              }}
+              className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl transition-colors ${
+                isDark ? 'hover:bg-neutral-700/70' : 'hover:bg-gray-100'
+              }`}
+            >
+              <Smartphone size={14} className="text-amber-500" />
+              <span>Send to Mobile</span>
+            </button>
+
+            <div className={`my-1 border-t ${isDark ? 'border-neutral-700' : 'border-gray-100'}`} />
+
+            {/* Edit Song Metadata / Info */}
+            <button
+              onClick={() => {
+                setMenuOpen(false);
+                setEditingTrack(track);
+              }}
+              className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl transition-colors ${
+                isDark ? 'hover:bg-neutral-700/70' : 'hover:bg-gray-100'
+              }`}
+            >
+              <Edit3 size={14} />
+              <span>Edit Song Info</span>
+            </button>
+
+            {/* Show in Folder */}
+            <button
+              onClick={async () => {
+                setMenuOpen(false);
+                const filePath = track.path;
+                if (filePath && typeof window !== 'undefined' && window.api?.revealInExplorer) {
+                  await window.api.revealInExplorer(filePath);
+                }
+              }}
+              className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl transition-colors ${
+                isDark ? 'hover:bg-neutral-700/70' : 'hover:bg-gray-100'
+              }`}
+            >
+              <Folder size={14} />
+              <span>Show in Folder</span>
+            </button>
+
+            {/* Remove from Playlist (if applicable) */}
+            {onRemove && (
+              <button
+                onClick={() => {
+                  setMenuOpen(false);
+                  onRemove();
+                }}
+                className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl transition-colors text-red-400 ${
+                  isDark ? 'hover:bg-red-500/10' : 'hover:bg-red-50 text-red-600'
+                }`}
+              >
+                <Trash2 size={14} />
+                <span>Remove from Playlist</span>
+              </button>
+            )}
 
             <div className={`my-1 border-t ${isDark ? 'border-neutral-700' : 'border-gray-100'}`} />
 

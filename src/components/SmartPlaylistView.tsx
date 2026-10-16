@@ -8,7 +8,7 @@ import {
   Sparkles, Play, Shuffle, Plus, Trash2, Edit3, 
   Check, Filter 
 } from 'lucide-react';
-import { formatTime, getAccentColorHex } from '../lib/utils';
+import { formatTotalDuration, getAccentColorHex } from '../lib/utils';
 
 export function SmartPlaylistView() {
   const theme = usePlayerStore((s) => s.theme);
@@ -326,7 +326,7 @@ export function SmartPlaylistView() {
                 <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400">Smart Playlist</span>
                 <h2 className="text-2xl font-black tracking-tight">{selectedSmartPlaylist.name}</h2>
                 <p className={`text-xs mt-1 ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
-                  {smartPlaylistTracks.length} tracks • {formatTime(totalDuration)}
+                  {smartPlaylistTracks.length} tracks • {formatTotalDuration(totalDuration)}
                 </p>
                 {/* Rules pills */}
                 <div className="flex flex-wrap gap-1.5 mt-2">

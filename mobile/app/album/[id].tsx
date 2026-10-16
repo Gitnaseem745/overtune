@@ -11,9 +11,9 @@ import {
   StyleSheet,
   FlatList,
   Pressable,
-  SafeAreaView,
   useWindowDimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTheme } from '../../src/hooks/useTheme';
@@ -24,7 +24,7 @@ import { TrackRow } from '../../src/components/TrackRow';
 import { EmptyState } from '../../src/components/EmptyState';
 import { spacing, radii, layout } from '../../src/design/spacing';
 import { typography } from '../../src/design/typography';
-import { formatDuration } from '../../src/services/files/FileImportService';
+import { formatDuration, formatTotalDuration } from '../../src/services/files/FileImportService';
 import type { MobileAlbum, MobileTrack } from '../../src/domain/models';
 
 export default function AlbumDetailScreen() {
@@ -96,7 +96,7 @@ export default function AlbumDetailScreen() {
             </Text>
 
             <Text style={[typography.caption1, { color: colors.textTertiary, marginTop: 4 }]}>
-              {tracks.length} song{tracks.length === 1 ? '' : 's'} · {formatDuration(totalDuration)}
+              {tracks.length} song{tracks.length === 1 ? '' : 's'} · {formatTotalDuration(totalDuration)}
               {album.year ? ` · ${album.year}` : ''}
             </Text>
 

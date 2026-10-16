@@ -12,8 +12,8 @@ import {
   TextInput,
   ScrollView,
   Pressable,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTheme } from '../../src/hooks/useTheme';
 import { useDatabase } from '../../src/hooks/useDatabase';

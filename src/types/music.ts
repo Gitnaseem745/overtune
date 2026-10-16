@@ -287,6 +287,7 @@ export interface DeviceSyncStatus {
   enabled: boolean;
   deviceName: string;
   localIp: string;
+  candidateIps?: string[];
   port: number;
   activePairingPin: string | null;
   pinExpiresInSeconds: number;

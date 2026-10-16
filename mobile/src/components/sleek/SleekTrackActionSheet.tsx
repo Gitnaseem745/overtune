@@ -40,10 +40,13 @@ import {
   SleekCheckIcon,
   SleekChevronRightIcon,
   SleekMusicNoteIcon,
+  SleekDesktopSyncIcon,
+  SleekImportIcon,
 } from './SleekIcons';
 import { useDatabase } from '../../hooks/useDatabase';
 import { usePlayerStore } from '../../store/usePlayerStore';
-import { formatDuration } from '../../services/files/FileImportService';
+import { FileImportService, formatDuration } from '../../services/files/FileImportService';
+import { SyncService } from '../../services/sync/SyncService';
 import { sleekTokens } from '../../design/colors';
 import type { MobileTrack, MobilePlaylist } from '../../domain/models';
 
@@ -89,6 +92,8 @@ export function SleekTrackActionSheet({
 
   const [currentView, setCurrentView] = useState<SheetView>('menu');
   const [isFav, setIsFav] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [isSending, setIsSending] = useState(false);
 
   // Playlists state
   const [playlists, setPlaylists] = useState<MobilePlaylist[]>([]);
@@ -295,6 +300,107 @@ export function SleekTrackActionSheet({
     );
   };
 
+  const isStreamTrack = Boolean(track?.fileUri?.startsWith('http://') || track?.format === 'stream');
+
+  // 10. Download Remote Wi-Fi Streamed Track to iPhone Storage
+  const handleDownloadOffline = async () => {
+    if (!track?.fileUri || isDownloading) return;
+    try {
+      setIsDownloading(true);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      const res = await FileImportService.downloadRemoteTrack(track.fileUri, track.id, track.title);
+      if (res) {
+        let localArtUri: string | undefined = undefined;
+        if (track.artworkUri && track.artworkUri.startsWith('http://')) {
+          const artRes = await FileImportService.downloadRemoteArtwork(track.artworkUri, track.id);
+          if (artRes) localArtUri = artRes;
+        }
+        db.tracks.updateFileUri(track.id, res.localUri, 'mp3', res.fileSize, localArtUri);
+        const updated: MobileTrack = {
+          ...track,
+          fileUri: res.localUri,
+          format: 'mp3',
+          fileSize: res.fileSize,
+          ...(localArtUri ? { artworkUri: localArtUri } : {}),
+        };
+        updateTrack(updated);
+        onTrackUpdated?.(updated);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Alert.alert('Downloaded', `"${track.title}" is now saved on your iPhone for offline listening!`);
+      } else {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        Alert.alert('Download Failed', 'Could not download track. Make sure Overtone Desktop is running on the same Wi-Fi.');
+      }
+    } catch (err: any) {
+      Alert.alert('Download Error', err?.message || 'Failed to download track');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  // 11. Send Single Track to Desktop
+  const handleSendToDesktop = async () => {
+    if (!track || !db.isReady || isSending) return;
+    const paired = db.pairedDevices.getAll();
+    if (paired.length === 0) {
+      Alert.alert('No Paired Desktop', 'Connect to your computer first in Settings → Wi-Fi Desktop Sync.');
+      return;
+    }
+    const device = paired[0];
+    try {
+      setIsSending(true);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      const res = await SyncService.sendTrack(device, {
+        title: track.title,
+        artist: artistName,
+        album: albumTitle,
+        duration: effectiveDuration,
+        genre: track.genre || undefined,
+        trackNumber: track.trackNumber || undefined,
+        fileUri: track.fileUri,
+      });
+      if (res.success) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Alert.alert('Sent to Desktop', `"${track.title}" was sent to ${device.name}.`);
+      } else {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        Alert.alert('Transfer Failed', res.error || 'Could not send song to desktop.');
+      }
+    } catch (e: any) {
+      Alert.alert('Error', e?.message || 'Transfer failed');
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  // 12. Play Track on Desktop
+  const handlePlayOnDesktop = async () => {
+    if (!track || !db.isReady) return;
+    const paired = db.pairedDevices.getAll();
+    if (paired.length === 0) {
+      Alert.alert('No Paired Desktop', 'Connect to your computer in Settings → Wi-Fi Desktop Sync.');
+      return;
+    }
+    const device = paired[0];
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      const res = await SyncService.sendRemoteControl(device, 'playTrack', {
+        title: track.title,
+        artist: artistName,
+        album: albumTitle,
+      });
+      if (res.success) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Alert.alert('Playing on Desktop', `Sent playback request to ${device.name}.`);
+        onClose();
+      } else {
+        Alert.alert('Remote Control Failed', res.error || 'Could not reach desktop.');
+      }
+    } catch (e: any) {
+      Alert.alert('Error', e?.message || 'Could not send play request.');
+    }
+  };
+
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <KeyboardAvoidingView
@@ -409,6 +515,45 @@ export function SleekTrackActionSheet({
                     <Text style={styles.menuItemDesc}>Organize into custom playlists</Text>
                   </View>
                   <SleekChevronRightIcon size={16} color="#B5AC98" />
+                </Pressable>
+
+                {/* Download for Offline (if streamed over Wi-Fi) */}
+                {isStreamTrack && (
+                  <Pressable onPress={handleDownloadOffline} disabled={isDownloading} style={styles.menuItemRow}>
+                    <View style={[styles.menuItemIconBox, { backgroundColor: '#FEF3C7' }]}>
+                      <SleekImportIcon size={18} color="#D97706" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.menuItemTitle}>
+                        {isDownloading ? 'Downloading...' : 'Download to iPhone'}
+                      </Text>
+                      <Text style={styles.menuItemDesc}>Save locally for offline playback</Text>
+                    </View>
+                  </Pressable>
+                )}
+
+                {/* Send to Desktop */}
+                <Pressable onPress={handleSendToDesktop} disabled={isSending} style={styles.menuItemRow}>
+                  <View style={[styles.menuItemIconBox, { backgroundColor: '#EFF6FF' }]}>
+                    <SleekDesktopSyncIcon size={18} color="#2563EB" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.menuItemTitle}>
+                      {isSending ? 'Sending...' : 'Send to Desktop'}
+                    </Text>
+                    <Text style={styles.menuItemDesc}>Share this song to paired computer</Text>
+                  </View>
+                </Pressable>
+
+                {/* Play on Desktop */}
+                <Pressable onPress={handlePlayOnDesktop} style={styles.menuItemRow}>
+                  <View style={[styles.menuItemIconBox, { backgroundColor: '#ECFDF5' }]}>
+                    <SleekPlayIcon size={16} color="#059669" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.menuItemTitle}>Play on Desktop</Text>
+                    <Text style={styles.menuItemDesc}>Stream playback through computer speakers</Text>
+                  </View>
                 </Pressable>
 
                 {/* Edit Metadata & Rename */}

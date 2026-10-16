@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { usePlayerStore } from '../store/usePlayerStore';
-import { getLocalUrl, getAccentColorHex } from '../lib/utils';
+import { getLocalUrl, getAccentColorHex, formatTotalDuration } from '../lib/utils';
 import { TrackRow } from './TrackRow';
 import { Disc3, Mic2, Play, Shuffle, ChevronLeft } from 'lucide-react';
 
@@ -34,8 +34,7 @@ export function DetailView() {
 
   const totalDuration = useMemo(() => {
     const sec = detailTracks.reduce((acc, t) => acc + (t.duration || 0), 0);
-    const mins = Math.floor(sec / 60);
-    return `${mins} min`;
+    return formatTotalDuration(sec);
   }, [detailTracks]);
 
   const handlePlayAll = (shuffle: boolean = false) => {
@@ -142,7 +141,7 @@ export function DetailView() {
         {/* Tracks List */}
         {detailTracks.length > 0 ? (
           <div className="w-full text-sm">
-            <div className={`grid grid-cols-[auto_1fr_1.2fr_90px_60px_40px] gap-4 text-[11px] uppercase font-bold pb-2.5 px-3 border-b ${
+            <div className={`grid grid-cols-[auto_1fr_1.2fr_90px_60px_72px] gap-4 text-[11px] uppercase font-bold pb-2.5 px-3 border-b ${
               isDark ? 'border-neutral-800 text-neutral-400' : 'border-gray-100 text-gray-400'
             }`}>
               <div className="w-7 text-center">#</div>
@@ -150,7 +149,7 @@ export function DetailView() {
               <div>Album</div>
               <div>Genre</div>
               <div>Time</div>
-              <div className="text-right">Like</div>
+              <div className="text-right"></div>
             </div>
 
             <div className="mt-2 space-y-1">

@@ -13,8 +13,8 @@ import {
   ScrollView,
   Pressable,
   RefreshControl,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { useTheme } from '../../src/hooks/useTheme';

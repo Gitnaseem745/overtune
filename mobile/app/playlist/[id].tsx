@@ -19,13 +19,14 @@ import {
   StyleSheet,
   FlatList,
   Pressable,
-  SafeAreaView,
   Alert,
   Modal,
   TextInput,
   Platform,
   Switch,
+  ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
@@ -47,9 +48,10 @@ import {
   SleekMusicNoteIcon,
   SleekEditIcon,
   SleekTrashIcon,
+  SleekImportIcon,
 } from '../../src/components/sleek/SleekIcons';
 import { SyncService } from '../../src/services/sync/SyncService';
-import { formatDuration } from '../../src/services/files/FileImportService';
+import { FileImportService, formatDuration, formatTotalDuration } from '../../src/services/files/FileImportService';
 import { sleekTokens } from '../../src/design/colors';
 import { layout } from '../../src/design/spacing';
 import type { MobilePlaylist, MobileTrack, PairedDevice } from '../../src/domain/models';
@@ -255,26 +257,10 @@ export default function PlaylistDetailScreen() {
     return tracks.reduce((acc, t) => acc + (t.duration || 0), 0);
   }, [tracks]);
 
-  if (!playlist) {
-    return (
-      <SafeAreaView style={styles.safeArea}>
-        <Stack.Screen options={{ headerShown: false }} />
-        <View style={styles.navBar}>
-          <Pressable onPress={() => router.back()} style={styles.backBtn}>
-            <SleekChevronLeftIcon size={20} color="#1F180B" />
-            <Text style={styles.backBtnText}>Playlists</Text>
-          </Pressable>
-        </View>
-        <View style={styles.emptyContainer}>
-          <View style={styles.emptyIconBadge}>
-            <SleekPlaylistsIcon size={44} color="#D97706" />
-          </View>
-          <Text style={styles.emptyTitle}>Playlist Not Found</Text>
-          <Text style={styles.emptyDesc}>This playlist may have been removed or renamed.</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  const [isDownloadingAll, setIsDownloadingAll] = useState(false);
+  const streamTracksCount = useMemo(() => {
+    return tracks.filter((t) => t.fileUri?.startsWith('http://') || t.format === 'stream').length;
+  }, [tracks]);
 
   const handlePlayAll = () => {
     if (tracks.length === 0) return;
@@ -290,6 +276,7 @@ export default function PlaylistDetailScreen() {
   };
 
   const handleSendToDesktop = () => {
+    if (!playlist) return;
     if (pairedDevices.length === 0) {
       Alert.alert(
         'No Paired Desktop',
@@ -337,12 +324,67 @@ export default function PlaylistDetailScreen() {
     );
   };
 
+  const handleDownloadAllOffline = async () => {
+    const toDownload = tracks.filter((t) => t.fileUri?.startsWith('http://') || t.format === 'stream');
+    if (toDownload.length === 0 || isDownloadingAll || !db.isReady) return;
+
+    setIsDownloadingAll(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    let successCount = 0;
+
+    for (const tr of toDownload) {
+      try {
+        const res = await FileImportService.downloadRemoteTrack(tr.fileUri, tr.id, tr.title);
+        if (res) {
+          let localArtUri: string | undefined = undefined;
+          if (tr.artworkUri && tr.artworkUri.startsWith('http://')) {
+            const artRes = await FileImportService.downloadRemoteArtwork(tr.artworkUri, tr.id);
+            if (artRes) localArtUri = artRes;
+          }
+          db.tracks.updateFileUri(tr.id, res.localUri, 'mp3', res.fileSize, localArtUri);
+          successCount++;
+        }
+      } catch (err) {
+        console.warn(`Failed downloading ${tr.title}:`, err);
+      }
+    }
+
+    setIsDownloadingAll(false);
+    loadData();
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    Alert.alert(
+      'Download Finished',
+      `Saved ${successCount} of ${toDownload.length} songs for offline listening.`
+    );
+  };
+
   const getArtistName = (artistId: number | null) => {
     if (!db.isReady || !artistId) return 'Unknown Artist';
     return db.artists.getNameById(artistId);
   };
 
-  const playlistArtwork = playlist.artworkUri || (tracks.length > 0 && tracks[0].artworkUri ? tracks[0].artworkUri : null);
+  const playlistArtwork = playlist?.artworkUri || (tracks.length > 0 && tracks[0].artworkUri ? tracks[0].artworkUri : null);
+
+  if (!playlist) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <View style={styles.navBar}>
+          <Pressable onPress={() => router.back()} style={styles.backBtn}>
+            <SleekChevronLeftIcon size={20} color="#1F180B" />
+            <Text style={styles.backBtnText}>Playlists</Text>
+          </Pressable>
+        </View>
+        <View style={styles.emptyContainer}>
+          <View style={styles.emptyIconBadge}>
+            <SleekPlaylistsIcon size={44} color="#D97706" />
+          </View>
+          <Text style={styles.emptyTitle}>Playlist Not Found</Text>
+          <Text style={styles.emptyDesc}>This playlist may have been removed or renamed.</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -433,12 +475,17 @@ export default function PlaylistDetailScreen() {
               </View>
               <Text style={styles.metadataText}>
                 {tracks.length} {tracks.length === 1 ? 'song' : 'songs'}
-                {totalDurationSeconds > 0 ? ` · ${formatDuration(totalDurationSeconds)}` : ''}
+                {totalDurationSeconds > 0 ? ` · ${formatTotalDuration(totalDurationSeconds)}` : ''}
               </Text>
             </View>
 
-            {/* Action Buttons Row */}
-            <View style={styles.actionsRow}>
+            {/* Action Buttons Scrollable Row */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.actionsScrollContent}
+              style={styles.actionsScrollView}
+            >
               {/* Play All Button */}
               <Pressable
                 onPress={handlePlayAll}
@@ -484,7 +531,27 @@ export default function PlaylistDetailScreen() {
                 <SleekPlusIcon size={14} color="#92400E" />
                 <Text style={styles.actionPillText}>Add Songs</Text>
               </Pressable>
-            </View>
+
+              {/* Download Offline Button (if streamable tracks exist) */}
+              {streamTracksCount > 0 && (
+                <Pressable
+                  onPress={handleDownloadAllOffline}
+                  disabled={isDownloadingAll}
+                  style={({ pressed }) => [
+                    styles.actionPill,
+                    { backgroundColor: '#FEF3C7', borderColor: '#FDE68A' },
+                    pressed && styles.actionPillPressed,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel="Download all songs for offline listening"
+                >
+                  <SleekImportIcon size={14} color="#D97706" />
+                  <Text style={[styles.actionPillText, { color: '#B45309' }]}>
+                    {isDownloadingAll ? 'Saving...' : `Download (${streamTracksCount})`}
+                  </Text>
+                </Pressable>
+              )}
+            </ScrollView>
 
             {/* Divider */}
             <View style={styles.sectionDivider} />
@@ -967,13 +1034,15 @@ const styles = StyleSheet.create({
     color: '#786C5A',
     fontWeight: '500',
   },
-  actionsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
+  actionsScrollView: {
     width: '100%',
     marginBottom: 16,
+  },
+  actionsScrollContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 20,
   },
   playAllBtn: {
     flexDirection: 'row',
