@@ -320,7 +320,7 @@ export default function SettingsScreen() {
           <View style={[styles.card, { backgroundColor: colors.surfaceElevated }]}>
             <View style={styles.settingRow}>
               <Text style={[typography.body, { color: colors.textPrimary }]}>Version</Text>
-              <Text style={[typography.body, { color: colors.textSecondary }]}>1.0.0 (Build 1)</Text>
+              <Text style={[typography.body, { color: colors.textSecondary }]}>1.0.1 (Build 2)</Text>
             </View>
             <View style={[styles.settingRow, { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth }]}>
               <Text style={[typography.body, { color: colors.textPrimary }]}>Architecture</Text>

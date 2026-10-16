@@ -47,7 +47,7 @@ jobs:
         run: npm run build:electron
 
   mobile-ci:
-    name: Mobile & iOS (Lint, Typecheck, Test, iOS Export)
+    name: Mobile (Lint, Typecheck, Test, iOS & Android Export)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -78,3 +78,6 @@ jobs:
 
       - name: Build & Export iOS Bundle
         run: npx expo export --platform ios
+
+      - name: Build & Export Android Bundle
+        run: npx expo export --platform android
