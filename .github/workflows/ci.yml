@@ -28,6 +28,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Rebuild native dependencies for Electron
+        run: npx electron-builder install-app-deps
+
       - name: Run ESLint
         run: npm run lint
 
