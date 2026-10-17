@@ -17,11 +17,15 @@
       "bundleIdentifier": "com.overtone.music",
       "buildNumber": "2",
       "infoPlist": {
-        "UIBackgroundModes": ["audio"],
+        "UIBackgroundModes": [
+          "audio"
+        ],
         "NSSupportsLiveActivities": true,
         "NSSupportsLiveActivitiesFrequentUpdates": true,
         "NSLocalNetworkUsageDescription": "Overtone uses your local network to sync playlists with the Overtone desktop app on the same Wi-Fi network.",
-        "NSBonjourServices": ["_overtune._tcp."],
+        "NSBonjourServices": [
+          "_overtune._tcp."
+        ],
         "NSAppleMusicUsageDescription": "Overtone does not access Apple Music. It plays music files you import.",
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true,
@@ -29,7 +33,9 @@
         }
       },
       "entitlements": {
-        "com.apple.security.application-groups": ["group.com.overtone.music"]
+        "com.apple.security.application-groups": [
+          "group.com.overtone.music"
+        ]
       },
       "config": {
         "usesNonExemptEncryption": false
@@ -46,7 +52,8 @@
         "android.permission.RECORD_AUDIO",
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
-        "android.permission.WAKE_LOCK"
+        "android.permission.WAKE_LOCK",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
       ]
     },
     "plugins": [
@@ -74,6 +81,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "4b9b430a-afe4-4ad4-9859-3c6085fbd374"
+      }
     }
   }
 }
