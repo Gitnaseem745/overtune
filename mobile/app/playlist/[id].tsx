@@ -483,27 +483,34 @@ export default function PlaylistDetailScreen() {
               {playlist.name}
             </Text>
 
-            {/* Track count & Total Duration Details */}
-            <View style={styles.metadataRow}>
-              <View style={styles.badgePill}>
-                <Text style={styles.badgePillText}>
-                  {playlist.source === 'synced' ? 'Synced from Desktop' : 'Custom Playlist'}
-                </Text>
-              </View>
-              {downloadedTracksCount > 0 && (
-                <View style={styles.downloadStatusPill}>
-                  <SleekDownloadedIcon size={12} color="#FFFFFF" fill="#D97706" />
-                  <Text style={styles.downloadStatusPillText}>
-                    {downloadedTracksCount === tracks.length
-                      ? 'Downloaded'
-                      : `${downloadedTracksCount}/${tracks.length} downloaded`}
+            {/* Metadata Section: 2-Row Layout (Row 1: Pills & Badges, Row 2: Songs & Duration) */}
+            <View style={styles.metadataContainer}>
+              {/* Row 1: Source & Downloaded Badges */}
+              <View style={styles.badgesRow}>
+                <View style={styles.badgePill}>
+                  <Text style={styles.badgePillText}>
+                    {playlist.source === 'synced' ? 'Synced from Desktop' : 'Custom Playlist'}
                   </Text>
                 </View>
-              )}
-              <Text style={styles.metadataText}>
-                {tracks.length} {tracks.length === 1 ? 'song' : 'songs'}
-                {totalDurationSeconds > 0 ? ` · ${formatTotalDuration(totalDurationSeconds)}` : ''}
-              </Text>
+                {downloadedTracksCount > 0 && (
+                  <View style={styles.downloadStatusPill}>
+                    <SleekDownloadedIcon size={12} color="#FFFFFF" fill="#D97706" />
+                    <Text style={styles.downloadStatusPillText}>
+                      {downloadedTracksCount === tracks.length
+                        ? 'Downloaded'
+                        : `${downloadedTracksCount}/${tracks.length} downloaded`}
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Row 2: Total songs & Duration */}
+              <View style={styles.durationRow}>
+                <Text style={styles.metadataText}>
+                  {tracks.length} {tracks.length === 1 ? 'song' : 'songs'}
+                  {totalDurationSeconds > 0 ? ` · ${formatTotalDuration(totalDurationSeconds)}` : ''}
+                </Text>
+              </View>
             </View>
 
             {/* Action Buttons Scrollable Row */}
@@ -1033,11 +1040,22 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
     marginBottom: 8,
   },
-  metadataRow: {
+  metadataContainer: {
+    alignItems: 'center',
+    marginBottom: 18,
+    gap: 8,
+  },
+  badgesRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
     gap: 8,
-    marginBottom: 18,
+  },
+  durationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   badgePill: {
     backgroundColor: '#FEF3C7',
