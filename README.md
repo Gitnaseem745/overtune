@@ -135,6 +135,36 @@ Tailor your listening environment with comprehensive modular settings, global sh
 
 ---
 
+### 📱 Overtone for iOS — Sleek Mobile Showcase
+Crafted natively for iPhone with fluid 3D perspective transitions, radial arc volume controls, dynamic live equalizers, watery wave download indicators, and seamless local Wi-Fi synchronization.
+
+| Home Screen & Live Desktop Bridge | 3D Perspective Navigation Drawer |
+|:---:|:---:|
+| <img src="public/ios_software_images/ios-home-screen.png" alt="Overtone iOS Home Screen & Desktop Bridge" width="360px"> | <img src="public/ios_software_images/ios-3d-perspective-drawer.png" alt="Overtone iOS 3D Perspective Drawer" width="360px"> |
+| *Personalized greeting, desktop live playback card, quick access playlists & frosted miniplayer* | *3D perspective rotation (-15°), depth scaling, corner radiuses & rapid drawer navigation* |
+
+| Fullscreen Sleek Player | Playing Next Queue & Live Equalizer |
+|:---:|:---:|
+| <img src="public/ios_software_images/ios-fullscreen-sleek-player.png" alt="Overtone iOS Fullscreen Sleek Player" width="360px"> | <img src="public/ios_software_images/ios-playing-next-queue.png" alt="Overtone iOS Playing Next Queue" width="360px"> |
+| *Circular radial volume arc dial, rotating vinyl disc, scrubbable wave & 100ms lyric offset* | *Reorderable playback queue with animated live soundwave equalizer on active song* |
+
+| Playlist Detail & Download Indicator | All Songs Library & Quick Filters |
+|:---:|:---:|
+| <img src="public/ios_software_images/ios-playlist-detail-hero.png" alt="Overtone iOS Playlist Detail Screen" width="360px"> | <img src="public/ios_software_images/ios-library-all-songs.png" alt="Overtone iOS Library All Songs" width="360px"> |
+| *Immersive hero cover, two-row badge layout, watery wave download fill & tracklist* | *Instant search bar, filter pills (Downloaded, Favorites, Local), and sort options* |
+
+| Contextual Track Action Sheet | Liked Songs & Offline Favorites |
+|:---:|:---:|
+| <img src="public/ios_software_images/ios-track-action-sheet.png" alt="Overtone iOS Track Action Sheet" width="360px"> | <img src="public/ios_software_images/ios-favorites-collection.png" alt="Overtone iOS Liked Songs Collection" width="360px"> |
+| *10-point bottom sheet: stream, download offline, add to playlist, lyrics & metadata* | *Dedicated purple-heart favorites hub, shuffle play hero action & instant offline access* |
+
+| Local Wi-Fi Desktop Sync Settings | Storage & Audio Playback Settings |
+|:---:|:---:|
+| <img src="public/ios_software_images/ios-settings-wifi-sync.png" alt="Overtone iOS Wi-Fi Desktop Sync Settings" width="360px"> | <img src="public/ios_software_images/ios-settings-storage-playback.png" alt="Overtone iOS Storage and Playback Settings" width="360px"> |
+| *100% cloud-free local Wi-Fi pairing with desktop Overtone, 6-digit PIN & paired device list* | *Detailed storage breakdown (offline downloads, cache, DB), audio quality & gapless toggle* |
+
+---
+
 ## ✨ Features Breakdown
 
 ### 🌐 Personal Music Hub & Portability (v0.2.0 Milestone)
@@ -228,6 +258,13 @@ Tailor your listening environment with comprehensive modular settings, global sh
 
 Overtone on iOS is built from the ground up as a native-grade mobile companion with the signature **Sleek UI Design System (Night Star Theme)**, native iOS media services, and zero-compromise local-first performance:
 
+<p align="center">
+  <img src="public/ios_software_images/ios-home-screen.png" alt="Overtone iOS Home Screen" width="31%" style="border-radius: 14px; margin: 0 1%;">
+  <img src="public/ios_software_images/ios-fullscreen-sleek-player.png" alt="Overtone iOS Fullscreen Sleek Player" width="31%" style="border-radius: 14px; margin: 0 1%;">
+  <img src="public/ios_software_images/ios-3d-perspective-drawer.png" alt="Overtone iOS 3D Perspective Drawer" width="31%" style="border-radius: 14px; margin: 0 1%;">
+</p>
+<p align="center"><em>From left to right: Home Screen with Live Desktop Bridge, Fullscreen Sleek Player with Radial Arc Volume, and 3D Perspective Drawer Navigation.</em></p>
+
 #### 🎨 Sleek UI/UX Design Language (Night Star Theme)
 - **Fluid 3D Perspective Drawer:** Smooth interactive drawer with 3D perspective rotation (`rotateY: -15deg`), spring physics, depth scaling (`scale: 0.88`), and corner rounding (`borderRadius: 36px`). Provides instant navigation to Home, Discover, Playlists, Library, Search, Wi-Fi Sync, and Settings with swipe gestures.
 - **Ambient Animated Amber Wave Header:** The top header section features an animated flowing amber wave backdrop (`#f59e0b` / `#d97706`) with micro-fluctuating organic contours, personalized greeting ("Welcome back"), user avatar, and instant search access.
@@ -242,6 +279,13 @@ Overtone on iOS is built from the ground up as a native-grade mobile companion w
   - Persistent miniplayer hovering seamlessly above the navigation bar.
   - Interactive live equalizer bars replace static music notes on the miniplayer card and on currently playing track rows across all song lists for lively visual feedback.
   - Swipe gestures for track skipping and tap-to-expand transitions into the Fullscreen Sleek Player.
+- **Sleek Watery Download Indicator & Track Badges:**
+  - Spotify-inspired dynamic download button featuring an amber watery wave fill animation that sweeps from left to right as songs finish downloading.
+  - Live numerical progress readout displaying `downloaded / total` counts directly inside the button.
+  - Visual track download status badges on every downloaded song row in the playlist.
+- **Responsive Two-Row Playlist Header:**
+  - Optimized two-tier badge and duration layout: row 1 displays Wi-Fi desktop sync origin and download state badges, while row 2 displays total song count and calculated playlist duration.
+  - Prevents horizontal badge overflow and text truncation on compact mobile viewports.
 - **Playlist Duplicate Protection & Warning Modal:**
   - Real-time duplicate detection when adding songs to playlists.
   - Displays a clean warning modal showing track title, artist, artwork, and destination playlist, alerting the user that the song already exists and preventing accidental double-entries.
