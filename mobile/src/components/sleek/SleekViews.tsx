@@ -799,7 +799,7 @@ export function SleekSettingsView() {
   const router = useRouter();
   const db = useDatabase();
   const { userName, setUserName, loadUserName } = useUserStore();
-  const [gapless, setGapless] = useState(true);
+  const [gapless, setGapless] = useState(false);
   const [resumeOnLaunch, setResumeOnLaunch] = useState(false);
   const [editName, setEditName] = useState(userName);
   const [isSaved, setIsSaved] = useState(false);
@@ -824,7 +824,7 @@ export function SleekSettingsView() {
     if (!db.isReady) return;
     try {
       loadUserName(db);
-      setGapless(db.settings.get('gapless', 'true') === 'true');
+      setGapless(db.settings.get('gapless', 'false') === 'true');
       setResumeOnLaunch(db.settings.get('resumeOnLaunch', 'false') === 'true');
       setPairedDevices(db.pairedDevices.getAll());
 

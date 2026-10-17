@@ -42,6 +42,7 @@ import {
   SleekMusicNoteIcon,
   SleekDesktopSyncIcon,
   SleekImportIcon,
+  SleekDownloadedIcon,
 } from './SleekIcons';
 import { useDatabase } from '../../hooks/useDatabase';
 import { usePlayerStore } from '../../store/usePlayerStore';
@@ -518,7 +519,7 @@ export function SleekTrackActionSheet({
                 </Pressable>
 
                 {/* Download for Offline (if streamed over Wi-Fi) */}
-                {isStreamTrack && (
+                {isStreamTrack ? (
                   <Pressable onPress={handleDownloadOffline} disabled={isDownloading} style={styles.menuItemRow}>
                     <View style={[styles.menuItemIconBox, { backgroundColor: '#FEF3C7' }]}>
                       <SleekImportIcon size={18} color="#D97706" />
@@ -530,6 +531,16 @@ export function SleekTrackActionSheet({
                       <Text style={styles.menuItemDesc}>Save locally for offline playback</Text>
                     </View>
                   </Pressable>
+                ) : (
+                  <View style={styles.menuItemRow}>
+                    <View style={[styles.menuItemIconBox, { backgroundColor: '#FEF3C7' }]}>
+                      <SleekDownloadedIcon size={18} color="#FFFFFF" fill="#D97706" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.menuItemTitle}>Downloaded on iPhone</Text>
+                      <Text style={styles.menuItemDesc}>Available offline without Wi-Fi</Text>
+                    </View>
+                  </View>
                 )}
 
                 {/* Send to Desktop */}

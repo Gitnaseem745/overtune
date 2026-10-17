@@ -33,6 +33,7 @@ class AudioServiceImpl {
   private events: AudioServiceEvents | null = null;
   private isAudioSessionConfigured = false;
   private statusSubscription: { remove: () => void } | null = null;
+  private _trackEndedFired = false;
 
   /**
    * Configure the iOS audio session for background playback and Lock Screen controls.
@@ -112,10 +113,12 @@ class AudioServiceImpl {
       return;
     }
 
+    this._trackEndedFired = false;
+
     try {
       const player = createAudioPlayer(
         { uri: playUri },
-        { updateInterval: 250 }
+        { updateInterval: 500 }
       );
 
       this.statusSubscription = player.addListener(
@@ -189,15 +192,21 @@ class AudioServiceImpl {
       return;
     }
 
+    const rawTime = status.currentTime || 0;
+    const rawDur = status.duration || 0;
+    // Clamp currentTime so it never exceeds duration (prevents timeline overshoot)
+    const clampedTime = rawDur > 0 ? Math.min(rawTime, rawDur) : rawTime;
+
     this.events?.onPlaybackStatusUpdate({
       isPlaying: status.playing,
       isBuffering: status.isBuffering,
-      currentTime: status.currentTime || 0,
-      duration: status.duration || 0,
+      currentTime: clampedTime,
+      duration: rawDur,
       isLoaded: status.isLoaded,
     });
 
-    if (status.didJustFinish && !this.player?.loop) {
+    if (status.didJustFinish && !this.player?.loop && !this._trackEndedFired) {
+      this._trackEndedFired = true;
       this.events?.onTrackEnded();
     }
   }

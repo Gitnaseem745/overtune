@@ -137,12 +137,22 @@ export function SleekPlayerScreen({ onDismiss }: SleekPlayerScreenProps = {}) {
 
   // Fallback metadata for seamless display matching the reference
   const trackTitle = currentTrack?.title || '';
-  const trackArtist = currentTrack
-    ? (currentTrack.artistId && db.isReady ? db.artists.getNameById(currentTrack.artistId) : 'Nusrat Fateh Ali Khan')
-    : 'Nusrat Fateh Ali Khan';
-  const trackDuration = duration > 0 ? duration : 214;
+  // Resolve artist: DB lookup first, then fall back to inline track fields
+  const trackArtist = (() => {
+    if (!currentTrack) return 'Unknown Artist';
+    if (currentTrack.artistId && db.isReady) {
+      const dbName = db.artists.getNameById(currentTrack.artistId);
+      if (dbName && dbName !== 'Unknown Artist') return dbName;
+    }
+    const anyTrack = currentTrack as any;
+    return anyTrack.artist || anyTrack.artistName || 'Unknown Artist';
+  })();
+  const trackDuration = (duration > 0 && isFinite(duration)) ? duration : (currentTrack?.duration || 0);
   const effectiveTime = isSeeking ? seekPosition : currentTime;
-  const remainingTime = Math.max(0, trackDuration - effectiveTime);
+  // Guard remaining time against NaN and negative values
+  const remainingTime = (trackDuration > 0 && isFinite(effectiveTime))
+    ? Math.max(0, trackDuration - Math.min(effectiveTime, trackDuration))
+    : 0;
 
   // Sync favorite state
   useEffect(() => {
@@ -447,7 +457,30 @@ export function SleekPlayerScreen({ onDismiss }: SleekPlayerScreenProps = {}) {
 
   const hasArtwork = Boolean(currentTrack?.artworkUri);
 
-  const progressFraction = trackDuration > 0 ? Math.min(1, Math.max(0, effectiveTime / trackDuration)) : 0;
+  const progressFraction = (trackDuration > 0 && isFinite(effectiveTime))
+    ? Math.min(1, Math.max(0, effectiveTime / trackDuration))
+    : 0;
+
+  // Debounce guard for transport controls to prevent sticking from rapid taps
+  const transportBusyRef = useRef(false);
+  const guardedPrevious = async () => {
+    if (transportBusyRef.current) return;
+    transportBusyRef.current = true;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try { await previous(); } catch {}
+    setTimeout(() => { transportBusyRef.current = false; }, 350);
+  };
+  const guardedNext = async () => {
+    if (transportBusyRef.current) return;
+    transportBusyRef.current = true;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try { await next(); } catch {}
+    setTimeout(() => { transportBusyRef.current = false; }, 350);
+  };
+  const guardedTogglePlayPause = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    try { await togglePlayPause(); } catch {}
+  };
 
   return (
     <View style={styles.outerCanvas}>
@@ -751,10 +784,7 @@ export function SleekPlayerScreen({ onDismiss }: SleekPlayerScreenProps = {}) {
         <View style={styles.transportRow}>
           {/* Previous Track Button */}
           <Pressable
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              previous();
-            }}
+            onPress={guardedPrevious}
             hitSlop={12}
             style={styles.prevNextBtn}
             accessibilityRole="button"
@@ -765,10 +795,7 @@ export function SleekPlayerScreen({ onDismiss }: SleekPlayerScreenProps = {}) {
 
           {/* Large Glowing Play / Pause Button */}
           <Pressable
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              togglePlayPause();
-            }}
+            onPress={guardedTogglePlayPause}
             hitSlop={12}
             style={styles.playPauseBtn}
             accessibilityRole="button"
@@ -787,10 +814,7 @@ export function SleekPlayerScreen({ onDismiss }: SleekPlayerScreenProps = {}) {
 
           {/* Next Track Button */}
           <Pressable
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              next();
-            }}
+            onPress={guardedNext}
             hitSlop={12}
             style={styles.prevNextBtn}
             accessibilityRole="button"

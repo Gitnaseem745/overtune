@@ -39,9 +39,19 @@ export function SleekMiniPlayer({
   if (isNowPlayingOpen) return null;
 
   const title = currentTrack?.title || fallbackTitle;
-  const artist = currentTrack
-    ? (currentTrack.artistId && db.isReady ? db.artists.getNameById(currentTrack.artistId) : fallbackArtist)
-    : fallbackArtist;
+  // Resolve artist name: try DB lookup first, then fall back to track object fields
+  const resolveArtist = (): string => {
+    if (!currentTrack) return fallbackArtist;
+    // Try DB lookup by artistId
+    if (currentTrack.artistId && db.isReady) {
+      const dbName = db.artists.getNameById(currentTrack.artistId);
+      if (dbName && dbName !== 'Unknown Artist') return dbName;
+    }
+    // Fall back to inline artist fields (common for synced desktop tracks)
+    const anyTrack = currentTrack as any;
+    return anyTrack.artist || anyTrack.artistName || fallbackArtist;
+  };
+  const artist = resolveArtist();
 
   const handleOpenNowPlaying = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);

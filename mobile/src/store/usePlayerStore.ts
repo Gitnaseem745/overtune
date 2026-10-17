@@ -161,6 +161,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const { isPlaying, currentTrack, currentTime, duration, queue } = get();
     if (!currentTrack) return;
 
+    // Busy guard: prevent rapid double-taps from causing stuck state
+    const state = get() as any;
+    if (state._toggleBusy) return;
+    set({ _toggleBusy: true } as any);
+
     try {
       await AudioService.togglePlayPause();
       const newPlaying = !isPlaying;
@@ -170,6 +175,9 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       WidgetService.updatePlayback(currentTrack, newPlaying, currentTime, duration, queue);
     } catch (error) {
       console.error('[Player] Toggle error:', error);
+    } finally {
+      // Release guard after a short debounce to prevent flicker
+      setTimeout(() => set({ _toggleBusy: false } as any), 300);
     }
   },
 
@@ -230,6 +238,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
     try {
       await AudioService.loadTrack(nextTrack);
+      set({ isPlaying: true });
       LiveActivityService.start(nextTrack, true, nextTrack.duration || 0);
       WidgetService.updatePlayback(nextTrack, true, 0, nextTrack.duration || 0, queue);
     } catch (error) {
@@ -264,6 +273,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
     try {
       await AudioService.loadTrack(prevTrack);
+      set({ isPlaying: true });
       LiveActivityService.start(prevTrack, true, prevTrack.duration || 0);
       WidgetService.updatePlayback(prevTrack, true, 0, prevTrack.duration || 0, queue);
     } catch (error) {
@@ -368,8 +378,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (isSeeking) return; // Don't update during seek gesture
 
     const validDuration = dur > 0 ? dur : duration;
+    // Clamp currentTime: never exceed duration, never go below 0, guard NaN
+    const safeTime = (isNaN(time) || time < 0) ? 0 : (validDuration > 0 ? Math.min(time, validDuration) : time);
     const updates: any = {
-      currentTime: time,
+      currentTime: safeTime,
       duration: validDuration,
       isPlaying: playing,
       isBuffering: buffering,
@@ -402,7 +414,24 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   },
 
   handleTrackEnded: async () => {
-    await get().next();
+    // Respect the gapless playback setting from the database
+    let isGapless = false;
+    try {
+      const { getDatabaseRepos } = require('../hooks/useDatabase');
+      const repos = getDatabaseRepos?.();
+      // Default is 'false' — gapless is OFF by default
+      isGapless = repos?.settings?.get?.('gapless', 'false') === 'true';
+    } catch {}
+
+    if (isGapless) {
+      // Gapless: immediately advance to next track
+      await get().next();
+    } else {
+      // Non-gapless: stop current playback, brief pause, then advance
+      set({ isPlaying: false });
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      await get().next();
+    }
   },
 
   setNowPlayingOpen: (open) => set({ isNowPlayingOpen: open }),

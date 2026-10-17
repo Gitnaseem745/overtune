@@ -5,16 +5,18 @@
  * and "Analog" from sleek_theme_main_screen.jpg and sleek_theme_sidebar_screen.jpg.
  */
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Pressable,
+  Animated,
+  Easing,
 } from 'react-native';
 import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
-import { SleekMoreIcon, SleekMusicNoteIcon } from './SleekIcons';
+import { SleekMoreIcon, SleekMusicNoteIcon, SleekDownloadedIcon } from './SleekIcons';
 import { SleekLiveEqualizer } from './SleekLiveEqualizer';
 import { sleekTokens } from '../../design/colors';
 import { formatDuration } from '../../services/files/FileImportService';
@@ -26,6 +28,8 @@ interface SleekTrackRowProps {
   imageSource?: any;
   artworkUri?: string | null;
   isPlaying?: boolean;
+  isDownloaded?: boolean;
+  isDownloading?: boolean;
   onPress: () => void;
   onMorePress?: () => void;
 }
@@ -37,9 +41,35 @@ export function SleekTrackRow({
   imageSource,
   artworkUri,
   isPlaying,
+  isDownloaded,
+  isDownloading,
   onPress,
   onMorePress,
 }: SleekTrackRowProps) {
+  const spinAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (isDownloading) {
+      const loop = Animated.loop(
+        Animated.timing(spinAnim, {
+          toValue: 1,
+          duration: 900,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        })
+      );
+      loop.start();
+      return () => loop.stop();
+    } else {
+      spinAnim.setValue(0);
+    }
+  }, [isDownloading]);
+
+  const spin = spinAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
   const handlePress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onPress();
@@ -98,9 +128,23 @@ export function SleekTrackRow({
         >
           {title}
         </Text>
-        <Text style={styles.subtitleText} numberOfLines={1}>
-          {artistSubtitle}
-        </Text>
+        <View style={styles.subtitleRow}>
+          {isDownloading ? (
+            <Animated.View
+              style={[
+                styles.downloadSpinner,
+                { transform: [{ rotate: spin }] },
+              ]}
+            />
+          ) : isDownloaded ? (
+            <View style={styles.downloadBadge}>
+              <SleekDownloadedIcon size={12} color="#FFFFFF" fill="#D97706" />
+            </View>
+          ) : null}
+          <Text style={styles.subtitleText} numberOfLines={1}>
+            {artistSubtitle}
+          </Text>
+        </View>
       </View>
 
       {/* Track Duration */}
@@ -177,10 +221,27 @@ const styles = StyleSheet.create({
     letterSpacing: 0.15,
     marginBottom: 3,
   },
+  subtitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  downloadBadge: {
+    marginRight: 6,
+  },
+  downloadSpinner: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 1.8,
+    borderColor: 'rgba(217, 119, 6, 0.2)',
+    borderTopColor: '#D97706',
+    marginRight: 6,
+  },
   subtitleText: {
     color: sleekTokens.seeMoreText,
     fontSize: 12.5,
     fontWeight: '400',
+    flexShrink: 1,
   },
   durationText: {
     fontSize: 12,

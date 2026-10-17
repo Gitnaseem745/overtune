@@ -40,7 +40,7 @@ export default function SettingsScreen() {
     totalBytes: number;
   }>({ audioBytes: 0, artworkBytes: 0, totalBytes: 0 });
 
-  const [gapless, setGapless] = useState<boolean>(true);
+  const [gapless, setGapless] = useState<boolean>(false);
   const [resumeOnLaunch, setResumeOnLaunch] = useState<boolean>(false);
   const { userName, setUserName, loadUserName } = useUserStore();
   const [editName, setEditName] = useState(userName);
@@ -74,7 +74,7 @@ export default function SettingsScreen() {
       const usage = await FileImportService.getStorageUsage();
       setStorageUsage(usage);
 
-      setGapless(db.settings.get('gapless', 'true') === 'true');
+      setGapless(db.settings.get('gapless', 'false') === 'true');
       setResumeOnLaunch(db.settings.get('resumeOnLaunch', 'false') === 'true');
     } catch (e) {
       console.warn('[Settings] Error loading:', e);

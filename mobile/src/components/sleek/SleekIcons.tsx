@@ -426,3 +426,20 @@ export function SleekShuffleIcon({ size = 18, color = '#968D7B' }: IconProps) {
   );
 }
 
+/** 31. Spotify-style Downloaded Badge icon (circular downward arrow) */
+export function SleekDownloadedIcon({ size = 14, color = '#FFFFFF', fill = '#D97706' }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 16 16" fill="none">
+      <Circle cx="8" cy="8" r="7.5" fill={fill} />
+      <Path
+        d="M8 4V10M8 10L5.5 7.5M8 10L10.5 7.5M4.5 12H11.5"
+        stroke={color}
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+

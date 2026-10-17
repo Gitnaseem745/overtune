@@ -35,6 +35,7 @@ import { usePlayerStore } from '../../src/store/usePlayerStore';
 import { SleekTrackRow } from '../../src/components/sleek/SleekTrackRow';
 import { SleekMiniPlayer } from '../../src/components/sleek/SleekMiniPlayer';
 import { SleekTrackActionSheet } from '../../src/components/sleek/SleekTrackActionSheet';
+import { SleekWateryDownloadButton } from '../../src/components/sleek/SleekWateryDownloadButton';
 import {
   SleekChevronLeftIcon,
   SleekPlayIcon,
@@ -49,6 +50,7 @@ import {
   SleekEditIcon,
   SleekTrashIcon,
   SleekImportIcon,
+  SleekDownloadedIcon,
 } from '../../src/components/sleek/SleekIcons';
 import { SyncService } from '../../src/services/sync/SyncService';
 import { FileImportService, formatDuration, formatTotalDuration } from '../../src/services/files/FileImportService';
@@ -258,8 +260,16 @@ export default function PlaylistDetailScreen() {
   }, [tracks]);
 
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
+  const [downloadedSongsCount, setDownloadedSongsCount] = useState(0);
+  const [totalSongsToDownload, setTotalSongsToDownload] = useState(0);
+  const [downloadingTrackId, setDownloadingTrackId] = useState<number | null>(null);
+
   const streamTracksCount = useMemo(() => {
     return tracks.filter((t) => t.fileUri?.startsWith('http://') || t.format === 'stream').length;
+  }, [tracks]);
+
+  const downloadedTracksCount = useMemo(() => {
+    return tracks.filter((t) => Boolean(t.fileUri && !t.fileUri.startsWith('http://') && t.format !== 'stream')).length;
   }, [tracks]);
 
   const handlePlayAll = () => {
@@ -329,10 +339,13 @@ export default function PlaylistDetailScreen() {
     if (toDownload.length === 0 || isDownloadingAll || !db.isReady) return;
 
     setIsDownloadingAll(true);
+    setTotalSongsToDownload(toDownload.length);
+    setDownloadedSongsCount(0);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     let successCount = 0;
 
     for (const tr of toDownload) {
+      setDownloadingTrackId(tr.id);
       try {
         const res = await FileImportService.downloadRemoteTrack(tr.fileUri, tr.id, tr.title);
         if (res) {
@@ -343,12 +356,16 @@ export default function PlaylistDetailScreen() {
           }
           db.tracks.updateFileUri(tr.id, res.localUri, 'mp3', res.fileSize, localArtUri);
           successCount++;
+          setDownloadedSongsCount(successCount);
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          loadData();
         }
       } catch (err) {
         console.warn(`Failed downloading ${tr.title}:`, err);
       }
     }
 
+    setDownloadingTrackId(null);
     setIsDownloadingAll(false);
     loadData();
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -473,6 +490,16 @@ export default function PlaylistDetailScreen() {
                   {playlist.source === 'synced' ? 'Synced from Desktop' : 'Custom Playlist'}
                 </Text>
               </View>
+              {downloadedTracksCount > 0 && (
+                <View style={styles.downloadStatusPill}>
+                  <SleekDownloadedIcon size={12} color="#FFFFFF" fill="#D97706" />
+                  <Text style={styles.downloadStatusPillText}>
+                    {downloadedTracksCount === tracks.length
+                      ? 'Downloaded'
+                      : `${downloadedTracksCount}/${tracks.length} downloaded`}
+                  </Text>
+                </View>
+              )}
               <Text style={styles.metadataText}>
                 {tracks.length} {tracks.length === 1 ? 'song' : 'songs'}
                 {totalDurationSeconds > 0 ? ` · ${formatTotalDuration(totalDurationSeconds)}` : ''}
@@ -532,24 +559,15 @@ export default function PlaylistDetailScreen() {
                 <Text style={styles.actionPillText}>Add Songs</Text>
               </Pressable>
 
-              {/* Download Offline Button (if streamable tracks exist) */}
-              {streamTracksCount > 0 && (
-                <Pressable
+              {/* Download Offline Button with Amber Watery Wave Fill */}
+              {(streamTracksCount > 0 || isDownloadingAll || (downloadedTracksCount > 0 && tracks.length > 0)) && (
+                <SleekWateryDownloadButton
+                  isDownloading={isDownloadingAll}
+                  downloadedCount={downloadedSongsCount}
+                  totalCount={totalSongsToDownload || streamTracksCount}
+                  streamTracksCount={streamTracksCount}
                   onPress={handleDownloadAllOffline}
-                  disabled={isDownloadingAll}
-                  style={({ pressed }) => [
-                    styles.actionPill,
-                    { backgroundColor: '#FEF3C7', borderColor: '#FDE68A' },
-                    pressed && styles.actionPillPressed,
-                  ]}
-                  accessibilityRole="button"
-                  accessibilityLabel="Download all songs for offline listening"
-                >
-                  <SleekImportIcon size={14} color="#D97706" />
-                  <Text style={[styles.actionPillText, { color: '#B45309' }]}>
-                    {isDownloadingAll ? 'Saving...' : `Download (${streamTracksCount})`}
-                  </Text>
-                </Pressable>
+                />
               )}
             </ScrollView>
 
@@ -557,17 +575,23 @@ export default function PlaylistDetailScreen() {
             <View style={styles.sectionDivider} />
           </View>
         }
-        renderItem={({ item }: { item: MobileTrack }) => (
-          <SleekTrackRow
-            title={item.title}
-            artistSubtitle={getArtistName(item.artistId)}
-            duration={item.duration}
-            artworkUri={item.artworkUri}
-            isPlaying={currentTrack?.id === item.id && isPlaying}
-            onPress={() => loadAndPlay(item, tracks, tracks.findIndex((t) => t.id === item.id))}
-            onMorePress={() => setActionTrack(item)}
-          />
-        )}
+        renderItem={({ item }: { item: MobileTrack }) => {
+          const isDownloaded = Boolean(item.fileUri && !item.fileUri.startsWith('http://') && item.format !== 'stream');
+          const isDownloading = downloadingTrackId === item.id;
+          return (
+            <SleekTrackRow
+              title={item.title}
+              artistSubtitle={getArtistName(item.artistId)}
+              duration={item.duration}
+              artworkUri={item.artworkUri}
+              isPlaying={currentTrack?.id === item.id && isPlaying}
+              isDownloaded={isDownloaded}
+              isDownloading={isDownloading}
+              onPress={() => loadAndPlay(item, tracks, tracks.findIndex((t) => t.id === item.id))}
+              onMorePress={() => setActionTrack(item)}
+            />
+          );
+        }}
         ListEmptyComponent={
           <View style={styles.emptyListCard}>
             <View style={styles.emptyBadgeCircle}>
@@ -1024,6 +1048,23 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   badgePillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#92400E',
+    letterSpacing: 0.2,
+  },
+  downloadStatusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  downloadStatusPillText: {
     fontSize: 11,
     fontWeight: '700',
     color: '#92400E',
