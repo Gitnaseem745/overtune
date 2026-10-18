@@ -630,16 +630,73 @@ npm run build:installer
 ```
 *Output: `release/Overtone-Setup-0.2.1.exe`*
 
-### iOS Production Bundle & Export
-```bash
-cd mobile
-# Export static Hermes JavaScript bytecode and bundled assets
-npx expo export --platform ios
+### iOS Production Packages & Automated Cloud CI/CD
+Overtone features fully automated CI/CD via GitHub Actions to compile and package unsigned `.ipa` files without requiring an Apple Developer Account:
 
-# Trigger native cloud build via EAS (requires Expo account)
-eas build --profile production --platform ios
-cd ..
+```bash
+# Push any commit to mobile/ or push a tag (e.g. ios-v1.0.1)
+git tag ios-v1.0.1
+git push origin ios-v1.0.1
 ```
+*The GitHub Actions runner automatically compiles the native iOS engine with `xcodebuild CODE_SIGNING_ALLOWED=NO` and outputs a ready-to-sideload `Overtone_Unsigned.ipa` file to the GitHub Release and Actions artifacts.*
+
+---
+
+## 📲 Installing on iPhone (No Computer Required — Cloud Sideloading)
+
+You do **not** need a Mac, a PC, or a paid $99/year Apple Developer account to run Overtone on your physical iPhone. You can install our prebuilt `Overtone_Unsigned.ipa` directly over-the-air using on-device sideloading utilities like **Scarlet**, **TrollStore**, or **AltStore**.
+
+### 📥 1. Download the Unsigned iOS IPA
+1. On your iPhone, open Safari and navigate to [Overtone Releases](https://github.com/gitnaseem745/overtune/releases) (or the **Actions** tab of the repository).
+2. Download the latest **`Overtone_Unsigned.ipa`** asset to your iPhone's **Files** app (`Downloads` folder).
+
+---
+
+### ⚡ Method A: Direct Sideloading via Scarlet (100% On-Device, No PC)
+[Scarlet](https://usescarlet.com/) is a free on-device iOS app installer that uses cloud certificates to sign and install IPAs directly on your iPhone.
+
+```
+┌─────────────────┐       ┌─────────────────┐       ┌─────────────────┐
+│ 1. Get Scarlet  │ ────► │ 2. Import IPA   │ ────► │ 3. Trust Cert   │
+│  via Safari     │       │  into Scarlet   │       │   in Settings   │
+└─────────────────┘       └─────────────────┘       └─────────────────┘
+```
+
+1. **Install Scarlet:**
+   - Open Safari on your iPhone and visit **[usescarlet.com](https://usescarlet.com/)**.
+   - Tap **Install** and select **Direct Install** (ignore any popup advertisements).
+   - Wait for the countdown, tap **Open**, and Scarlet will install onto your Home Screen.
+2. **Trust Scarlet Certificate:**
+   - Open iOS **Settings** > **General** > **VPN & Device Management**.
+   - Under *Enterprise App*, tap the certificate profile and tap **Trust**.
+3. **Install Overtone:**
+   - Launch the **Scarlet** app from your Home Screen.
+   - Tap the **Sideload (Install)** icon in the top-right corner.
+   - Select the downloaded `Overtone_Unsigned.ipa` file from your Files app.
+   - Scarlet will sign and install Overtone directly to your iPhone Home Screen.
+4. **Enable Developer Mode (iOS 16+):**
+   - If prompted on iOS 16 or newer: open **Settings** > **Privacy & Security** > scroll to the bottom and enable **Developer Mode**, then restart your iPhone.
+
+---
+
+### 💻 Method B: Sideloadly / AltStore (Free Personal Apple ID)
+If you prefer signing with your own free Apple ID using a computer:
+- **[Sideloadly](https://sideloadly.io/) (Mac/Windows):** Plug in your iPhone, drag-and-drop `Overtone_Unsigned.ipa`, enter your free Apple ID, and click **Start**. The app installs with a 7-day personal certificate.
+- **[AltStore](https://altstore.io/) (Mac/Windows):** Host AltServer on your local network to automatically refresh Overtone over Wi-Fi without expiring.
+
+---
+
+### 🛡️ Method C: TrollStore (iOS 14.0 – 16.6.1 Permanent Install)
+If your device is running iOS 14.0 through 16.6.1 with **TrollStore** installed:
+1. Tap the downloaded `Overtone_Unsigned.ipa` in Files.
+2. Select **Share** > **TrollStore**.
+3. Overtone installs permanently with full entitlements, zero revokes, and no 7-day expiration.
+
+---
+
+### 🚀 First-Launch Setup on iOS
+1. **Local Network Permission:** When prompted, allow Overtone to access your local network. This enables zero-config LAN discovery and sync with the Overtone Desktop app.
+2. **Background Audio & Live Activities:** Background audio playback and Lock Screen controls are active immediately. Live Activities dynamically appear on the Dynamic Island on supported iPhone models.
 
 ---
 
