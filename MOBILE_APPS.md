@@ -1,7 +1,7 @@
-# 📱 Overtone iOS Companion App — Specification, UI/UX & Architecture Guide
+# 📱 Overtone Mobile Companion App (iOS & Android) — Specification, UI/UX & Architecture Guide
 
-> **Milestone:** v1.0.0 — Sleek UI Edition  
-> **Platform:** iOS 16.0+ (iPhone)  
+> **Milestone:** v1.0.1 — Cross-Platform Sleek UI Edition  
+> **Platforms:** iOS 16.0+ (iPhone) & Android 10.0+ (Phone/Tablet)  
 > **Runtime:** React Native 0.86, Expo SDK 57 (Hermes Engine)  
 > **Design Language:** Sleek UI / Night Star Aesthetic  
 > **Sync Protocol:** 100% Cloud-Free Local Wi-Fi P2P Pairing with Desktop Overtone  
@@ -292,6 +292,9 @@ npm run lint
 
 # Native iOS Hermes bundle export (0 errors)
 npx expo export --platform ios
+
+# Native Android Hermes bundle export (0 errors)
+npx expo export --platform android
 ```
 
 ---
@@ -304,10 +307,26 @@ cd mobile
 npx expo start -c
 ```
 - Press `i` to launch in iOS Simulator.
-- Scan QR code to launch on a physical iPhone via Expo Go or Development Build.
+- Press `a` to launch in Android Emulator or connected physical device.
+- Scan QR code to launch on a physical iPhone or Android device via Expo Go or Development Build.
+
+### 🤖 Compiling Standalone Android APK Locally
+Run the automated build script:
+```bash
+cd mobile
+npm run build:apk
+```
+*Behind the scenes, this runs `npx expo prebuild --platform android --clean` followed by `./gradlew assembleRelease`, outputting a signed, installable `mobile/Overtone.apk`.*
+
+### ☁️ Automated GitHub Actions CI/CD Releases
+Every release tag (e.g. `v0.2.3`, `v1.0.2`) triggers all three platform builders simultaneously:
+- **Android APK:** `.github/workflows/build-android.yml` compiles on `ubuntu-latest` and attaches `Overtone.apk` to the release.
+- **iOS IPA:** `.github/workflows/build-ios.yml` compiles on `macos-14` and attaches `Overtone_Unsigned.ipa` to the release.
+- **Windows EXE:** `.github/workflows/release.yml` compiles on `windows-latest` and attaches `Overtone-Setup-*.exe` to the release.
 
 ### Cloud Native Builds (EAS Build)
 Configured in `mobile/eas.json`:
-- **Development Build:** `eas build --profile development --platform ios`
-- **Internal Preview:** `eas build --profile preview --platform ios`
-- **App Store Production:** `eas build --profile production --platform ios`
+- **Android Standalone APK:** `eas build --profile preview --platform android`
+- **Android Play Store AAB:** `eas build --profile production --platform android`
+- **iOS Internal Preview:** `eas build --profile preview --platform ios`
+- **iOS App Store Production:** `eas build --profile production --platform ios`

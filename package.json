@@ -34,6 +34,7 @@
     "build": "npm run build:next && npm run build:electron",
     "build:installer": "node scripts/build-installer.js",
     "dist:installer": "node scripts/build-installer.js",
+    "build:apk": "npm run --prefix mobile build:apk",
     "pack": "electron-builder --dir",
     "dist": "electron-builder --publish never",
     "start": "next start",

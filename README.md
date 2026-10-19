@@ -630,6 +630,17 @@ npm run build:installer
 ```
 *Output: `release/Overtone-Setup-0.2.1.exe`*
 
+### Android Standalone `.APK` Package & Automated Cloud CI/CD
+```bash
+# Push any commit to mobile/ or push a tag (e.g. v1.0.1 or android-v1.0.1)
+git tag android-v1.0.1
+git push origin android-v1.0.1
+
+# Or build locally:
+npm run build:apk
+```
+*The GitHub Actions runner automatically compiles the native Android engine with Gradle `./gradlew assembleRelease` on Ubuntu and outputs a standalone, ready-to-install `Overtone.apk` file to the GitHub Release.*
+
 ### iOS Production Packages & Automated Cloud CI/CD
 Overtone features fully automated CI/CD via GitHub Actions to compile and package unsigned `.ipa` files without requiring an Apple Developer Account:
 
@@ -639,6 +650,40 @@ git tag ios-v1.0.1
 git push origin ios-v1.0.1
 ```
 *The GitHub Actions runner automatically compiles the native iOS engine with `xcodebuild CODE_SIGNING_ALLOWED=NO` and outputs a ready-to-sideload `Overtone_Unsigned.ipa` file to the GitHub Release and Actions artifacts.*
+
+---
+
+## 🚀 Unified Multi-Platform Automated Releases
+
+Every release tag (e.g. `v0.2.3`, `v1.0.2`) automatically triggers parallel GitHub Actions runners across all 3 major operating systems:
+
+| Platform | Workflow File | Runner OS | Output Binary | Installation Method |
+|---|---|---|---|---|
+| **🪟 Windows** | `.github/workflows/release.yml` | `windows-latest` | `Overtone-Setup-*.exe` | Double-click NSIS installer wizard |
+| **🤖 Android** | `.github/workflows/build-android.yml` | `ubuntu-latest` | `Overtone.apk` | 1-tap direct install (sideloading) |
+| **🍎 iOS** | `.github/workflows/build-ios.yml` | `macos-14` | `Overtone_Unsigned.ipa` | Sideload via Scarlet, AltStore, TrollStore |
+
+---
+
+## 🤖 Installing on Android (Direct Sideloading — 30 Seconds)
+
+Unlike iOS, installing Overtone on Android requires **no computer, no cloud certificates, and no developer accounts**.
+
+### 📥 1. Download the Android APK
+1. On your Android phone, open your browser and navigate to [Overtone Releases](https://github.com/gitnaseem745/overtune/releases).
+2. Download **`Overtone.apk`** from the latest release assets.
+
+### 📲 2. Install the APK
+1. Tap the downloaded file in your browser's download manager (or open **Files** > **Downloads**).
+2. If Android prompts *"For your security, your phone is not allowed to install unknown apps from this source"*:
+   - Tap **Settings**.
+   - Toggle on **Allow from this source**.
+3. Tap **Install**.
+4. Once installed, tap **Open** to launch Overtone!
+
+### ⚙️ Permissions & First Launch
+- **Storage & Audio:** Allow access so Overtone can scan and index your local MP3, FLAC, and WAV audio files.
+- **Local Network:** Ensure your phone is connected to the same Wi-Fi as your computer to pair and sync playlists with desktop Overtone.
 
 ---
 

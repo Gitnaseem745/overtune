@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -33,9 +34,9 @@ jobs:
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
         with:
-          name: "Overtone v0.2.2 & Mobile v1.0.1 — Cross-Device Streaming Milestone"
+          name: ${{ github.ref_name }}
           body_path: RELEASE_NOTES.md
           files: |
             release/*.exe

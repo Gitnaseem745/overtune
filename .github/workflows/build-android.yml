@@ -1,0 +1,111 @@
+name: Build Standalone Android APK
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/build-android.yml'
+    tags:
+      - 'v*'
+      - 'android-v*'
+      - 'mobile-v*'
+  workflow_dispatch:
+    inputs:
+      create_release:
+        description: 'Publish as a GitHub Release (requires tag or release draft)'
+        type: boolean
+        required: false
+        default: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  build-standalone-apk:
+    name: Build & Package Standalone Android APK
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: ☕ Setup Java Development Kit (JDK 17)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: 🟢 Setup Node.js (v20)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: 📦 Install Node Dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: 🧪 Run Quality Gate (Typecheck & Unit Tests)
+        run: |
+          npm run typecheck
+          npm test
+
+      - name: ⚙️ Run Expo Prebuild (Generate Native /android)
+        run: npx expo prebuild --platform android --clean
+
+      - name: 🔧 Grant Execute Permissions to Gradle Wrapper
+        run: chmod +x android/gradlew
+
+      - name: 🔨 Compile Native Android Release APK
+        run: |
+          cd android
+          ./gradlew assembleRelease --no-daemon
+          cd ..
+
+      - name: 📦 Prepare Overtone.apk Artifact
+        run: |
+          APK_PATH=$(find android/app/build/outputs/apk -name "*release*.apk" -type f | head -n 1)
+          if [ -z "$APK_PATH" ] || [ ! -f "$APK_PATH" ]; then
+            echo "⚠️ Release APK not found! Searching for any compiled APK..."
+            APK_PATH=$(find android/app/build/outputs/apk -name "*.apk" -type f | head -n 1)
+          fi
+
+          if [ -z "$APK_PATH" ] || [ ! -f "$APK_PATH" ]; then
+            echo "❌ Error: Could not locate compiled APK in android/app/build/outputs/apk"
+            exit 1
+          fi
+
+          echo "✅ Found compiled APK: $APK_PATH"
+          cp "$APK_PATH" Overtone.apk
+          echo "🎉 Successfully prepared Overtone.apk:"
+          ls -lh Overtone.apk
+
+      - name: 📤 Upload APK to GitHub Actions Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Overtone.apk
+          path: mobile/Overtone.apk
+          retention-days: 14
+
+      - name: 🚀 Publish APK to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/') || inputs.create_release == true
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          files: mobile/Overtone.apk
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
