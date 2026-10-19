@@ -35,7 +35,9 @@ export default function LibraryScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const db = useDatabase();
-  const { loadAndPlay, currentTrack, isPlaying } = usePlayerStore();
+  const currentTrackId = usePlayerStore((s) => s.currentTrack?.id);
+  const isPlaying = usePlayerStore((s) => s.isPlaying);
+  const loadAndPlay = usePlayerStore((s) => s.loadAndPlay);
 
   const [activeSegment, setActiveSegment] = useState<Segment>('songs');
   const [filterText, setFilterText] = useState<string>('');
@@ -97,10 +99,10 @@ export default function LibraryScreen() {
     );
   };
 
-  const getArtistName = (id: number | null) => {
+  const getArtistName = useCallback((id: number | null) => {
     if (!db.isReady || id === null) return 'Unknown Artist';
     return db.artists.getNameById(id);
-  };
+  }, [db.isReady]);
 
   // Filtered views
   const filteredTracks = useMemo(() => {
@@ -126,6 +128,36 @@ export default function LibraryScreen() {
     const lower = filterText.toLowerCase();
     return playlists.filter((p) => p.name.toLowerCase().includes(lower));
   }, [playlists, filterText]);
+
+  const handlePlayTrack = useCallback(
+    (track: MobileTrack) => {
+      const idx = filteredTracks.findIndex((t) => t.id === track.id);
+      loadAndPlay(track, filteredTracks, idx >= 0 ? idx : 0);
+    },
+    [loadAndPlay, filteredTracks]
+  );
+
+  const renderTrackItem = useCallback(
+    ({ item }: { item: MobileTrack }) => (
+      <TrackRow
+        track={item}
+        isPlaying={currentTrackId === item.id && isPlaying}
+        isFavorite={favorites.has(item.id)}
+        getArtistName={getArtistName}
+        onPress={handlePlayTrack}
+      />
+    ),
+    [currentTrackId, isPlaying, favorites, getArtistName, handlePlayTrack]
+  );
+
+  const getItemLayout = useCallback(
+    (_: any, index: number) => ({
+      length: 64,
+      offset: 64 * index,
+      index,
+    }),
+    []
+  );
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -186,15 +218,13 @@ export default function LibraryScreen() {
         <FlatList
           data={filteredTracks}
           keyExtractor={(item) => String(item.id)}
-          renderItem={({ item, index }) => (
-            <TrackRow
-              track={item}
-              isPlaying={currentTrack?.id === item.id && isPlaying}
-              isFavorite={favorites.has(item.id)}
-              getArtistName={getArtistName}
-              onPress={(t) => loadAndPlay(t, filteredTracks, index)}
-            />
-          )}
+          renderItem={renderTrackItem}
+          getItemLayout={getItemLayout}
+          initialNumToRender={15}
+          maxToRenderPerBatch={10}
+          windowSize={5}
+          removeClippedSubviews={true}
+          updateCellsBatchingPeriod={50}
           contentContainerStyle={{
             paddingBottom: layout.miniPlayerHeight + layout.tabBarHeight + spacing.xl,
           }}

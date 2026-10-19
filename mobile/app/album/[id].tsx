@@ -4,7 +4,7 @@
  * Displays album artwork, artist, year, track list, and Play/Shuffle actions.
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -32,7 +32,9 @@ export default function AlbumDetailScreen() {
   const { colors } = useTheme();
   const db = useDatabase();
   const { width } = useWindowDimensions();
-  const { loadAndPlay, currentTrack, isPlaying } = usePlayerStore();
+  const currentTrackId = usePlayerStore((s) => s.currentTrack?.id);
+  const isPlaying = usePlayerStore((s) => s.isPlaying);
+  const loadAndPlay = usePlayerStore((s) => s.loadAndPlay);
 
   const [album, setAlbum] = useState<MobileAlbum | null>(null);
   const [tracks, setTracks] = useState<MobileTrack[]>([]);
@@ -74,11 +76,49 @@ export default function AlbumDetailScreen() {
     loadAndPlay(tracks[randomIndex], tracks, randomIndex);
   };
 
+  const handlePlayTrack = useCallback(
+    (track: MobileTrack) => {
+      const index = tracks.findIndex((t) => t.id === track.id);
+      loadAndPlay(track, tracks, index >= 0 ? index : 0);
+    },
+    [loadAndPlay, tracks]
+  );
+
+  const renderTrackItem = useCallback(
+    ({ item, index }: { item: MobileTrack; index: number }) => (
+      <TrackRow
+        track={item}
+        index={index}
+        showIndex
+        isPlaying={currentTrackId === item.id && isPlaying}
+        isFavorite={favorites.has(item.id)}
+        onPress={handlePlayTrack}
+      />
+    ),
+    [currentTrackId, isPlaying, favorites, handlePlayTrack]
+  );
+
+  const getItemLayout = useCallback(
+    (_: any, index: number) => ({
+      length: 64,
+      offset: 64 * index,
+      index,
+    }),
+    []
+  );
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <FlatList
         data={tracks}
         keyExtractor={(item) => String(item.id)}
+        renderItem={renderTrackItem}
+        getItemLayout={getItemLayout}
+        initialNumToRender={15}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+        removeClippedSubviews={true}
+        updateCellsBatchingPeriod={50}
         contentContainerStyle={{
           paddingBottom: layout.miniPlayerHeight + layout.tabBarHeight + spacing.xl,
         }}
@@ -118,16 +158,6 @@ export default function AlbumDetailScreen() {
             </View>
           </View>
         }
-        renderItem={({ item, index }) => (
-          <TrackRow
-            track={item}
-            index={index}
-            showIndex
-            isPlaying={currentTrack?.id === item.id && isPlaying}
-            isFavorite={favorites.has(item.id)}
-            onPress={(t) => loadAndPlay(t, tracks, index)}
-          />
-        )}
       />
     </SafeAreaView>
   );

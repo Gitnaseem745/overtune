@@ -88,7 +88,10 @@ const DEFAULT_TRACKS: DisplayTrack[] = [];
 export function SleekHomeScreen({ userName: propUserName }: SleekHomeScreenProps = {}) {
   const router = useRouter();
   const db = useDatabase();
-  const { loadAndPlay, currentTrack, isPlaying } = usePlayerStore();
+  const currentTrackId = usePlayerStore((s) => s.currentTrack?.id);
+  const currentTrackTitle = usePlayerStore((s) => s.currentTrack?.title);
+  const isPlaying = usePlayerStore((s) => s.isPlaying);
+  const loadAndPlay = usePlayerStore((s) => s.loadAndPlay);
   const { userName: storeUserName } = useUserStore();
   const { setActiveTab } = useDrawerStore();
   const userName = propUserName || storeUserName;
@@ -617,7 +620,7 @@ export function SleekHomeScreen({ userName: propUserName }: SleekHomeScreenProps
             <View style={styles.trackList}>
               {recentTracks.map((track) => {
                 const isItemPlaying =
-                  (currentTrack?.id === track.id || currentTrack?.title === track.title) &&
+                  (currentTrackId === track.id || currentTrackTitle === track.title) &&
                   isPlaying;
                 return (
                   <SleekTrackRow

@@ -20,6 +20,8 @@
         "UIBackgroundModes": [
           "audio"
         ],
+        "UIFileSharingEnabled": true,
+        "LSSupportsOpeningDocumentsInPlace": true,
         "NSSupportsLiveActivities": true,
         "NSSupportsLiveActivitiesFrequentUpdates": true,
         "NSLocalNetworkUsageDescription": "Overtone uses your local network to sync playlists with the Overtone desktop app on the same Wi-Fi network.",
@@ -83,7 +85,8 @@
         "expo-sqlite",
         {}
       ],
-      "./plugins/withWidgets"
+      "./plugins/withWidgets",
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true

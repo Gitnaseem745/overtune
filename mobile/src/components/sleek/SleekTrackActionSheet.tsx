@@ -75,20 +75,19 @@ export function SleekTrackActionSheet({
   onTrackRemovedFromPlaylist,
 }: SleekTrackActionSheetProps) {
   const db = useDatabase();
-  const {
-    currentTrack,
-    duration: storeDuration,
-    playNext,
-    addToQueue,
-    updateTrack,
-    removeTrack,
-  } = usePlayerStore();
+  const currentTrackId = usePlayerStore((s) => s.currentTrack?.id);
+  const currentTrackDuration = usePlayerStore((s) => s.currentTrack?.duration);
+  const storeDuration = usePlayerStore((s) => s.duration);
+  const playNext = usePlayerStore((s) => s.playNext);
+  const addToQueue = usePlayerStore((s) => s.addToQueue);
+  const updateTrack = usePlayerStore((s) => s.updateTrack);
+  const removeTrack = usePlayerStore((s) => s.removeTrack);
 
   const effectiveDuration =
     track?.duration && track.duration > 0
       ? track.duration
-      : currentTrack && currentTrack.id === track?.id && (currentTrack.duration || storeDuration) > 0
-      ? currentTrack.duration || storeDuration
+      : currentTrackId && currentTrackId === track?.id && ((currentTrackDuration || 0) || storeDuration) > 0
+      ? (currentTrackDuration || storeDuration)
       : 0;
 
   const [currentView, setCurrentView] = useState<SheetView>('menu');
@@ -309,7 +308,8 @@ export function SleekTrackActionSheet({
     try {
       setIsDownloading(true);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      const res = await FileImportService.downloadRemoteTrack(track.fileUri, track.id, track.title);
+      const art = artistName !== 'Unknown Artist' ? artistName : undefined;
+      const res = await FileImportService.downloadRemoteTrack(track.fileUri, track.id, track.title, art, true);
       if (res) {
         let localArtUri: string | undefined = undefined;
         if (track.artworkUri && track.artworkUri.startsWith('http://')) {
@@ -327,7 +327,7 @@ export function SleekTrackActionSheet({
         updateTrack(updated);
         onTrackUpdated?.(updated);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        Alert.alert('Downloaded', `"${track.title}" is now saved on your iPhone for offline listening!`);
+        Alert.alert('Downloaded', `"${track.title}" is now saved in Files app (On My iPhone > Overtone > Music) for offline playback!`);
       } else {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         Alert.alert('Download Failed', 'Could not download track. Make sure Overtone Desktop is running on the same Wi-Fi.');
@@ -336,6 +336,48 @@ export function SleekTrackActionSheet({
       Alert.alert('Download Error', err?.message || 'Failed to download track');
     } finally {
       setIsDownloading(false);
+    }
+  };
+
+  // 10b. Save to Files App or Open in Other Apps
+  const handleSaveToFiles = async () => {
+    if (!track || !db.isReady) return;
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      let targetUri = track.fileUri;
+
+      // If it's a remote stream, download it first to Files app
+      if (isStreamTrack || !targetUri || targetUri.startsWith('http://')) {
+        setIsDownloading(true);
+        const art = artistName !== 'Unknown Artist' ? artistName : undefined;
+        const res = await FileImportService.downloadRemoteTrack(track.fileUri, track.id, track.title, art, true);
+        setIsDownloading(false);
+        if (res) {
+          db.tracks.updateFileUri(track.id, res.localUri, 'mp3', res.fileSize);
+          const updated: MobileTrack = {
+            ...track,
+            fileUri: res.localUri,
+            format: 'mp3',
+            fileSize: res.fileSize,
+          };
+          updateTrack(updated);
+          onTrackUpdated?.(updated);
+          targetUri = res.localUri;
+        } else {
+          Alert.alert('Download Failed', 'Could not fetch song from desktop to save to Files.');
+          return;
+        }
+      }
+
+      if (targetUri) {
+        const shared = await FileImportService.shareOrExportTrack(targetUri, track.title);
+        if (shared) {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
+      }
+    } catch (err: any) {
+      setIsDownloading(false);
+      Alert.alert('Error', err?.message || 'Failed to save song to Files');
     }
   };
 
@@ -542,6 +584,20 @@ export function SleekTrackActionSheet({
                     </View>
                   </View>
                 )}
+
+                {/* Store in Files App / Share */}
+                <Pressable onPress={handleSaveToFiles} disabled={isDownloading} style={styles.menuItemRow}>
+                  <View style={[styles.menuItemIconBox, { backgroundColor: '#F0FDF4' }]}>
+                    <SleekShareIcon size={18} color="#16A34A" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.menuItemTitle}>
+                      {isDownloading ? 'Saving to Files...' : 'Store in Files App / Share'}
+                    </Text>
+                    <Text style={styles.menuItemDesc}>Open in iOS Files, VLC, GarageBand, or other apps</Text>
+                  </View>
+                  <SleekChevronRightIcon size={16} color="#B5AC98" />
+                </Pressable>
 
                 {/* Send to Desktop */}
                 <Pressable onPress={handleSendToDesktop} disabled={isSending} style={styles.menuItemRow}>

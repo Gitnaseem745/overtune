@@ -10,7 +10,6 @@ import { View, Text, StyleSheet, Pressable } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Artwork } from './Artwork';
 import { useTheme } from '../hooks/useTheme';
-import { usePlayerStore } from '../store/usePlayerStore';
 import { spacing, artworkSizes, MIN_TOUCH_TARGET } from '../design/spacing';
 import { typography } from '../design/typography';
 import { formatDuration } from '../services/files/FileImportService';
@@ -27,7 +26,7 @@ interface TrackRowProps {
   getArtistName?: (id: number | null) => string;
 }
 
-export function TrackRow({
+export const TrackRow = React.memo(function TrackRow({
   track,
   index,
   showIndex,
@@ -38,16 +37,8 @@ export function TrackRow({
   getArtistName,
 }: TrackRowProps) {
   const { colors } = useTheme();
-  const currentTrack = usePlayerStore((s) => s.currentTrack);
-  const activeDuration = usePlayerStore((s) => s.duration);
   const artistName = getArtistName?.(track.artistId) ?? 'Unknown Artist';
-
-  const effectiveDur =
-    track.duration > 0
-      ? track.duration
-      : currentTrack?.id === track.id && (currentTrack.duration || activeDuration) > 0
-      ? currentTrack.duration || activeDuration
-      : 0;
+  const effectiveDur = track.duration > 0 ? track.duration : 0;
 
   const handleLongPress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -108,7 +99,7 @@ export function TrackRow({
       </View>
     </Pressable>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {

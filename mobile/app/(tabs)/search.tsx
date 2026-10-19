@@ -29,7 +29,9 @@ export default function SearchScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const db = useDatabase();
-  const { loadAndPlay, currentTrack, isPlaying } = usePlayerStore();
+  const currentTrackId = usePlayerStore((s) => s.currentTrack?.id);
+  const isPlaying = usePlayerStore((s) => s.isPlaying);
+  const loadAndPlay = usePlayerStore((s) => s.loadAndPlay);
 
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResults>({
@@ -127,7 +129,7 @@ export default function SearchScreen() {
                 <TrackRow
                   key={`track_${track.id}`}
                   track={track}
-                  isPlaying={currentTrack?.id === track.id && isPlaying}
+                  isPlaying={currentTrackId === track.id && isPlaying}
                   isFavorite={favorites.has(track.id)}
                   getArtistName={getArtistName}
                   onPress={(t) => loadAndPlay(t, results.tracks, index)}

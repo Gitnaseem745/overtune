@@ -5,7 +5,7 @@
  * jumping to tracks, and clearing the queue.
  */
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
   View,
   Text,
@@ -36,108 +36,127 @@ export function QueueSheet({ visible, onClose }: QueueSheetProps) {
   const { colors } = useTheme();
   const db = useDatabase();
   const insets = useSafeAreaInsets();
-  const {
-    queue,
-    queueIndex,
-    currentTrack,
-    loadAndPlay,
-    removeFromQueue,
-    clearQueue,
-  } = usePlayerStore();
+  const queue = usePlayerStore((s) => s.queue);
+  const queueIndex = usePlayerStore((s) => s.queueIndex);
+  const currentTrackDuration = usePlayerStore((s) => s.currentTrack?.duration);
+  const loadAndPlay = usePlayerStore((s) => s.loadAndPlay);
+  const removeFromQueue = usePlayerStore((s) => s.removeFromQueue);
+  const clearQueue = usePlayerStore((s) => s.clearQueue);
 
   // Generous top space to ensure modal has breathing room and avoids colliding with top notch or sheet boundary
   const topPadding = Math.max(insets.top > 0 ? insets.top + 8 : 26, 26);
 
-  const handleTrackPress = (track: MobileTrack, index: number) => {
-    Haptics.selectionAsync();
-    loadAndPlay(track, queue, index);
-  };
+  const handleTrackPress = useCallback(
+    (track: MobileTrack, index: number) => {
+      Haptics.selectionAsync();
+      loadAndPlay(track, queue, index);
+    },
+    [loadAndPlay, queue]
+  );
 
-  const handleRemove = (index: number) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    removeFromQueue(index);
-  };
+  const handleRemove = useCallback(
+    (index: number) => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      removeFromQueue(index);
+    },
+    [removeFromQueue]
+  );
 
-  const renderTrackItem = ({ item, index }: { item: MobileTrack; index: number }) => {
-    const isCurrent = index === queueIndex;
-    const artistName = item.artistId && db.isReady ? db.artists.getNameById(item.artistId) : null;
+  const renderTrackItem = useCallback(
+    ({ item, index }: { item: MobileTrack; index: number }) => {
+      const isCurrent = index === queueIndex;
+      const artistName = item.artistId && db.isReady ? db.artists.getNameById(item.artistId) : null;
 
-    return (
-      <Pressable
-        onPress={() => handleTrackPress(item, index)}
-        style={({ pressed }) => [
-          styles.row,
-          isCurrent && {
-            backgroundColor: 'rgba(249, 168, 38, 0.08)',
-            borderColor: 'rgba(249, 168, 38, 0.22)',
-          },
-          pressed && {
-            backgroundColor: isCurrent ? 'rgba(249, 168, 38, 0.14)' : colors.surfaceOverlay,
-          },
-        ]}
-        accessibilityRole="button"
-        accessibilityLabel={`${item.title}, ${isCurrent ? 'now playing' : ''}`}
-      >
-        <View style={styles.indexColumn}>
-          {isCurrent ? (
-            <View style={[styles.activeIndicator, { backgroundColor: colors.accentSubtle }]}>
-              <SleekPlayIcon size={11} color={colors.accent} />
-            </View>
-          ) : (
-            <Text style={[styles.indexText, { color: colors.textTertiary }]}>
-              {index + 1}
-            </Text>
-          )}
-        </View>
+      const itemDuration =
+        item.duration > 0
+          ? item.duration
+          : isCurrent && currentTrackDuration && currentTrackDuration > 0
+          ? currentTrackDuration
+          : 0;
+      const durText = itemDuration > 0 ? formatDuration(itemDuration) : '';
+      const subtitleText = artistName && durText ? `${artistName} · ${durText}` : artistName || durText;
 
-        <Artwork uri={item.artworkUri} size={artworkSizes.listRow} borderRadius={radii.sm} />
-
-        <View style={styles.trackInfo}>
-          <Text
-            style={[
-              styles.trackTitle,
-              { color: isCurrent ? colors.accent : colors.textPrimary },
-            ]}
-            numberOfLines={1}
-          >
-            {item.title}
-          </Text>
-          <Text
-            style={[styles.trackSubtitle, { color: colors.textSecondary }]}
-            numberOfLines={1}
-          >
-            {(() => {
-              const itemDuration =
-                item.duration > 0
-                  ? item.duration
-                  : isCurrent && currentTrack?.duration && currentTrack.duration > 0
-                  ? currentTrack.duration
-                  : 0;
-              const durText = itemDuration > 0 ? formatDuration(itemDuration) : '';
-              if (artistName && durText) return `${artistName} · ${durText}`;
-              if (artistName) return artistName;
-              return durText;
-            })()}
-          </Text>
-        </View>
-
+      return (
         <Pressable
-          onPress={() => handleRemove(index)}
-          hitSlop={12}
+          onPress={() => handleTrackPress(item, index)}
           style={({ pressed }) => [
-            styles.removeBtn,
-            pressed && { opacity: 0.6 },
+            styles.row,
+            isCurrent && {
+              backgroundColor: 'rgba(249, 168, 38, 0.08)',
+              borderColor: 'rgba(249, 168, 38, 0.22)',
+            },
+            pressed && {
+              backgroundColor: isCurrent ? 'rgba(249, 168, 38, 0.14)' : colors.surfaceOverlay,
+            },
           ]}
           accessibilityRole="button"
-          accessibilityLabel={`Remove ${item.title} from queue`}
+          accessibilityLabel={`${item.title}, ${isCurrent ? 'now playing' : ''}`}
         >
-          <View style={[styles.removeIconCircle, { backgroundColor: colors.surfaceOverlay }]}>
-            <SleekCloseIcon size={11} color={colors.textTertiary} />
+          <View style={styles.indexColumn}>
+            {isCurrent ? (
+              <View style={[styles.activeIndicator, { backgroundColor: colors.accentSubtle }]}>
+                <SleekPlayIcon size={11} color={colors.accent} />
+              </View>
+            ) : (
+              <Text style={[styles.indexText, { color: colors.textTertiary }]}>
+                {index + 1}
+              </Text>
+            )}
           </View>
+
+          <Artwork uri={item.artworkUri} size={artworkSizes.listRow} borderRadius={radii.sm} />
+
+          <View style={styles.trackInfo}>
+            <Text
+              style={[
+                styles.trackTitle,
+                { color: isCurrent ? colors.accent : colors.textPrimary },
+              ]}
+              numberOfLines={1}
+            >
+              {item.title}
+            </Text>
+            {subtitleText ? (
+              <Text
+                style={[styles.trackSubtitle, { color: colors.textSecondary }]}
+                numberOfLines={1}
+              >
+                {subtitleText}
+              </Text>
+            ) : null}
+          </View>
+
+          <Pressable
+            onPress={(e) => {
+              e.stopPropagation();
+              handleRemove(index);
+            }}
+            hitSlop={12}
+            style={({ pressed }) => [
+              styles.removeBtn,
+              pressed && { opacity: 0.6 },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={`Remove ${item.title} from queue`}
+          >
+            <View style={[styles.removeIconCircle, { backgroundColor: colors.surfaceOverlay }]}>
+              <SleekCloseIcon size={11} color={colors.textTertiary} />
+            </View>
+          </Pressable>
         </Pressable>
-      </Pressable>
-    );
-  };
+      );
+    },
+    [queueIndex, db.isReady, colors, handleTrackPress, handleRemove, currentTrackDuration]
+  );
+
+  const getItemLayout = useCallback(
+    (_: any, index: number) => ({
+      length: 64,
+      offset: 64 * index,
+      index,
+    }),
+    []
+  );
 
   return (
     <Modal
@@ -225,6 +244,12 @@ export function QueueSheet({ visible, onClose }: QueueSheetProps) {
             data={queue}
             keyExtractor={(item: MobileTrack, index: number) => `${item.id}_${index}`}
             renderItem={renderTrackItem}
+            getItemLayout={getItemLayout}
+            initialNumToRender={15}
+            maxToRenderPerBatch={10}
+            windowSize={5}
+            removeClippedSubviews={true}
+            updateCellsBatchingPeriod={50}
             contentContainerStyle={[
               styles.listContent,
               { paddingBottom: Math.max(insets.bottom + 28, 44) },

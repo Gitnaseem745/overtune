@@ -4,7 +4,7 @@
  * Displays artist information, discography/albums carousel, and full track list.
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -31,7 +31,9 @@ export default function ArtistDetailScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const db = useDatabase();
-  const { loadAndPlay, currentTrack, isPlaying } = usePlayerStore();
+  const currentTrackId = usePlayerStore((s) => s.currentTrack?.id);
+  const isPlaying = usePlayerStore((s) => s.isPlaying);
+  const loadAndPlay = usePlayerStore((s) => s.loadAndPlay);
 
   const [artist, setArtist] = useState<MobileArtist | null>(null);
   const [albums, setAlbums] = useState<MobileAlbum[]>([]);
@@ -74,11 +76,50 @@ export default function ArtistDetailScreen() {
     loadAndPlay(tracks[randomIndex], tracks, randomIndex);
   };
 
+  const handlePlayTrack = useCallback(
+    (track: MobileTrack) => {
+      const index = tracks.findIndex((t) => t.id === track.id);
+      loadAndPlay(track, tracks, index >= 0 ? index : 0);
+    },
+    [loadAndPlay, tracks]
+  );
+
+  const getArtistName = useCallback(() => artist.name, [artist.name]);
+
+  const renderTrackItem = useCallback(
+    ({ item }: { item: MobileTrack }) => (
+      <TrackRow
+        track={item}
+        isPlaying={currentTrackId === item.id && isPlaying}
+        isFavorite={favorites.has(item.id)}
+        getArtistName={getArtistName}
+        onPress={handlePlayTrack}
+      />
+    ),
+    [currentTrackId, isPlaying, favorites, getArtistName, handlePlayTrack]
+  );
+
+  const getItemLayout = useCallback(
+    (_: any, index: number) => ({
+      length: 64,
+      offset: 64 * index,
+      index,
+    }),
+    []
+  );
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <FlatList
         data={tracks}
         keyExtractor={(item) => String(item.id)}
+        renderItem={renderTrackItem}
+        getItemLayout={getItemLayout}
+        initialNumToRender={15}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+        removeClippedSubviews={true}
+        updateCellsBatchingPeriod={50}
         contentContainerStyle={{
           paddingBottom: layout.miniPlayerHeight + layout.tabBarHeight + spacing.xl,
         }}
@@ -141,15 +182,6 @@ export default function ArtistDetailScreen() {
             </Text>
           </View>
         }
-        renderItem={({ item, index }: { item: MobileTrack; index: number }) => (
-          <TrackRow
-            track={item}
-            isPlaying={currentTrack?.id === item.id && isPlaying}
-            isFavorite={favorites.has(item.id)}
-            getArtistName={() => artist.name}
-            onPress={(t: MobileTrack) => loadAndPlay(t, tracks, index)}
-          />
-        )}
       />
     </SafeAreaView>
   );

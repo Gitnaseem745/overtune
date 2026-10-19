@@ -18,15 +18,13 @@ import { useRouter } from 'expo-router';
 export function MiniPlayer() {
   const { colors } = useTheme();
   const router = useRouter();
-  const {
-    currentTrack,
-    isPlaying,
-    isMiniPlayerVisible,
-    isNowPlayingOpen,
-    togglePlayPause,
-    currentTime,
-    duration,
-  } = usePlayerStore();
+  const currentTrack = usePlayerStore((s) => s.currentTrack);
+  const isPlaying = usePlayerStore((s) => s.isPlaying);
+  const isMiniPlayerVisible = usePlayerStore((s) => s.isMiniPlayerVisible);
+  const isNowPlayingOpen = usePlayerStore((s) => s.isNowPlayingOpen);
+  const togglePlayPause = usePlayerStore((s) => s.togglePlayPause);
+  const currentTime = usePlayerStore((s) => s.currentTime);
+  const duration = usePlayerStore((s) => s.duration);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
 

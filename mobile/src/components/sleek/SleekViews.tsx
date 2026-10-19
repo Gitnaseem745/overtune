@@ -13,6 +13,7 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  FlatList,
   Pressable,
   TextInput,
   Switch,
@@ -54,10 +55,45 @@ import { SyncService, type DesktopPlaylistInfo } from '../../services/sync/SyncS
 import { sleekTokens } from '../../design/colors';
 import type { MobileTrack, MobilePlaylist, SearchResults, PairedDevice, SyncPlaylistTrack } from '../../domain/models';
 
+interface SleekTrackRowItemProps {
+  track: MobileTrack;
+  artistSubtitle: string;
+  isPlaying: boolean;
+  onPress: (track: MobileTrack) => void;
+  onMorePress: (track: MobileTrack) => void;
+}
+
+const SleekTrackRowItem = React.memo(function SleekTrackRowItem({
+  track,
+  artistSubtitle,
+  isPlaying,
+  onPress,
+  onMorePress,
+}: SleekTrackRowItemProps) {
+  const handlePress = useCallback(() => onPress(track), [onPress, track]);
+  const handleMore = useCallback(() => onMorePress(track), [onMorePress, track]);
+
+  return (
+    <View style={{ marginBottom: 8 }}>
+      <SleekTrackRow
+        title={track.title}
+        artistSubtitle={artistSubtitle}
+        duration={track.duration > 0 ? track.duration : 0}
+        artworkUri={track.artworkUri}
+        isPlaying={isPlaying}
+        onPress={handlePress}
+        onMorePress={handleMore}
+      />
+    </View>
+  );
+});
+
 // ── 0. All Songs View (Desktop Overtone SongsView for iOS) ─────────────
 export function SleekSongsView() {
   const db = useDatabase();
-  const { loadAndPlay, currentTrack, isPlaying, duration } = usePlayerStore();
+  const currentTrackId = usePlayerStore((s) => s.currentTrack?.id);
+  const isPlaying = usePlayerStore((s) => s.isPlaying);
+  const loadAndPlay = usePlayerStore((s) => s.loadAndPlay);
   const { setActiveTab } = useDrawerStore();
   const [tracks, setTracks] = useState<MobileTrack[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -131,155 +167,192 @@ export function SleekSongsView() {
     }
   };
 
+  const handlePlayTrack = useCallback(
+    (track: MobileTrack) => {
+      const idx = filteredTracks.findIndex((t) => t.id === track.id);
+      loadAndPlay(track, filteredTracks, idx >= 0 ? idx : 0);
+    },
+    [loadAndPlay, filteredTracks]
+  );
+
+  const handleMorePress = useCallback((track: MobileTrack) => {
+    setActionTrack(track);
+  }, []);
+
+  const renderTrackItem = useCallback(
+    ({ item }: { item: MobileTrack }) => {
+      const isPlayingItem = currentTrackId === item.id && isPlaying;
+      const art = item.artistId && db.isReady ? db.artists.getNameById(item.artistId) : 'Unknown Artist';
+      const alb = item.albumId && db.isReady ? db.albums.getTitleById(item.albumId) : '';
+      const subtitle = alb ? `${art} · ${alb}` : art;
+
+      return (
+        <SleekTrackRowItem
+          track={item}
+          artistSubtitle={subtitle}
+          isPlaying={isPlayingItem}
+          onPress={handlePlayTrack}
+          onMorePress={handleMorePress}
+        />
+      );
+    },
+    [currentTrackId, isPlaying, db.isReady, handlePlayTrack, handleMorePress]
+  );
+
+  const getItemLayout = useCallback(
+    (_: any, index: number) => ({
+      length: 68,
+      offset: 68 * index,
+      index,
+    }),
+    []
+  );
+
+  const listHeader = useMemo(
+    () => (
+      <View style={{ marginBottom: 10 }}>
+        <View style={styles.handleContainer}><View style={styles.handlePill} /></View>
+
+        {/* Section Header with Stats & Actions */}
+        <View style={styles.sectionHeaderRow}>
+          <View>
+            <Text style={styles.sectionTitle}>
+              All Tracks ({filteredTracks.length})
+            </Text>
+            <Text style={styles.songsSubtitle}>
+              {formatTotalDuration(totalDuration)} total listening time
+            </Text>
+          </View>
+
+          {filteredTracks.length > 0 && (
+            <View style={styles.headerActionBtns}>
+              <Pressable
+                onPress={handlePlayAll}
+                style={styles.actionPillBtn}
+                accessibilityRole="button"
+                accessibilityLabel="Play all songs"
+              >
+                <SleekPlayIcon size={12} color="#FFFFFF" />
+                <Text style={styles.actionPillBtnText}>Play</Text>
+              </Pressable>
+              <Pressable
+                onPress={handleShuffleAll}
+                style={[styles.actionPillBtn, { backgroundColor: '#FEF3C7' }]}
+                accessibilityRole="button"
+                accessibilityLabel="Shuffle all songs"
+              >
+                <SleekRepeatIcon size={13} color="#92400E" />
+                <Text style={[styles.actionPillBtnText, { color: '#92400E' }]}>Shuffle</Text>
+              </Pressable>
+            </View>
+          )}
+        </View>
+
+        {/* Search Filter Bar */}
+        <View style={[styles.searchBar, { marginTop: 12 }]}>
+          <SleekSearchIcon size={17} color="#968D7B" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Filter songs, artists, albums..."
+            placeholderTextColor="#968D7B"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            returnKeyType="done"
+          />
+          {searchQuery.length > 0 && (
+            <Pressable onPress={() => setSearchQuery('')} hitSlop={8}>
+              <SleekCloseIcon size={15} color="#968D7B" />
+            </Pressable>
+          )}
+        </View>
+
+        {/* Sort Chips */}
+        <View style={styles.sortChipsRow}>
+          {(
+            [
+              { id: 'title', label: 'Title' },
+              { id: 'artist', label: 'Artist' },
+              { id: 'recent', label: 'Recent' },
+              { id: 'duration', label: 'Duration' },
+            ] as const
+          ).map((chip) => {
+            const isSelected = sortBy === chip.id;
+            return (
+              <Pressable
+                key={chip.id}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setSortBy(chip.id);
+                }}
+                style={[
+                  styles.sortChip,
+                  isSelected && styles.sortChipActive,
+                ]}
+              >
+                <Text style={[styles.sortChipText, isSelected && styles.sortChipTextActive]}>
+                  {chip.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        {/* Quick Import Banner */}
+        <Pressable
+          onPress={handleQuickImport}
+          disabled={isImporting}
+          style={styles.importBanner}
+        >
+          <View style={styles.importIconBadge}>
+            <SleekImportIcon size={19} color="#D97706" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.importBannerTitle}>
+              {isImporting ? 'Importing Audio Files...' : 'Import Audio Files'}
+            </Text>
+            <Text style={styles.importBannerSubtitle}>
+              Add .mp3, .flac, .m4a, or .wav from Files
+            </Text>
+          </View>
+          <SleekChevronRightIcon size={16} color="#B5AC98" />
+        </Pressable>
+      </View>
+    ),
+    [filteredTracks.length, totalDuration, searchQuery, sortBy, isImporting]
+  );
+
   return (
     <View style={styles.container}>
       <SleekHeader greeting="All Songs" name="Library" />
 
       <View style={styles.sheetContainer}>
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-          <View style={styles.handleContainer}><View style={styles.handlePill} /></View>
-
-          {/* Section Header with Stats & Actions */}
-          <View style={styles.sectionHeaderRow}>
-            <View>
-              <Text style={styles.sectionTitle}>
-                All Tracks ({filteredTracks.length})
-              </Text>
-              <Text style={styles.songsSubtitle}>
-                {formatTotalDuration(totalDuration)} total listening time
-              </Text>
-            </View>
-
-            {filteredTracks.length > 0 && (
-              <View style={styles.headerActionBtns}>
-                <Pressable
-                  onPress={handlePlayAll}
-                  style={styles.actionPillBtn}
-                  accessibilityRole="button"
-                  accessibilityLabel="Play all songs"
-                >
-                  <SleekPlayIcon size={12} color="#FFFFFF" />
-                  <Text style={styles.actionPillBtnText}>Play</Text>
-                </Pressable>
-                <Pressable
-                  onPress={handleShuffleAll}
-                  style={[styles.actionPillBtn, { backgroundColor: '#FEF3C7' }]}
-                  accessibilityRole="button"
-                  accessibilityLabel="Shuffle all songs"
-                >
-                  <SleekRepeatIcon size={13} color="#92400E" />
-                  <Text style={[styles.actionPillBtnText, { color: '#92400E' }]}>Shuffle</Text>
-                </Pressable>
-              </View>
-            )}
-          </View>
-
-          {/* Search Filter Bar */}
-          <View style={[styles.searchBar, { marginTop: 12 }]}>
-            <SleekSearchIcon size={17} color="#968D7B" />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Filter songs, artists, albums..."
-              placeholderTextColor="#968D7B"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              returnKeyType="done"
+        <FlatList
+          data={filteredTracks}
+          keyExtractor={(item) => String(item.id)}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+          ListHeaderComponent={listHeader}
+          renderItem={renderTrackItem}
+          getItemLayout={getItemLayout}
+          initialNumToRender={15}
+          maxToRenderPerBatch={10}
+          windowSize={5}
+          removeClippedSubviews={true}
+          updateCellsBatchingPeriod={50}
+          ListEmptyComponent={
+            <SleekEmptyState
+              iconType="music"
+              title={tracks.length === 0 ? 'No Songs Yet' : 'No Matching Songs'}
+              subtitle={
+                tracks.length === 0
+                  ? 'Import audio files from your iPhone or sync wirelessly from Overtone Desktop.'
+                  : `No songs match "${searchQuery}". Clear search or try another query.`
+              }
+              actionLabel={tracks.length === 0 ? 'Import Audio Files' : 'Clear Search'}
+              onAction={tracks.length === 0 ? handleQuickImport : () => setSearchQuery('')}
             />
-            {searchQuery.length > 0 && (
-              <Pressable onPress={() => setSearchQuery('')} hitSlop={8}>
-                <SleekCloseIcon size={15} color="#968D7B" />
-              </Pressable>
-            )}
-          </View>
-
-          {/* Sort Chips */}
-          <View style={styles.sortChipsRow}>
-            {(
-              [
-                { id: 'title', label: 'Title' },
-                { id: 'artist', label: 'Artist' },
-                { id: 'recent', label: 'Recent' },
-                { id: 'duration', label: 'Duration' },
-              ] as const
-            ).map((chip) => {
-              const isSelected = sortBy === chip.id;
-              return (
-                <Pressable
-                  key={chip.id}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    setSortBy(chip.id);
-                  }}
-                  style={[
-                    styles.sortChip,
-                    isSelected && styles.sortChipActive,
-                  ]}
-                >
-                  <Text style={[styles.sortChipText, isSelected && styles.sortChipTextActive]}>
-                    {chip.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-
-          {/* Quick Import Banner */}
-          <Pressable
-            onPress={handleQuickImport}
-            disabled={isImporting}
-            style={styles.importBanner}
-          >
-            <View style={styles.importIconBadge}>
-              <SleekImportIcon size={19} color="#D97706" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.importBannerTitle}>
-                {isImporting ? 'Importing Audio Files...' : 'Import Audio Files'}
-              </Text>
-              <Text style={styles.importBannerSubtitle}>
-                Add .mp3, .flac, .m4a, or .wav from Files
-              </Text>
-            </View>
-            <SleekChevronRightIcon size={16} color="#B5AC98" />
-          </Pressable>
-
-          {/* Tracks List */}
-          <View style={{ gap: 8, marginTop: 10 }}>
-            {filteredTracks.length > 0 ? (
-              filteredTracks.map((track, index) => {
-                const isPlayingItem = currentTrack?.id === track.id && isPlaying;
-                const art = track.artistId && db.isReady ? db.artists.getNameById(track.artistId) : 'Unknown Artist';
-                const alb = track.albumId && db.isReady ? db.albums.getTitleById(track.albumId) : '';
-                const subtitle = alb ? `${art} · ${alb}` : art;
-
-                return (
-                  <SleekTrackRow
-                    key={track.id}
-                    title={track.title}
-                    artistSubtitle={subtitle}
-                    duration={track.duration > 0 ? track.duration : (currentTrack?.id === track.id && (currentTrack.duration || duration) > 0 ? (currentTrack.duration || duration) : 0)}
-                    artworkUri={track.artworkUri}
-                    isPlaying={isPlayingItem}
-                    onPress={() => loadAndPlay(track, filteredTracks, index)}
-                    onMorePress={() => setActionTrack(track)}
-                  />
-                );
-              })
-            ) : (
-              <SleekEmptyState
-                iconType="music"
-                title={tracks.length === 0 ? 'No Songs Yet' : 'No Matching Songs'}
-                subtitle={
-                  tracks.length === 0
-                    ? 'Import audio files from your iPhone or sync wirelessly from Overtone Desktop.'
-                    : `No songs match "${searchQuery}". Clear search or try another query.`
-                }
-                actionLabel={tracks.length === 0 ? 'Import Audio Files' : 'Clear Search'}
-                onAction={tracks.length === 0 ? handleQuickImport : () => setSearchQuery('')}
-              />
-            )}
-          </View>
-        </ScrollView>
+          }
+        />
       </View>
 
       <SleekTrackActionSheet
@@ -296,7 +369,9 @@ export function SleekSongsView() {
 // ── 1. Favorites View ──────────────────────────────────────────────────
 export function SleekFavoritesView() {
   const db = useDatabase();
-  const { loadAndPlay, currentTrack, isPlaying, duration } = usePlayerStore();
+  const currentTrackId = usePlayerStore((s) => s.currentTrack?.id);
+  const isPlaying = usePlayerStore((s) => s.isPlaying);
+  const loadAndPlay = usePlayerStore((s) => s.loadAndPlay);
   const { setActiveTab } = useDrawerStore();
   const [favoriteTracks, setFavoriteTracks] = useState<MobileTrack[]>([]);
   const [actionTrack, setActionTrack] = useState<MobileTrack | null>(null);
@@ -315,80 +390,123 @@ export function SleekFavoritesView() {
     loadFavorites();
   }, [loadFavorites]);
 
-  const handlePlayAll = () => {
+  const handlePlayTrack = useCallback(
+    (track: MobileTrack) => {
+      const idx = favoriteTracks.findIndex((t) => t.id === track.id);
+      loadAndPlay(track, favoriteTracks, idx >= 0 ? idx : 0);
+    },
+    [loadAndPlay, favoriteTracks]
+  );
+
+  const handleMorePress = useCallback((track: MobileTrack) => {
+    setActionTrack(track);
+  }, []);
+
+  const renderFavoriteItem = useCallback(
+    ({ item }: { item: MobileTrack }) => {
+      const isPlayingItem = currentTrackId === item.id && isPlaying;
+      const artist = item.artistId && db.isReady ? db.artists.getNameById(item.artistId) : 'Unknown Artist';
+
+      return (
+        <SleekTrackRowItem
+          track={item}
+          artistSubtitle={artist}
+          isPlaying={isPlayingItem}
+          onPress={handlePlayTrack}
+          onMorePress={handleMorePress}
+        />
+      );
+    },
+    [currentTrackId, isPlaying, db.isReady, handlePlayTrack, handleMorePress]
+  );
+
+  const getItemLayout = useCallback(
+    (_: any, index: number) => ({
+      length: 68,
+      offset: 68 * index,
+      index,
+    }),
+    []
+  );
+
+  const handlePlayAll = useCallback(() => {
     if (favoriteTracks.length === 0) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     loadAndPlay(favoriteTracks[0], favoriteTracks, 0);
-  };
+  }, [favoriteTracks, loadAndPlay]);
 
-  const handleShuffleAll = () => {
+  const handleShuffleAll = useCallback(() => {
     if (favoriteTracks.length === 0) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const randomIndex = Math.floor(Math.random() * favoriteTracks.length);
     loadAndPlay(favoriteTracks[randomIndex], favoriteTracks, randomIndex);
-  };
+  }, [favoriteTracks, loadAndPlay]);
+
+  const favoritesHeader = useMemo(
+    () => (
+      <View style={{ marginBottom: 16 }}>
+        <View style={styles.handleContainer}><View style={styles.handlePill} /></View>
+        
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionTitle}>
+            Liked Songs ({favoriteTracks.length})
+          </Text>
+          {favoriteTracks.length > 0 && (
+            <View style={styles.headerActionBtns}>
+              <Pressable
+                onPress={handlePlayAll}
+                style={styles.actionPillBtn}
+                accessibilityRole="button"
+                accessibilityLabel="Play all favorites"
+              >
+                <SleekPlayIcon size={12} color="#FFFFFF" />
+                <Text style={styles.actionPillBtnText}>Play</Text>
+              </Pressable>
+              <Pressable
+                onPress={handleShuffleAll}
+                style={[styles.actionPillBtn, { backgroundColor: '#FEF3C7' }]}
+                accessibilityRole="button"
+                accessibilityLabel="Shuffle all favorites"
+              >
+                <SleekRepeatIcon size={13} color="#92400E" />
+                <Text style={[styles.actionPillBtnText, { color: '#92400E' }]}>Shuffle</Text>
+              </Pressable>
+            </View>
+          )}
+        </View>
+      </View>
+    ),
+    [favoriteTracks.length]
+  );
 
   return (
     <View style={styles.container}>
       <SleekHeader greeting="Your Loved Tracks" name="Favorites" />
 
       <View style={styles.sheetContainer}>
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-          <View style={styles.handleContainer}><View style={styles.handlePill} /></View>
-          
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionTitle}>
-              Liked Songs ({favoriteTracks.length})
-            </Text>
-            {favoriteTracks.length > 0 && (
-              <View style={styles.headerActionBtns}>
-                <Pressable
-                  onPress={handlePlayAll}
-                  style={styles.actionPillBtn}
-                  accessibilityRole="button"
-                  accessibilityLabel="Play all favorites"
-                >
-                  <SleekPlayIcon size={12} color="#FFFFFF" />
-                  <Text style={styles.actionPillBtnText}>Play</Text>
-                </Pressable>
-                <Pressable
-                  onPress={handleShuffleAll}
-                  style={[styles.actionPillBtn, { backgroundColor: '#FEF3C7' }]}
-                  accessibilityRole="button"
-                  accessibilityLabel="Shuffle all favorites"
-                >
-                  <SleekRepeatIcon size={13} color="#92400E" />
-                  <Text style={[styles.actionPillBtnText, { color: '#92400E' }]}>Shuffle</Text>
-                </Pressable>
-              </View>
-            )}
-          </View>
-
-          <View style={{ gap: 8, marginTop: 16 }}>
-            {favoriteTracks.length > 0 ? (
-              favoriteTracks.map((track, index) => (
-                <SleekTrackRow
-                  key={track.id}
-                  title={track.title}
-                  artistSubtitle={track.artistId ? db.artists.getNameById(track.artistId) : 'Unknown Artist'}
-                  duration={track.duration > 0 ? track.duration : (currentTrack?.id === track.id && (currentTrack.duration || duration) > 0 ? (currentTrack.duration || duration) : 0)}
-                  artworkUri={track.artworkUri}
-                  isPlaying={currentTrack?.id === track.id && isPlaying}
-                  onPress={() => loadAndPlay(track, favoriteTracks, index)}
-                  onMorePress={() => setActionTrack(track)}
-                />
-              ))
-            ) : (
-              <SleekEmptyState
-                iconType="heart"
-                title="No Favorites Yet"
-                subtitle="Tap the heart icon on any song while listening to add it to your personal favorites collection."
-                actionLabel="Browse Music"
-                onAction={() => setActiveTab('home')}
-              />
-            )}
-          </View>
-        </ScrollView>
+        <FlatList
+          data={favoriteTracks}
+          keyExtractor={(item) => String(item.id)}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+          ListHeaderComponent={favoritesHeader}
+          renderItem={renderFavoriteItem}
+          getItemLayout={getItemLayout}
+          initialNumToRender={15}
+          maxToRenderPerBatch={10}
+          windowSize={5}
+          removeClippedSubviews={true}
+          updateCellsBatchingPeriod={50}
+          ListEmptyComponent={
+            <SleekEmptyState
+              iconType="heart"
+              title="No Favorites Yet"
+              subtitle="Tap the heart icon on any song while listening to add it to your personal favorites collection."
+              actionLabel="Browse Music"
+              onAction={() => setActiveTab('home')}
+            />
+          }
+        />
       </View>
 
       <SleekTrackActionSheet
@@ -560,7 +678,9 @@ export function SleekPlaylistsView() {
 export function SleekSearchView() {
   const router = useRouter();
   const db = useDatabase();
-  const { loadAndPlay, currentTrack, isPlaying, duration } = usePlayerStore();
+  const currentTrackId = usePlayerStore((s) => s.currentTrack?.id);
+  const isPlaying = usePlayerStore((s) => s.isPlaying);
+  const loadAndPlay = usePlayerStore((s) => s.loadAndPlay);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<'all' | 'songs' | 'artists' | 'albums' | 'playlists'>('all');
   const [actionTrack, setActionTrack] = useState<MobileTrack | null>(null);
@@ -661,9 +781,9 @@ export function SleekSearchView() {
                           key={track.id}
                           title={track.title}
                           artistSubtitle={track.artistId ? db.artists.getNameById(track.artistId) : 'Unknown Artist'}
-                          duration={track.duration > 0 ? track.duration : (currentTrack?.id === track.id && (currentTrack.duration || duration) > 0 ? (currentTrack.duration || duration) : 0)}
+                          duration={track.duration > 0 ? track.duration : 0}
                           artworkUri={track.artworkUri}
-                          isPlaying={currentTrack?.id === track.id && isPlaying}
+                          isPlaying={currentTrackId === track.id && isPlaying}
                           onPress={() => loadAndPlay(track, results.tracks, i)}
                           onMorePress={() => setActionTrack(track)}
                         />
@@ -803,6 +923,8 @@ export function SleekSettingsView() {
   const [resumeOnLaunch, setResumeOnLaunch] = useState(false);
   const [editName, setEditName] = useState(userName);
   const [isSaved, setIsSaved] = useState(false);
+  const [storeInFilesApp, setStoreInFilesApp] = useState(true);
+  const [isExportingToFiles, setIsExportingToFiles] = useState(false);
 
   // Storage stats
   const [storageUsage, setStorageUsage] = useState({ audioBytes: 0, artworkBytes: 0, totalBytes: 0 });
@@ -826,6 +948,7 @@ export function SleekSettingsView() {
       loadUserName(db);
       setGapless(db.settings.get('gapless', 'false') === 'true');
       setResumeOnLaunch(db.settings.get('resumeOnLaunch', 'false') === 'true');
+      setStoreInFilesApp(db.settings.get('storeInFilesApp', 'true') === 'true');
       setPairedDevices(db.pairedDevices.getAll());
 
       const usage = await FileImportService.getStorageUsage();
@@ -882,6 +1005,35 @@ export function SleekSettingsView() {
       setIsImporting(false);
       setImportProgress(null);
       Alert.alert('Import Failed', err?.message || 'Could not import audio files');
+    }
+  };
+
+  const handleToggleStoreInFiles = (val: boolean) => {
+    Haptics.selectionAsync();
+    setStoreInFilesApp(val);
+    if (db.isReady) {
+      db.settings.set('storeInFilesApp', val ? 'true' : 'false');
+    }
+  };
+
+  const handleExportAllToFiles = async () => {
+    if (!db.isReady) return;
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      setIsExportingToFiles(true);
+      const allTracks = db.tracks.getAll();
+      const count = await FileImportService.syncAllToFilesApp(allTracks);
+      const usage = await FileImportService.getStorageUsage();
+      setStorageUsage(usage);
+      setIsExportingToFiles(false);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert(
+        'Files App Sync Complete',
+        `Songs are stored in your device's Files app:\n\n• iOS: On My iPhone > Overtone > Music\n• Android: Overtone Music folder\n\nOther apps (VLC, GarageBand, CapCut, Files) can now access and play your music library.`
+      );
+    } catch (err: any) {
+      setIsExportingToFiles(false);
+      Alert.alert('Export Error', err?.message || 'Could not export songs to Files app');
     }
   };
 
@@ -1260,6 +1412,50 @@ export function SleekSettingsView() {
                   {formatBytes(storageUsage.totalBytes)}
                 </Text>
               </View>
+            </View>
+          </View>
+
+          {/* Files App & External Storage */}
+          <Text style={styles.sectionHeader}>Files App & External Audio Apps</Text>
+          <View style={styles.settingsCard}>
+            <View style={styles.settingRow}>
+              <View style={styles.settingTextContainer}>
+                <Text style={styles.settingLabel}>Store Songs in Files App</Text>
+                <Text style={styles.settingDesc}>
+                  Save desktop downloads to "On My iPhone &gt; Overtone &gt; Music" so VLC, GarageBand, and other apps can open them
+                </Text>
+              </View>
+              <Switch
+                value={storeInFilesApp}
+                onValueChange={handleToggleStoreInFiles}
+                trackColor={{ true: '#F9A826', false: '#EAE3D2' }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+
+            <View style={styles.rowDivider} />
+
+            <View style={styles.settingRow}>
+              <View style={styles.settingTextContainer}>
+                <Text style={styles.settingLabel}>Export Offline Songs to Files</Text>
+                <Text style={styles.settingDesc}>
+                  Ensure all downloaded music is accessible in the native Files app
+                </Text>
+              </View>
+              <Pressable
+                onPress={handleExportAllToFiles}
+                disabled={isExportingToFiles}
+                style={({ pressed }) => [
+                  styles.actionPill,
+                  pressed && styles.actionPillPressed,
+                  isExportingToFiles && { opacity: 0.6 },
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel="Export offline songs to Files"
+              >
+                <SleekShareIcon size={14} color="#92400E" />
+                <Text style={styles.actionPillText}>{isExportingToFiles ? 'Exporting…' : 'Export'}</Text>
+              </Pressable>
             </View>
           </View>
 

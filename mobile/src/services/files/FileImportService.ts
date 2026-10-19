@@ -7,10 +7,12 @@
 
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import type { ImportResult, ImportError, MobileTrack } from '../../domain/models';
 
-const AUDIO_DIR = `${FileSystem.documentDirectory}audio/`;
-const ARTWORK_DIR = `${FileSystem.documentDirectory}artwork/`;
+export const MUSIC_DIR = `${FileSystem.documentDirectory}Music/`;
+export const AUDIO_DIR = `${FileSystem.documentDirectory}audio/`;
+export const ARTWORK_DIR = `${FileSystem.documentDirectory}artwork/`;
 
 const SUPPORTED_EXTENSIONS = new Set([
   'mp3', 'aac', 'm4a', 'wav', 'flac', 'ogg', 'opus', 'wma', 'aiff', 'alac',
@@ -23,6 +25,10 @@ class FileImportServiceImpl {
 
   async ensureDirectories(): Promise<void> {
     if (this.initialized) return;
+    const musicDirInfo = await FileSystem.getInfoAsync(MUSIC_DIR);
+    if (!musicDirInfo.exists) {
+      await FileSystem.makeDirectoryAsync(MUSIC_DIR, { intermediates: true });
+    }
     const audioDirInfo = await FileSystem.getInfoAsync(AUDIO_DIR);
     if (!audioDirInfo.exists) {
       await FileSystem.makeDirectoryAsync(AUDIO_DIR, { intermediates: true });
@@ -259,16 +265,25 @@ class FileImportServiceImpl {
 
   /**
    * Download a remote audio stream to local device storage for offline playback.
+   * If saveToFilesApp is true (default), stores into the public "Music/" folder
+   * inside the iOS Files app (On My iPhone > Overtone > Music) with clean human-readable name:
+   * "Artist - Title.mp3", allowing other apps (VLC, GarageBand, Files) to open and play it.
    */
   async downloadRemoteTrack(
     remoteUri: string,
     trackId: number,
-    title: string
+    title: string,
+    artistName?: string,
+    saveToFilesApp: boolean = true
   ): Promise<{ localUri: string; fileSize: number } | null> {
     try {
       await this.ensureDirectories();
       const safeTitle = this.sanitizeFileName(title || `track_${trackId}`);
-      const destUri = `${AUDIO_DIR}${trackId}_${safeTitle}.mp3`;
+      const safeArtist = artistName ? this.sanitizeFileName(artistName) : '';
+      const humanName = safeArtist ? `${safeArtist} - ${safeTitle}` : safeTitle;
+
+      const targetDir = saveToFilesApp ? MUSIC_DIR : AUDIO_DIR;
+      const destUri = `${targetDir}${humanName}.mp3`;
 
       const downloadResult = await FileSystem.downloadAsync(remoteUri, destUri);
       if (downloadResult.status === 200) {
@@ -283,6 +298,58 @@ class FileImportServiceImpl {
       console.warn('[FileImportService] downloadRemoteTrack failed:', err);
       return null;
     }
+  }
+
+  /**
+   * Open the native Share / Save to Files sheet for an audio track.
+   * Allows saving to any folder in the Files app (iCloud, On My iPhone, USB drive),
+   * or opening directly in VLC, GarageBand, and other apps.
+   */
+  async shareOrExportTrack(localUri: string, title?: string): Promise<boolean> {
+    try {
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (!isAvailable) {
+        return false;
+      }
+      await Sharing.shareAsync(localUri, {
+        mimeType: 'audio/mpeg',
+        dialogTitle: title ? `Save or Open "${title}"` : 'Save to Files or Open in Other Apps',
+        UTI: 'public.mp3',
+      });
+      return true;
+    } catch (err) {
+      console.warn('[FileImportService] shareOrExportTrack failed:', err);
+      return false;
+    }
+  }
+
+  /**
+   * Ensure all downloaded songs are placed in the user-visible Music/ folder
+   * inside the Files app ("On My iPhone > Overtone > Music").
+   */
+  async syncAllToFilesApp(tracks: MobileTrack[]): Promise<number> {
+    await this.ensureDirectories();
+    let movedCount = 0;
+    for (const track of tracks) {
+      if (!track.fileUri || track.fileUri.startsWith('http://') || track.format === 'stream') {
+        continue;
+      }
+      if (track.fileUri.includes('/Music/')) {
+        continue;
+      }
+      try {
+        const safeTitle = this.sanitizeFileName(track.title || `track_${track.id}`);
+        const destUri = `${MUSIC_DIR}${safeTitle}.mp3`;
+        const exists = await FileSystem.getInfoAsync(destUri);
+        if (!exists.exists) {
+          await FileSystem.copyAsync({ from: track.fileUri, to: destUri });
+          movedCount++;
+        }
+      } catch (e) {
+        console.warn('[FileImportService] syncToFilesApp failed for track:', track.title, e);
+      }
+    }
+    return movedCount;
   }
 
   /**
@@ -310,6 +377,16 @@ class FileImportServiceImpl {
     let artworkBytes = 0;
 
     try {
+      const musicFiles = await FileSystem.readDirectoryAsync(MUSIC_DIR);
+      for (const file of musicFiles) {
+        const info = await FileSystem.getInfoAsync(`${MUSIC_DIR}${file}`);
+        if (info.exists && !info.isDirectory) {
+          audioBytes += info.size || 0;
+        }
+      }
+    } catch { /* empty */ }
+
+    try {
       const audioFiles = await FileSystem.readDirectoryAsync(AUDIO_DIR);
       for (const file of audioFiles) {
         const info = await FileSystem.getInfoAsync(`${AUDIO_DIR}${file}`);
@@ -333,7 +410,7 @@ class FileImportServiceImpl {
   }
 
   private sanitizeFileName(name: string): string {
-    return name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    return name.replace(/[^a-zA-Z0-9._ -]/g, '_');
   }
 }
 

@@ -32,7 +32,9 @@ export default function ListenScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const db = useDatabase();
-  const { loadAndPlay, currentTrack, isPlaying } = usePlayerStore();
+  const currentTrackId = usePlayerStore((s) => s.currentTrack?.id);
+  const isPlaying = usePlayerStore((s) => s.isPlaying);
+  const loadAndPlay = usePlayerStore((s) => s.loadAndPlay);
 
   const [recentlyPlayed, setRecentlyPlayed] = useState<MobileTrack[]>([]);
   const [recentlyAdded, setRecentlyAdded] = useState<MobileTrack[]>([]);
@@ -168,7 +170,7 @@ export default function ListenScreen() {
               <TrackRow
                 key={`recent_${track.id}_${index}`}
                 track={track}
-                isPlaying={currentTrack?.id === track.id && isPlaying}
+                isPlaying={currentTrackId === track.id && isPlaying}
                 isFavorite={favorites.has(track.id)}
                 getArtistName={getArtistName}
                 onPress={(t) => loadAndPlay(t, recentlyPlayed, index)}
@@ -210,7 +212,7 @@ export default function ListenScreen() {
               <TrackRow
                 key={`added_${track.id}_${index}`}
                 track={track}
-                isPlaying={currentTrack?.id === track.id && isPlaying}
+                isPlaying={currentTrackId === track.id && isPlaying}
                 isFavorite={favorites.has(track.id)}
                 getArtistName={getArtistName}
                 onPress={(t) => loadAndPlay(t, recentlyAdded, index)}

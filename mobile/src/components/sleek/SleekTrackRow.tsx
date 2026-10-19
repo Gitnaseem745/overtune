@@ -34,7 +34,7 @@ interface SleekTrackRowProps {
   onMorePress?: () => void;
 }
 
-export function SleekTrackRow({
+export const SleekTrackRow = React.memo(function SleekTrackRow({
   title,
   artistSubtitle,
   duration,
@@ -164,7 +164,7 @@ export function SleekTrackRow({
       </Pressable>
     </Pressable>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {

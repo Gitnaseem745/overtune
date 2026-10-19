@@ -58,11 +58,50 @@ import { sleekTokens } from '../../src/design/colors';
 import { layout } from '../../src/design/spacing';
 import type { MobilePlaylist, MobileTrack, PairedDevice } from '../../src/domain/models';
 
+interface PlaylistRowItemProps {
+  item: MobileTrack;
+  artistSubtitle: string;
+  isPlaying: boolean;
+  isDownloaded: boolean;
+  isDownloading: boolean;
+  onPress: (track: MobileTrack) => void;
+  onMorePress: (track: MobileTrack) => void;
+}
+
+const PlaylistRowItem = React.memo(function PlaylistRowItem({
+  item,
+  artistSubtitle,
+  isPlaying,
+  isDownloaded,
+  isDownloading,
+  onPress,
+  onMorePress,
+}: PlaylistRowItemProps) {
+  const handlePress = useCallback(() => onPress(item), [onPress, item]);
+  const handleMore = useCallback(() => onMorePress(item), [onMorePress, item]);
+
+  return (
+    <SleekTrackRow
+      title={item.title}
+      artistSubtitle={artistSubtitle}
+      duration={item.duration}
+      artworkUri={item.artworkUri}
+      isPlaying={isPlaying}
+      isDownloaded={isDownloaded}
+      isDownloading={isDownloading}
+      onPress={handlePress}
+      onMorePress={handleMore}
+    />
+  );
+});
+
 export default function PlaylistDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const db = useDatabase();
-  const { loadAndPlay, currentTrack, isPlaying } = usePlayerStore();
+  const currentTrackId = usePlayerStore((s) => s.currentTrack?.id);
+  const isPlaying = usePlayerStore((s) => s.isPlaying);
+  const loadAndPlay = usePlayerStore((s) => s.loadAndPlay);
 
   const [playlist, setPlaylist] = useState<MobilePlaylist | null>(null);
   const [tracks, setTracks] = useState<MobileTrack[]>([]);
@@ -347,7 +386,8 @@ export default function PlaylistDetailScreen() {
     for (const tr of toDownload) {
       setDownloadingTrackId(tr.id);
       try {
-        const res = await FileImportService.downloadRemoteTrack(tr.fileUri, tr.id, tr.title);
+        const art = tr.artistId ? db.artists.getNameById(tr.artistId) : undefined;
+        const res = await FileImportService.downloadRemoteTrack(tr.fileUri, tr.id, tr.title, art, true);
         if (res) {
           let localArtUri: string | undefined = undefined;
           if (tr.artworkUri && tr.artworkUri.startsWith('http://')) {
@@ -371,16 +411,14 @@ export default function PlaylistDetailScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     Alert.alert(
       'Download Finished',
-      `Saved ${successCount} of ${toDownload.length} songs for offline listening.`
+      `Saved ${successCount} of ${toDownload.length} songs for offline listening.\n\nStored in Files app (On My iPhone > Overtone > Music) so other apps can play them.`
     );
   };
 
-  const getArtistName = (artistId: number | null) => {
+  const getArtistName = useCallback((artistId: number | null) => {
     if (!db.isReady || !artistId) return 'Unknown Artist';
     return db.artists.getNameById(artistId);
-  };
-
-  const playlistArtwork = playlist?.artworkUri || (tracks.length > 0 && tracks[0].artworkUri ? tracks[0].artworkUri : null);
+  }, [db.isReady]);
 
   if (!playlist) {
     return (
@@ -402,6 +440,48 @@ export default function PlaylistDetailScreen() {
       </SafeAreaView>
     );
   }
+
+  const playlistArtwork = playlist?.artworkUri || (tracks.length > 0 && tracks[0].artworkUri ? tracks[0].artworkUri : null);
+
+  const handlePlayTrack = useCallback(
+    (track: MobileTrack) => {
+      const idx = tracks.findIndex((t) => t.id === track.id);
+      loadAndPlay(track, tracks, idx >= 0 ? idx : 0);
+    },
+    [loadAndPlay, tracks]
+  );
+
+  const handleMorePress = useCallback((track: MobileTrack) => {
+    setActionTrack(track);
+  }, []);
+
+  const renderTrackItem = useCallback(
+    ({ item }: { item: MobileTrack }) => {
+      const isDownloaded = Boolean(item.fileUri && !item.fileUri.startsWith('http://') && item.format !== 'stream');
+      const isDownloading = downloadingTrackId === item.id;
+      return (
+        <PlaylistRowItem
+          item={item}
+          artistSubtitle={getArtistName(item.artistId)}
+          isPlaying={currentTrackId === item.id && isPlaying}
+          isDownloaded={isDownloaded}
+          isDownloading={isDownloading}
+          onPress={handlePlayTrack}
+          onMorePress={handleMorePress}
+        />
+      );
+    },
+    [downloadingTrackId, currentTrackId, isPlaying, getArtistName, handlePlayTrack, handleMorePress]
+  );
+
+  const getItemLayout = useCallback(
+    (_: any, index: number) => ({
+      length: 68,
+      offset: 68 * index,
+      index,
+    }),
+    []
+  );
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -440,6 +520,13 @@ export default function PlaylistDetailScreen() {
         data={tracks}
         keyExtractor={(item) => String(item.id)}
         showsVerticalScrollIndicator={false}
+        renderItem={renderTrackItem}
+        getItemLayout={getItemLayout}
+        initialNumToRender={12}
+        maxToRenderPerBatch={8}
+        windowSize={5}
+        removeClippedSubviews={true}
+        updateCellsBatchingPeriod={50}
         contentContainerStyle={{
           paddingHorizontal: 20,
           paddingBottom: layout.miniPlayerHeight + 48,
@@ -582,23 +669,6 @@ export default function PlaylistDetailScreen() {
             <View style={styles.sectionDivider} />
           </View>
         }
-        renderItem={({ item }: { item: MobileTrack }) => {
-          const isDownloaded = Boolean(item.fileUri && !item.fileUri.startsWith('http://') && item.format !== 'stream');
-          const isDownloading = downloadingTrackId === item.id;
-          return (
-            <SleekTrackRow
-              title={item.title}
-              artistSubtitle={getArtistName(item.artistId)}
-              duration={item.duration}
-              artworkUri={item.artworkUri}
-              isPlaying={currentTrack?.id === item.id && isPlaying}
-              isDownloaded={isDownloaded}
-              isDownloading={isDownloading}
-              onPress={() => loadAndPlay(item, tracks, tracks.findIndex((t) => t.id === item.id))}
-              onMorePress={() => setActionTrack(item)}
-            />
-          );
-        }}
         ListEmptyComponent={
           <View style={styles.emptyListCard}>
             <View style={styles.emptyBadgeCircle}>
@@ -678,6 +748,11 @@ export default function PlaylistDetailScreen() {
           <FlatList
             data={filteredLibraryTracks}
             keyExtractor={(item) => String(item.id)}
+            initialNumToRender={15}
+            maxToRenderPerBatch={10}
+            windowSize={5}
+            removeClippedSubviews={true}
+            getItemLayout={(_, index) => ({ length: 56, offset: 56 * index, index })}
             contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}
             renderItem={({ item }: { item: MobileTrack }) => {
               const alreadyIn = db.isReady ? db.playlists.hasTrack(playlist.id, item.id) : false;

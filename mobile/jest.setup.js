@@ -18,6 +18,7 @@ jest.mock('expo-file-system/legacy', () => ({
   writeAsStringAsync: jest.fn().mockResolvedValue(undefined),
   readAsStringAsync: jest.fn().mockResolvedValue(''),
   copyAsync: jest.fn().mockResolvedValue(undefined),
+  downloadAsync: jest.fn().mockResolvedValue({ status: 200 }),
   readDirectoryAsync: jest.fn().mockResolvedValue([]),
   EncodingType: { Base64: 'base64' },
 }));

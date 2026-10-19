@@ -37,7 +37,9 @@ export function LyricsView({ visible, onClose, lines: propLines }: LyricsViewPro
   const { colors } = useTheme();
   const db = useDatabase();
   const insets = useSafeAreaInsets();
-  const { currentTime, currentTrack, seekTo } = usePlayerStore();
+  const currentTime = usePlayerStore((s) => (visible ? s.currentTime : 0));
+  const currentTrack = usePlayerStore((s) => s.currentTrack);
+  const seekTo = usePlayerStore((s) => s.seekTo);
   const scrollViewRef = useRef<ScrollView>(null);
 
   const topPadding = Math.max(insets.top > 0 ? insets.top + 8 : 26, 26);

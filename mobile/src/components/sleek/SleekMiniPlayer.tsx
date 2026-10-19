@@ -5,7 +5,7 @@
  * from sleek_theme_main_screen.jpg and sleek_theme_sidebar_screen.jpg.
  */
 
-import React, { useRef } from 'react';
+import React, { useRef, useMemo, memo } from 'react';
 import {
   View,
   Text,
@@ -27,20 +27,23 @@ interface SleekMiniPlayerProps {
   fallbackArtist?: string;
 }
 
-export function SleekMiniPlayer({
+export const SleekMiniPlayer = memo(function SleekMiniPlayer({
   fallbackTitle = 'No Track Playing',
   fallbackArtist = 'Select music to play',
 }: SleekMiniPlayerProps) {
   const router = useRouter();
   const db = useDatabase();
-  const { currentTrack, isPlaying, togglePlayPause, isNowPlayingOpen } = usePlayerStore();
+  const currentTrack = usePlayerStore((s) => s.currentTrack);
+  const isPlaying = usePlayerStore((s) => s.isPlaying);
+  const togglePlayPause = usePlayerStore((s) => s.togglePlayPause);
+  const isNowPlayingOpen = usePlayerStore((s) => s.isNowPlayingOpen);
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   if (isNowPlayingOpen) return null;
 
   const title = currentTrack?.title || fallbackTitle;
   // Resolve artist name: try DB lookup first, then fall back to track object fields
-  const resolveArtist = (): string => {
+  const artist = useMemo(() => {
     if (!currentTrack) return fallbackArtist;
     // Try DB lookup by artistId
     if (currentTrack.artistId && db.isReady) {
@@ -50,8 +53,7 @@ export function SleekMiniPlayer({
     // Fall back to inline artist fields (common for synced desktop tracks)
     const anyTrack = currentTrack as any;
     return anyTrack.artist || anyTrack.artistName || fallbackArtist;
-  };
-  const artist = resolveArtist();
+  }, [currentTrack, db.isReady, fallbackArtist]);
 
   const handleOpenNowPlaying = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -149,7 +151,7 @@ export function SleekMiniPlayer({
       </Pressable>
     </Animated.View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   outerWrapper: {
