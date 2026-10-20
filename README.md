@@ -661,7 +661,7 @@ Every release tag (e.g. `v0.2.3`, `v1.0.2`) automatically triggers parallel GitH
 |---|---|---|---|---|
 | **🪟 Windows** | `.github/workflows/release.yml` | `windows-latest` | `Overtone-Setup-*.exe` | Double-click NSIS installer wizard |
 | **🤖 Android** | `.github/workflows/build-android.yml` | `ubuntu-latest` | `Overtone.apk` | 1-tap direct install (sideloading) |
-| **🍎 iOS** | `.github/workflows/build-ios.yml` | `macos-14` | `Overtone_Unsigned.ipa` | Sideload via Scarlet, AltStore, TrollStore |
+| **🍎 iOS** | `.github/workflows/build-ios.yml` | `macos-15` | `Overtone_Unsigned.ipa` | Sideload via Scarlet, AltStore, TrollStore |
 
 ---
 

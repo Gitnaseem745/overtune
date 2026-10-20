@@ -30,7 +30,7 @@ permissions:
 jobs:
   build-unsigned-ipa:
     name: Build & Package Unsigned IPA
-    runs-on: macos-14
+    runs-on: macos-15
     defaults:
       run:
         working-directory: mobile
@@ -38,6 +38,18 @@ jobs:
     steps:
       - name: 📥 Checkout Repository
         uses: actions/checkout@v4
+
+      - name: 🍏 Select Xcode 16.2
+        run: |
+          if [ -d "/Applications/Xcode_16.2.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_16.2.app
+            echo "DEVELOPER_DIR=/Applications/Xcode_16.2.app/Contents/Developer" >> $GITHUB_ENV
+          elif [ -d "/Applications/Xcode_16.1.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_16.1.app
+            echo "DEVELOPER_DIR=/Applications/Xcode_16.1.app/Contents/Developer" >> $GITHUB_ENV
+          fi
+          echo "Active Xcode: $(xcode-select -p)"
+          xcodebuild -version
 
       - name: 🟢 Setup Node.js (v20)
         uses: actions/setup-node@v4
@@ -55,9 +67,9 @@ jobs:
           npm test
 
       - name: ⚙️ Run Expo Prebuild (Generate Native /ios)
-        run: npx expo prebuild --platform ios --clean
+        run: npx expo prebuild --platform ios --clean --no-install
 
-      - name: 🛠️ Verify CocoaPods Dependencies
+      - name: 🛠️ Install CocoaPods Dependencies
         run: |
           cd ios
           pod install

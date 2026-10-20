@@ -321,7 +321,7 @@ npm run build:apk
 ### ☁️ Automated GitHub Actions CI/CD Releases
 Every release tag (e.g. `v0.2.3`, `v1.0.2`) triggers all three platform builders simultaneously:
 - **Android APK:** `.github/workflows/build-android.yml` compiles on `ubuntu-latest` and attaches `Overtone.apk` to the release.
-- **iOS IPA:** `.github/workflows/build-ios.yml` compiles on `macos-14` and attaches `Overtone_Unsigned.ipa` to the release.
+- **iOS IPA:** `.github/workflows/build-ios.yml` compiles on `macos-15` and attaches `Overtone_Unsigned.ipa` to the release.
 - **Windows EXE:** `.github/workflows/release.yml` compiles on `windows-latest` and attaches `Overtone-Setup-*.exe` to the release.
 
 ### Cloud Native Builds (EAS Build)
