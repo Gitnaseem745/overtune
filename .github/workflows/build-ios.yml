@@ -72,12 +72,14 @@ jobs:
       - name: 🛠️ Install CocoaPods Dependencies
         run: |
           cd ios
+          echo "export NODE_BINARY=$(which node)" > .xcode.env.local
           pod install
           cd ..
 
       - name: 🔨 Compile Native iOS Binary (Unsigned)
         run: |
           mkdir -p build/DerivedData
+          set -o pipefail
           xcodebuild \
             -workspace ios/Overtone.xcworkspace \
             -scheme Overtone \
@@ -85,15 +87,27 @@ jobs:
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
             -derivedDataPath build/DerivedData \
+            ENABLE_USER_SCRIPT_SANDBOXING=NO \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
+            CODE_SIGN_ENTITLEMENTS="" \
+            CODE_SIGNING_INJECT_BASE_ENTITLEMENTS=NO \
+            CODE_SIGN_STYLE=Manual \
             AD_HOC_CODE_SIGNING_ALLOWED=YES \
-            build
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            build | tee xcodebuild.log || {
+              echo "❌ xcodebuild failed! Extracted build errors:"
+              grep -E "(error:|fatal error:)" xcodebuild.log | head -n 30 || tail -n 50 xcodebuild.log
+              exit 1
+            }
 
       - name: 📦 Package App into Overtone_Unsigned.ipa
         run: |
-          APP_PATH="build/DerivedData/Build/Products/Release-iphoneos/Overtone.app"
+          APP_PATH=$(find build/DerivedData/Build/Products -name "Overtone.app" -type d | head -n 1)
+          if [ -z "$APP_PATH" ] || [ ! -d "$APP_PATH" ]; then
+            APP_PATH="build/DerivedData/Build/Products/Release-iphoneos/Overtone.app"
+          fi
           
           if [ ! -d "$APP_PATH" ]; then
             echo "❌ Error: Compiled Overtone.app not found at $APP_PATH"
