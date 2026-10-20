@@ -416,9 +416,6 @@ ipcMain.handle('db:getTracks', () => {
     FROM tracks t
     LEFT JOIN artists a ON t.artist_id = a.id
     LEFT JOIN albums al ON t.album_id = al.id
-    WHERE t.id IN (
-      SELECT MIN(t2.id) FROM tracks t2 GROUP BY COALESCE(t2.file_hash, t2.id)
-    )
     ORDER BY t.title ASC
   `);
   return stmt.all();

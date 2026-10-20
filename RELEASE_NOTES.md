@@ -22,6 +22,7 @@ This major release introduces robust multi-device synchronization, seamless iPho
 - **Three-Dots Menu Hover Stability**: Fixed hover behavior on track rows to ensure the three-dots action menu remains visible and interactive without disappearing.
 - **Full Playlist Deletion**: Added a comprehensive playlist deletion flow with confirmation dialogs, removing playlists cleanly while keeping underlying library tracks intact.
 - **Direct Track Metadata Editor**: Introduced `EditTrackModal.tsx` for quick desktop editing of track titles, artists, albums, and genres with immediate database updates.
+- **Library Care & Album Track Integrity Fix**: Resolved an issue where songs were silently excluded from the Songs view and Album tracklists due to aggressive hash deduplication. All scanned library tracks now accurately display across Songs, Albums, and Library Care.
 - **Enhanced Sync State Broadcasting**: Explicitly broadcast `desktopTrackId` in both initial and periodic now-playing sync payloads.
 
 ---

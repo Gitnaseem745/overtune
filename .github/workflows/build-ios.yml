@@ -69,12 +69,55 @@ jobs:
       - name: ⚙️ Run Expo Prebuild (Generate Native /ios)
         run: npx expo prebuild --platform ios --clean --no-install
 
-      - name: 🛠️ Install CocoaPods Dependencies
+      - name: 🛠️ Install CocoaPods Dependencies & Patch Build Settings
         run: |
           cd ios
-          echo "export NODE_BINARY=$(which node)" > .xcode.env.local
+          NODE_PATH=$(which node)
+          echo "export NODE_BINARY=$NODE_PATH" > .xcode.env.local
+          sudo ln -sf "$NODE_PATH" /usr/local/bin/node || true
+
+          # Defense-in-depth: Disable User Script Sandboxing & Swift Explicit Modules across all Pod targets
+          ruby -e '
+          file = "Podfile"
+          if File.exist?(file)
+            content = File.read(file)
+            patch = %Q{
+                installer.pods_project.targets.each do |target|
+                  target.build_configurations.each do |config|
+                    config.build_settings["ENABLE_USER_SCRIPT_SANDBOXING"] = "NO"
+                    config.build_settings["SWIFT_ENABLE_EXPLICIT_MODULES"] = "NO"
+                  end
+                end
+            }
+            if content.include?("react_native_post_install")
+              content.sub!("react_native_post_install(", patch + "\n    react_native_post_install(")
+              File.write(file, content)
+              puts "✅ Successfully patched Podfile post_install settings"
+            end
+          end
+          '
           pod install
           cd ..
+
+      - name: 🧰 Configure Xcode & Resolve Package Dependencies
+        run: |
+          # 1. Bypass Swift Macro and Plugin fingerprint checks on headless CI
+          defaults write com.apple.dt.Xcode IDESkipMacroFingerprintValidation -bool YES
+          defaults write com.apple.dt.Xcode IDESkipPackagePluginFingerprintValidatation -bool YES
+          defaults write com.apple.dt.Xcode IDEPackageSupportUseBuiltinSCM -bool YES
+
+          # 2. Clear any stale caches on the runner
+          rm -rf ~/Library/Caches/org.swift.swiftpm ~/Library/Developer/Xcode/DerivedData
+
+          # 3. Explicitly resolve Swift package dependencies before compilation
+          echo "Resolving Swift package dependencies..."
+          xcodebuild -resolvePackageDependencies \
+            -workspace ios/Overtone.xcworkspace \
+            -scheme Overtone \
+            -skipMacroValidation \
+            -skipPackagePluginValidation || {
+              echo "⚠️ Warning: xcodebuild -resolvePackageDependencies reported warnings/errors, continuing to build..."
+            }
 
       - name: 🔨 Compile Native iOS Binary (Unsigned)
         run: |
@@ -87,7 +130,10 @@ jobs:
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
             -derivedDataPath build/DerivedData \
+            -skipMacroValidation \
+            -skipPackagePluginValidation \
             ENABLE_USER_SCRIPT_SANDBOXING=NO \
+            SWIFT_ENABLE_EXPLICIT_MODULES=NO \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
@@ -95,10 +141,15 @@ jobs:
             CODE_SIGNING_INJECT_BASE_ENTITLEMENTS=NO \
             CODE_SIGN_STYLE=Manual \
             AD_HOC_CODE_SIGNING_ALLOWED=YES \
+            DEVELOPMENT_TEAM="" \
+            PROVISIONING_PROFILE_SPECIFIER="" \
             COMPILER_INDEX_STORE_ENABLE=NO \
             build | tee xcodebuild.log || {
               echo "❌ xcodebuild failed! Extracted build errors:"
-              grep -E "(error:|fatal error:)" xcodebuild.log | head -n 30 || tail -n 50 xcodebuild.log
+              grep -E -C 3 "(error:|fatal error:)" xcodebuild.log | head -n 60 || true
+              echo ""
+              echo "📋 Tail of build log (last 80 lines):"
+              tail -n 80 xcodebuild.log
               exit 1
             }
 
