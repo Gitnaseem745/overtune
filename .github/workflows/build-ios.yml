@@ -39,15 +39,15 @@ jobs:
       - name: 📥 Checkout Repository
         uses: actions/checkout@v4
 
-      - name: 🍏 Select Xcode 16.2
+      - name: 🍏 Select Xcode
         run: |
-          if [ -d "/Applications/Xcode_16.2.app" ]; then
-            sudo xcode-select -s /Applications/Xcode_16.2.app
-            echo "DEVELOPER_DIR=/Applications/Xcode_16.2.app/Contents/Developer" >> $GITHUB_ENV
-          elif [ -d "/Applications/Xcode_16.1.app" ]; then
-            sudo xcode-select -s /Applications/Xcode_16.1.app
-            echo "DEVELOPER_DIR=/Applications/Xcode_16.1.app/Contents/Developer" >> $GITHUB_ENV
-          fi
+          for version in 16.4 16.3 16.2 16.1; do
+            if [ -d "/Applications/Xcode_${version}.app" ]; then
+              sudo xcode-select -s "/Applications/Xcode_${version}.app"
+              echo "DEVELOPER_DIR=/Applications/Xcode_${version}.app/Contents/Developer" >> $GITHUB_ENV
+              break
+            fi
+          done
           echo "Active Xcode: $(xcode-select -p)"
           xcodebuild -version
 
