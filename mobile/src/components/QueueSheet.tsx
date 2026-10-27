@@ -161,107 +161,133 @@ export function QueueSheet({ visible, onClose }: QueueSheetProps) {
   return (
     <Modal
       visible={visible}
+      transparent
       animationType="slide"
-      presentationStyle="pageSheet"
       onRequestClose={onClose}
+      statusBarTranslucent
     >
-      <SafeAreaView edges={['bottom']} style={[styles.container, { backgroundColor: colors.background }]}>
-        {/* Grabber Handle & Top Breathing Room */}
-        <View style={[styles.grabberContainer, { paddingTop: topPadding }]}>
-          <View style={[styles.grabberPill, { backgroundColor: colors.textTertiary }]} />
-        </View>
-
-        {/* Header */}
-        <View style={[styles.header, { borderBottomColor: colors.border }]}>
-          <View style={styles.headerTitleGroup}>
-            <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
-              Playing Next
-            </Text>
-            <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
-              {queue.length === 0
-                ? 'No upcoming tracks'
-                : `${queue.length} track${queue.length === 1 ? '' : 's'}${
-                    queueIndex >= 0 && queueIndex < queue.length
-                      ? ` · Track ${queueIndex + 1} playing`
-                      : ''
-                  }`}
-            </Text>
+      <View style={styles.modalOverlay}>
+        <Pressable style={styles.backdrop} onPress={onClose} />
+        <View style={[styles.sheetContainer, { backgroundColor: colors.surface }]}>
+          {/* Grabber Handle */}
+          <View style={styles.grabberContainer}>
+            <View style={styles.grabberPill} />
           </View>
 
-          <View style={styles.headerActions}>
-            {queue.length > 0 && (
+          {/* Header */}
+          <View style={[styles.header, { borderBottomColor: 'rgba(249, 168, 38, 0.18)' }]}>
+            <View style={styles.headerTitleGroup}>
+              <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
+                Playing Next
+              </Text>
+              <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
+                {queue.length === 0
+                  ? 'No upcoming tracks'
+                  : `${queue.length} track${queue.length === 1 ? '' : 's'}${
+                      queueIndex >= 0 && queueIndex < queue.length
+                        ? ` · Track ${queueIndex + 1} playing`
+                        : ''
+                    }`}
+              </Text>
+            </View>
+
+            <View style={styles.headerActions}>
+              {queue.length > 0 && (
+                <Pressable
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    clearQueue();
+                  }}
+                  style={({ pressed }) => [
+                    styles.clearBtn,
+                    pressed && { opacity: 0.7, transform: [{ scale: 0.96 }] },
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel="Clear queue"
+                >
+                  <Text style={styles.clearBtnText}>Clear</Text>
+                </Pressable>
+              )}
               <Pressable
                 onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                  clearQueue();
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  onClose();
                 }}
                 style={({ pressed }) => [
-                  styles.clearBtn,
-                  pressed && { opacity: 0.7, transform: [{ scale: 0.96 }] },
+                  styles.doneBtn,
+                  { backgroundColor: colors.accent },
+                  pressed && { opacity: 0.88, transform: [{ scale: 0.96 }] },
                 ]}
                 accessibilityRole="button"
-                accessibilityLabel="Clear queue"
+                accessibilityLabel="Done"
               >
-                <Text style={styles.clearBtnText}>Clear</Text>
+                <Text style={styles.doneBtnText}>Done</Text>
               </Pressable>
-            )}
-            <Pressable
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                onClose();
-              }}
-              style={({ pressed }) => [
-                styles.doneBtn,
-                { backgroundColor: colors.accent },
-                pressed && { opacity: 0.88, transform: [{ scale: 0.96 }] },
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel="Done"
-            >
-              <Text style={styles.doneBtnText}>Done</Text>
-            </Pressable>
-          </View>
-        </View>
-
-        {/* Queue List */}
-        {queue.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <View style={styles.badgeWrapper}>
-              <View style={styles.badgeGlow} />
-              <View style={styles.badgeSquircle}>
-                <SleekQueueIcon size={32} color={colors.accent} />
-              </View>
             </View>
-            <Text style={[typography.title3, { color: colors.textPrimary, fontWeight: '700' }]}>
-              Queue is Empty
-            </Text>
-            <Text style={[typography.body, { color: colors.textSecondary, textAlign: 'center', lineHeight: 20 }]}>
-              Play songs or albums to add them to your queue.
-            </Text>
           </View>
-        ) : (
-          <FlatList
-            data={queue}
-            keyExtractor={(item: MobileTrack, index: number) => `${item.id}_${index}`}
-            renderItem={renderTrackItem}
-            getItemLayout={getItemLayout}
-            initialNumToRender={15}
-            maxToRenderPerBatch={10}
-            windowSize={5}
-            removeClippedSubviews={true}
-            updateCellsBatchingPeriod={50}
-            contentContainerStyle={[
-              styles.listContent,
-              { paddingBottom: Math.max(insets.bottom + 28, 44) },
-            ]}
-          />
-        )}
-      </SafeAreaView>
+
+          {/* Queue List */}
+          {queue.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <View style={styles.badgeWrapper}>
+                <View style={styles.badgeGlow} />
+                <View style={styles.badgeSquircle}>
+                  <SleekQueueIcon size={32} color={colors.accent} />
+                </View>
+              </View>
+              <Text style={[typography.title3, { color: colors.textPrimary, fontWeight: '700' }]}>
+                Queue is Empty
+              </Text>
+              <Text style={[typography.body, { color: colors.textSecondary, textAlign: 'center', lineHeight: 20 }]}>
+                Play songs or albums to add them to your queue.
+              </Text>
+            </View>
+          ) : (
+            <FlatList
+              data={queue}
+              keyExtractor={(item: MobileTrack, index: number) => `${item.id}_${index}`}
+              renderItem={renderTrackItem}
+              getItemLayout={getItemLayout}
+              initialNumToRender={15}
+              maxToRenderPerBatch={10}
+              windowSize={5}
+              removeClippedSubviews={true}
+              updateCellsBatchingPeriod={50}
+              contentContainerStyle={[
+                styles.listContent,
+                { paddingBottom: Math.max(insets.bottom + 28, 44) },
+              ]}
+            />
+          )}
+        </View>
+      </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(10, 8, 4, 0.60)',
+  },
+  sheetContainer: {
+    height: '86%',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    borderWidth: 1,
+    borderColor: 'rgba(249, 168, 38, 0.18)',
+    borderBottomWidth: 0,
+    overflow: 'hidden',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 20,
+  },
   container: {
     flex: 1,
   },
@@ -269,13 +295,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
-    paddingBottom: 16,
+    paddingTop: 12,
+    paddingBottom: 10,
   },
   grabberPill: {
-    width: 44,
-    height: 5,
+    width: 38,
+    height: 4.5,
     borderRadius: 2.5,
-    opacity: 0.32,
+    backgroundColor: '#E5DFD3',
   },
   header: {
     flexDirection: 'row',

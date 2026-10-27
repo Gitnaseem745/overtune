@@ -118,33 +118,36 @@ export function LyricsView({ visible, onClose, lines: propLines }: LyricsViewPro
   return (
     <Modal
       visible={visible}
+      transparent
       animationType="slide"
-      presentationStyle="pageSheet"
       onRequestClose={onClose}
+      statusBarTranslucent
     >
-      <SafeAreaView edges={['bottom']} style={[styles.container, { backgroundColor: colors.background }]}>
-        {/* Grabber Handle & Top Breathing Room */}
-        <View style={[styles.grabberContainer, { paddingTop: topPadding }]}>
-          <View style={[styles.grabberPill, { backgroundColor: colors.textTertiary }]} />
-        </View>
-
-        {/* Header */}
-        <View style={[styles.header, { borderBottomColor: colors.border }]}>
-          <View style={{ flex: 1 }}>
-            <Text style={[typography.headline, { color: colors.textPrimary }]}>Lyrics</Text>
-            {currentTrack && (
-              <Text
-                style={[typography.caption1, { color: colors.textSecondary }]}
-                numberOfLines={1}
-              >
-                {currentTrack.title}
-              </Text>
-            )}
+      <View style={styles.modalOverlay}>
+        <Pressable style={styles.backdrop} onPress={onClose} />
+        <View style={[styles.sheetContainer, { backgroundColor: colors.surface }]}>
+          {/* Grabber Handle */}
+          <View style={styles.grabberContainer}>
+            <View style={styles.grabberPill} />
           </View>
-          <Pressable onPress={onClose} style={styles.closeBtn} hitSlop={12}>
-            <Text style={[typography.headline, { color: colors.accent, fontWeight: '700' }]}>Done</Text>
-          </Pressable>
-        </View>
+
+          {/* Header */}
+          <View style={[styles.header, { borderBottomColor: 'rgba(249, 168, 38, 0.18)' }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={[typography.headline, { color: colors.textPrimary }]}>Lyrics</Text>
+              {currentTrack && (
+                <Text
+                  style={[typography.caption1, { color: colors.textSecondary }]}
+                  numberOfLines={1}
+                >
+                  {currentTrack.title}
+                </Text>
+              )}
+            </View>
+            <Pressable onPress={onClose} style={styles.closeBtn} hitSlop={12}>
+              <Text style={[typography.headline, { color: colors.accent, fontWeight: '700' }]}>Done</Text>
+            </Pressable>
+          </View>
 
         {/* Edit / Paste Modal state */}
         {isEditing ? (
@@ -296,12 +299,35 @@ export function LyricsView({ visible, onClose, lines: propLines }: LyricsViewPro
             </View>
           </View>
         )}
-      </SafeAreaView>
+        </View>
+      </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(10, 8, 4, 0.60)',
+  },
+  sheetContainer: {
+    height: '86%',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    borderWidth: 1,
+    borderColor: 'rgba(249, 168, 38, 0.18)',
+    borderBottomWidth: 0,
+    overflow: 'hidden',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 20,
+  },
   container: {
     flex: 1,
   },
@@ -309,13 +335,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
-    paddingBottom: 12,
+    paddingTop: 12,
+    paddingBottom: 8,
   },
   grabberPill: {
-    width: 44,
-    height: 5,
+    width: 38,
+    height: 4.5,
     borderRadius: 2.5,
-    opacity: 0.32,
+    backgroundColor: '#E5DFD3',
   },
   header: {
     flexDirection: 'row',

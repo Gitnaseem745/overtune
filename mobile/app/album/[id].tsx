@@ -52,30 +52,6 @@ export default function AlbumDetailScreen() {
     setFavorites(db.favorites.getIds());
   }, [db.isReady, id]);
 
-  if (!album) {
-    return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-        <EmptyState icon="💿" title="Album Not Found" message="This album may have been deleted." />
-      </SafeAreaView>
-    );
-  }
-
-  const artSize = Math.min(width - spacing.xl * 2, 220);
-  const totalDuration = tracks.reduce((acc, t) => acc + (t.duration || 0), 0);
-
-  const handlePlayAll = () => {
-    if (tracks.length === 0) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    loadAndPlay(tracks[0], tracks, 0);
-  };
-
-  const handleShuffleAll = () => {
-    if (tracks.length === 0) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    const randomIndex = Math.floor(Math.random() * tracks.length);
-    loadAndPlay(tracks[randomIndex], tracks, randomIndex);
-  };
-
   const handlePlayTrack = useCallback(
     (track: MobileTrack) => {
       const index = tracks.findIndex((t) => t.id === track.id);
@@ -106,6 +82,30 @@ export default function AlbumDetailScreen() {
     }),
     []
   );
+
+  if (!album) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <EmptyState icon="💿" title="Album Not Found" message="This album may have been deleted." />
+      </SafeAreaView>
+    );
+  }
+
+  const artSize = Math.min(width - spacing.xl * 2, 220);
+  const totalDuration = tracks.reduce((acc, t) => acc + (t.duration || 0), 0);
+
+  const handlePlayAll = () => {
+    if (tracks.length === 0) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    loadAndPlay(tracks[0], tracks, 0);
+  };
+
+  const handleShuffleAll = () => {
+    if (tracks.length === 0) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const randomIndex = Math.floor(Math.random() * tracks.length);
+    loadAndPlay(tracks[randomIndex], tracks, randomIndex);
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>

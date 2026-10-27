@@ -19,12 +19,13 @@ import {
   StyleSheet,
   FlatList,
   Pressable,
-  Alert,
   Modal,
   TextInput,
   Platform,
   Switch,
   ScrollView,
+  KeyboardAvoidingView,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
@@ -36,6 +37,7 @@ import { SleekTrackRow } from '../../src/components/sleek/SleekTrackRow';
 import { SleekMiniPlayer } from '../../src/components/sleek/SleekMiniPlayer';
 import { SleekTrackActionSheet } from '../../src/components/sleek/SleekTrackActionSheet';
 import { SleekWateryDownloadButton } from '../../src/components/sleek/SleekWateryDownloadButton';
+import { SleekAlert } from '../../src/components/sleek/SleekAlert';
 import {
   SleekChevronLeftIcon,
   SleekPlayIcon,
@@ -51,6 +53,7 @@ import {
   SleekTrashIcon,
   SleekImportIcon,
   SleekDownloadedIcon,
+  SleekShareIcon,
 } from '../../src/components/sleek/SleekIcons';
 import { SyncService } from '../../src/services/sync/SyncService';
 import { FileImportService, formatDuration, formatTotalDuration } from '../../src/services/files/FileImportService';
@@ -119,6 +122,16 @@ export default function PlaylistDetailScreen() {
   const [isPinned, setIsPinned] = useState(false);
   const [selectedRemoveIds, setSelectedRemoveIds] = useState<Set<number>>(new Set());
 
+  // Offline Download state
+  const [isDownloadingAll, setIsDownloadingAll] = useState(false);
+  const [downloadedSongsCount, setDownloadedSongsCount] = useState(0);
+  const [totalSongsToDownload, setTotalSongsToDownload] = useState(0);
+  const [downloadingTrackId, setDownloadingTrackId] = useState<number | null>(null);
+
+  // Export Playlist to Files state
+  const [isExportingPlaylist, setIsExportingPlaylist] = useState(false);
+
+  // ── Stable Hooks (Declared strictly at top of component) ───────────────
   const loadData = useCallback(() => {
     if (!db.isReady || !id) return;
     const playlistId = parseInt(id, 10);
@@ -140,7 +153,78 @@ export default function PlaylistDetailScreen() {
     setAllLibraryTracks(db.tracks.getAll());
   }, [db.isReady]);
 
-  // ── Add Songs Handlers ────────────────────────────────────────────────
+  const filteredLibraryTracks = useMemo(() => {
+    if (!addSearchQuery.trim()) return allLibraryTracks;
+    const q = addSearchQuery.toLowerCase();
+    return allLibraryTracks.filter((t) => {
+      const titleMatch = t.title.toLowerCase().includes(q);
+      const artistMatch = db.isReady && t.artistId ? db.artists.getNameById(t.artistId).toLowerCase().includes(q) : false;
+      return titleMatch || artistMatch;
+    });
+  }, [allLibraryTracks, addSearchQuery, db]);
+
+  const totalDurationSeconds = useMemo(() => {
+    return tracks.reduce((acc, t) => acc + (t.duration || 0), 0);
+  }, [tracks]);
+
+  const streamTracksCount = useMemo(() => {
+    return tracks.filter((t) => t.fileUri?.startsWith('http://') || t.format === 'stream').length;
+  }, [tracks]);
+
+  const downloadedTracksCount = useMemo(() => {
+    return tracks.filter((t) => Boolean(t.fileUri && !t.fileUri.startsWith('http://') && t.format !== 'stream')).length;
+  }, [tracks]);
+
+  const getArtistName = useCallback((artistId: number | null) => {
+    if (!db.isReady || !artistId) return 'Unknown Artist';
+    return db.artists.getNameById(artistId);
+  }, [db.isReady]);
+
+  const playlistArtwork = useMemo(() => {
+    return playlist?.artworkUri || (tracks.length > 0 && tracks[0].artworkUri ? tracks[0].artworkUri : null);
+  }, [playlist?.artworkUri, tracks]);
+
+  const handlePlayTrack = useCallback(
+    (track: MobileTrack) => {
+      const idx = tracks.findIndex((t) => t.id === track.id);
+      loadAndPlay(track, tracks, idx >= 0 ? idx : 0);
+    },
+    [loadAndPlay, tracks]
+  );
+
+  const handleMorePress = useCallback((track: MobileTrack) => {
+    setActionTrack(track);
+  }, []);
+
+  const renderTrackItem = useCallback(
+    ({ item }: { item: MobileTrack }) => {
+      const isDownloaded = Boolean(item.fileUri && !item.fileUri.startsWith('http://') && item.format !== 'stream');
+      const isDownloading = downloadingTrackId === item.id;
+      return (
+        <PlaylistRowItem
+          item={item}
+          artistSubtitle={getArtistName(item.artistId)}
+          isPlaying={currentTrackId === item.id && isPlaying}
+          isDownloaded={isDownloaded}
+          isDownloading={isDownloading}
+          onPress={handlePlayTrack}
+          onMorePress={handleMorePress}
+        />
+      );
+    },
+    [downloadingTrackId, currentTrackId, isPlaying, getArtistName, handlePlayTrack, handleMorePress]
+  );
+
+  const getItemLayout = useCallback(
+    (_: any, index: number) => ({
+      length: 68,
+      offset: 68 * index,
+      index,
+    }),
+    []
+  );
+
+  // ── Event Handlers ─────────────────────────────────────────────────────
   const handleOpenAddModal = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     loadAllTracks();
@@ -153,7 +237,7 @@ export default function PlaylistDetailScreen() {
 
     if (db.playlists.hasTrack(playlist.id, trackItem.id)) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-      Alert.alert(
+      SleekAlert.alert(
         'Already in Playlist',
         `"${trackItem.title}" is already in "${playlist.name}". A song can only be added once to a playlist.`,
         [{ text: 'OK', style: 'default' }]
@@ -167,7 +251,7 @@ export default function PlaylistDetailScreen() {
       loadData();
     } else {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-      Alert.alert(
+      SleekAlert.alert(
         'Already in Playlist',
         `"${trackItem.title}" is already in "${playlist.name}".`,
         [{ text: 'OK', style: 'default' }]
@@ -175,17 +259,6 @@ export default function PlaylistDetailScreen() {
     }
   };
 
-  const filteredLibraryTracks = useMemo(() => {
-    if (!addSearchQuery.trim()) return allLibraryTracks;
-    const q = addSearchQuery.toLowerCase();
-    return allLibraryTracks.filter((t) => {
-      const titleMatch = t.title.toLowerCase().includes(q);
-      const artistMatch = db.isReady && t.artistId ? db.artists.getNameById(t.artistId).toLowerCase().includes(q) : false;
-      return titleMatch || artistMatch;
-    });
-  }, [allLibraryTracks, addSearchQuery, db]);
-
-  // ── Edit Playlist Details & Song Management Handlers ─────────────────
   const handleOpenEditModal = () => {
     if (!playlist) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -199,7 +272,7 @@ export default function PlaylistDetailScreen() {
     if (!playlist || !db.isReady) return;
     const trimmed = editName.trim();
     if (!trimmed) {
-      Alert.alert('Name Required', 'Please enter a valid playlist name.');
+      SleekAlert.alert('Name Required', 'Please enter a valid playlist name.');
       return;
     }
 
@@ -252,7 +325,7 @@ export default function PlaylistDetailScreen() {
   const handleBulkRemove = () => {
     if (!playlist || !db.isReady || selectedRemoveIds.size === 0) return;
     const count = selectedRemoveIds.size;
-    Alert.alert(
+    SleekAlert.alert(
       'Remove Songs',
       `Remove ${count} ${count === 1 ? 'song' : 'songs'} from "${playlist.name}"?`,
       [
@@ -275,7 +348,7 @@ export default function PlaylistDetailScreen() {
 
   const handleDeletePlaylist = () => {
     if (!playlist || !db.isReady) return;
-    Alert.alert(
+    SleekAlert.alert(
       'Delete Playlist',
       `Are you sure you want to delete "${playlist.name}"? This will permanently remove the playlist.`,
       [
@@ -294,23 +367,6 @@ export default function PlaylistDetailScreen() {
     );
   };
 
-  const totalDurationSeconds = useMemo(() => {
-    return tracks.reduce((acc, t) => acc + (t.duration || 0), 0);
-  }, [tracks]);
-
-  const [isDownloadingAll, setIsDownloadingAll] = useState(false);
-  const [downloadedSongsCount, setDownloadedSongsCount] = useState(0);
-  const [totalSongsToDownload, setTotalSongsToDownload] = useState(0);
-  const [downloadingTrackId, setDownloadingTrackId] = useState<number | null>(null);
-
-  const streamTracksCount = useMemo(() => {
-    return tracks.filter((t) => t.fileUri?.startsWith('http://') || t.format === 'stream').length;
-  }, [tracks]);
-
-  const downloadedTracksCount = useMemo(() => {
-    return tracks.filter((t) => Boolean(t.fileUri && !t.fileUri.startsWith('http://') && t.format !== 'stream')).length;
-  }, [tracks]);
-
   const handlePlayAll = () => {
     if (tracks.length === 0) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -327,7 +383,7 @@ export default function PlaylistDetailScreen() {
   const handleSendToDesktop = () => {
     if (!playlist) return;
     if (pairedDevices.length === 0) {
-      Alert.alert(
+      SleekAlert.alert(
         'No Paired Desktop',
         'Connect to your Overtone desktop app first in Settings → Wi-Fi Sync.',
         [
@@ -339,7 +395,7 @@ export default function PlaylistDetailScreen() {
     }
 
     const device = pairedDevices[0];
-    Alert.alert(
+    SleekAlert.alert(
       'Send to Desktop',
       `Send playlist "${playlist.name}" (${tracks.length} tracks) to ${device.name}?`,
       [
@@ -362,10 +418,10 @@ export default function PlaylistDetailScreen() {
             const res = await SyncService.sendPlaylist(device, payload);
             if (res.success) {
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-              Alert.alert('Sent!', `Playlist sent to ${device.name}. Check desktop to confirm.`);
+              SleekAlert.alert('Sent!', `Playlist sent to ${device.name}. Check desktop to confirm.`);
             } else {
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-              Alert.alert('Transfer Failed', res.error || 'Could not send playlist.');
+              SleekAlert.alert('Transfer Failed', res.error || 'Could not send playlist.');
             }
           },
         },
@@ -409,16 +465,135 @@ export default function PlaylistDetailScreen() {
     setIsDownloadingAll(false);
     loadData();
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Alert.alert(
+    SleekAlert.alert(
       'Download Finished',
       `Saved ${successCount} of ${toDownload.length} songs for offline listening.\n\nStored in Files app (On My iPhone > Overtone > Music) so other apps can play them.`
     );
   };
 
-  const getArtistName = useCallback((artistId: number | null) => {
-    if (!db.isReady || !artistId) return 'Unknown Artist';
-    return db.artists.getNameById(artistId);
-  }, [db.isReady]);
+  const executeExportZip = async () => {
+    if (!playlist) return;
+    try {
+      setIsExportingPlaylist(true);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      const ok = await FileImportService.sharePlaylistArchive(playlist.name, tracks);
+      setIsExportingPlaylist(false);
+      if (ok) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    } catch (err: any) {
+      setIsExportingPlaylist(false);
+      SleekAlert.alert('Export Failed', err?.message || 'Could not export playlist archive.');
+    }
+  };
+
+  const executeExportFolder = async () => {
+    if (!playlist) return;
+    try {
+      setIsExportingPlaylist(true);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      const res = await FileImportService.exportPlaylistFolderToFiles(playlist.name, tracks, db);
+      setIsExportingPlaylist(false);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+      SleekAlert.alert(
+        'Playlist Exported',
+        `All ${res.exportedCount} songs in "${playlist.name}" are saved in your Files app:\n\n• Location: On My iPhone > Overtone > Music > ${playlist.name}\n\nIncludes playlist .m3u8 file for VLC, GarageBand, and other apps.`,
+        [
+          { text: 'Done', style: 'cancel' },
+          {
+            text: 'Open Files App',
+            onPress: () => {
+              Linking.openURL('shareddocuments://').catch(() => {
+                SleekAlert.alert('Files App', 'Open the native Files app on your home screen to view your playlist folder.');
+              });
+            },
+          },
+          {
+            text: 'Share (ZIP)',
+            onPress: () => {
+              executeExportZip();
+            },
+          },
+        ]
+      );
+    } catch (err: any) {
+      setIsExportingPlaylist(false);
+      SleekAlert.alert('Export Failed', err?.message || 'Could not export playlist folder.');
+    }
+  };
+
+  const executeShareM3U = async () => {
+    if (!playlist) return;
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      await FileImportService.sharePlaylistM3U(playlist.name, tracks);
+    } catch (err: any) {
+      SleekAlert.alert('Share Failed', err?.message || 'Could not share playlist file.');
+    }
+  };
+
+  const handleExportPlaylist = () => {
+    if (!playlist || tracks.length === 0 || isExportingPlaylist || !db.isReady) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    const streamTracks = tracks.filter((t) => t.fileUri?.startsWith('http://') || t.format === 'stream');
+
+    const runAction = (action: () => Promise<void>) => {
+      if (streamTracks.length > 0) {
+        SleekAlert.alert(
+          'Download Streamed Songs?',
+          `This playlist has ${streamTracks.length} song${streamTracks.length === 1 ? '' : 's'} streamed from your computer. Would you like to download them first so all songs are included?`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Export Available Only',
+              onPress: () => {
+                action();
+              },
+            },
+            {
+              text: 'Download & Export',
+              onPress: async () => {
+                await handleDownloadAllOffline();
+                action();
+              },
+            },
+          ]
+        );
+      } else {
+        action();
+      }
+    };
+
+    SleekAlert.alert(
+      `Export "${playlist.name}"`,
+      `Select an export option for this playlist (${tracks.length} songs):`,
+      [
+        {
+          text: 'Save to Files / Share (ZIP)',
+          onPress: () => runAction(executeExportZip),
+        },
+        {
+          text: 'Export Folder to Files App',
+          onPress: () => runAction(executeExportFolder),
+        },
+        {
+          text: 'Share Playlist (.m3u8)',
+          onPress: () => executeShareM3U(),
+        },
+        {
+          text: 'Open Files App',
+          onPress: () => {
+            Linking.openURL('shareddocuments://').catch(() => {
+              SleekAlert.alert('Files App', 'Open the native Files app on your home screen.');
+            });
+          },
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  };
 
   if (!playlist) {
     return (
@@ -440,48 +615,6 @@ export default function PlaylistDetailScreen() {
       </SafeAreaView>
     );
   }
-
-  const playlistArtwork = playlist?.artworkUri || (tracks.length > 0 && tracks[0].artworkUri ? tracks[0].artworkUri : null);
-
-  const handlePlayTrack = useCallback(
-    (track: MobileTrack) => {
-      const idx = tracks.findIndex((t) => t.id === track.id);
-      loadAndPlay(track, tracks, idx >= 0 ? idx : 0);
-    },
-    [loadAndPlay, tracks]
-  );
-
-  const handleMorePress = useCallback((track: MobileTrack) => {
-    setActionTrack(track);
-  }, []);
-
-  const renderTrackItem = useCallback(
-    ({ item }: { item: MobileTrack }) => {
-      const isDownloaded = Boolean(item.fileUri && !item.fileUri.startsWith('http://') && item.format !== 'stream');
-      const isDownloading = downloadingTrackId === item.id;
-      return (
-        <PlaylistRowItem
-          item={item}
-          artistSubtitle={getArtistName(item.artistId)}
-          isPlaying={currentTrackId === item.id && isPlaying}
-          isDownloaded={isDownloaded}
-          isDownloading={isDownloading}
-          onPress={handlePlayTrack}
-          onMorePress={handleMorePress}
-        />
-      );
-    },
-    [downloadingTrackId, currentTrackId, isPlaying, getArtistName, handlePlayTrack, handleMorePress]
-  );
-
-  const getItemLayout = useCallback(
-    (_: any, index: number) => ({
-      length: 68,
-      offset: 68 * index,
-      index,
-    }),
-    []
-  );
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -653,6 +786,26 @@ export default function PlaylistDetailScreen() {
                 <Text style={styles.actionPillText}>Add Songs</Text>
               </Pressable>
 
+              {/* Export / Share Playlist Button */}
+              {tracks.length > 0 && (
+                <Pressable
+                  onPress={handleExportPlaylist}
+                  disabled={isExportingPlaylist}
+                  style={({ pressed }) => [
+                    styles.actionPill,
+                    pressed && styles.actionPillPressed,
+                    isExportingPlaylist && { opacity: 0.6 },
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel="Export or share playlist"
+                >
+                  <SleekShareIcon size={14} color="#92400E" />
+                  <Text style={styles.actionPillText}>
+                    {isExportingPlaylist ? 'Exporting…' : 'Export / Share'}
+                  </Text>
+                </Pressable>
+              )}
+
               {/* Download Offline Button with Amber Watery Wave Fill */}
               {(streamTracksCount > 0 || isDownloadingAll || (downloadedTracksCount > 0 && tracks.length > 0)) && (
                 <SleekWateryDownloadButton
@@ -707,28 +860,36 @@ export default function PlaylistDetailScreen() {
       {/* ── Add Songs to Playlist Modal ───────────────────────────────── */}
       <Modal
         visible={isAddModalOpen}
+        transparent
         animationType="slide"
-        presentationStyle="pageSheet"
         onRequestClose={() => setIsAddModalOpen(false)}
+        statusBarTranslucent
       >
-        <SafeAreaView style={styles.modalContainer}>
-          {/* Sheet Grabber Handle */}
-          <View style={styles.modalGrabber} />
-
-          {/* Modal Header */}
-          <View style={styles.modalHeader}>
-            <View>
-              <Text style={styles.modalTitle}>Add Songs</Text>
-              <Text style={styles.modalSubtitle}>to {playlist.name}</Text>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.modalOverlay}
+        >
+          <Pressable style={styles.backdrop} onPress={() => setIsAddModalOpen(false)} />
+          <View style={[styles.sheetContainer, { height: '88%' }]}>
+            {/* Sheet Grabber Handle */}
+            <View style={styles.handleContainer}>
+              <View style={styles.handlePill} />
             </View>
-            <Pressable
-              onPress={() => setIsAddModalOpen(false)}
-              style={styles.modalCloseBtn}
-              hitSlop={8}
-            >
-              <SleekCloseIcon size={18} color="#786C5A" />
-            </Pressable>
-          </View>
+
+            {/* Modal Header */}
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={styles.modalTitle}>Add Songs</Text>
+                <Text style={styles.modalSubtitle}>to {playlist.name}</Text>
+              </View>
+              <Pressable
+                onPress={() => setIsAddModalOpen(false)}
+                style={styles.modalCloseBtn}
+                hitSlop={8}
+              >
+                <SleekCloseIcon size={18} color="#786C5A" />
+              </Pressable>
+            </View>
 
           {/* Search Input */}
           <View style={styles.searchBar}>
@@ -814,40 +975,49 @@ export default function PlaylistDetailScreen() {
               </View>
             }
           />
-        </SafeAreaView>
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* ── Edit Playlist Details & Manage Songs Modal ────────────────── */}
       <Modal
         visible={isEditModalOpen}
+        transparent
         animationType="slide"
-        presentationStyle="pageSheet"
         onRequestClose={() => setIsEditModalOpen(false)}
+        statusBarTranslucent
       >
-        <SafeAreaView style={styles.modalContainer}>
-          {/* Sheet Grabber Handle */}
-          <View style={styles.modalGrabber} />
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.modalOverlay}
+        >
+          <Pressable style={styles.backdrop} onPress={() => setIsEditModalOpen(false)} />
+          <View style={[styles.sheetContainer, { height: '88%' }]}>
+            {/* Sheet Grabber Handle */}
+            <View style={styles.handleContainer}>
+              <View style={styles.handlePill} />
+            </View>
 
-          {/* Modal Header */}
-          <View style={styles.modalHeader}>
-            <Pressable
-              onPress={() => setIsEditModalOpen(false)}
-              style={styles.modalCancelBtn}
-              hitSlop={8}
-            >
-              <Text style={styles.modalCancelText}>Cancel</Text>
-            </Pressable>
+            {/* Modal Header */}
+            <View style={styles.modalHeader}>
+              <Pressable
+                onPress={() => setIsEditModalOpen(false)}
+                style={styles.modalCancelBtn}
+                hitSlop={8}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </Pressable>
 
-            <Text style={styles.modalTitle}>Edit Playlist</Text>
+              <Text style={styles.modalTitle}>Edit Playlist</Text>
 
-            <Pressable
-              onPress={handleSaveEdit}
-              style={styles.modalSaveBtn}
-              hitSlop={8}
-            >
-              <Text style={styles.modalSaveText}>Save</Text>
-            </Pressable>
-          </View>
+              <Pressable
+                onPress={handleSaveEdit}
+                style={styles.modalSaveBtn}
+                hitSlop={8}
+              >
+                <Text style={styles.modalSaveText}>Save</Text>
+              </Pressable>
+            </View>
 
           <FlatList
             data={tracks}
@@ -992,7 +1162,8 @@ export default function PlaylistDetailScreen() {
               </View>
             }
           />
-        </SafeAreaView>
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* ── Persistent Floating Mini Player ──────────────────────────── */}
@@ -1304,6 +1475,39 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 13.5,
     fontWeight: '700',
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(10, 8, 4, 0.60)',
+  },
+  sheetContainer: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    borderWidth: 1,
+    borderColor: 'rgba(249, 168, 38, 0.18)',
+    borderBottomWidth: 0,
+    overflow: 'hidden',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 20,
+  },
+  handleContainer: {
+    alignItems: 'center',
+    paddingTop: 10,
+    paddingBottom: 4,
+  },
+  handlePill: {
+    width: 38,
+    height: 4.5,
+    borderRadius: 2.5,
+    backgroundColor: '#E5DFD3',
   },
   modalContainer: {
     flex: 1,

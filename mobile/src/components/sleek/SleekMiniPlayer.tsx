@@ -39,9 +39,6 @@ export const SleekMiniPlayer = memo(function SleekMiniPlayer({
   const isNowPlayingOpen = usePlayerStore((s) => s.isNowPlayingOpen);
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
-  if (isNowPlayingOpen) return null;
-
-  const title = currentTrack?.title || fallbackTitle;
   // Resolve artist name: try DB lookup first, then fall back to track object fields
   const artist = useMemo(() => {
     if (!currentTrack) return fallbackArtist;
@@ -54,6 +51,10 @@ export const SleekMiniPlayer = memo(function SleekMiniPlayer({
     const anyTrack = currentTrack as any;
     return anyTrack.artist || anyTrack.artistName || fallbackArtist;
   }, [currentTrack, db.isReady, fallbackArtist]);
+
+  if (isNowPlayingOpen) return null;
+
+  const title = currentTrack?.title || fallbackTitle;
 
   const handleOpenNowPlaying = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);

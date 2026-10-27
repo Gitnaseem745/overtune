@@ -12,8 +12,8 @@ import {
   StyleSheet,
   FlatList,
   Pressable,
-  Alert,
 } from 'react-native';
+import { SleekAlert } from '../../src/components/sleek/SleekAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -69,7 +69,7 @@ export default function PlaylistPreviewScreen() {
       });
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert(
+      SleekAlert.alert(
         'Playlist Imported',
         `"${playlistName}" with ${matches.length} track${matches.length === 1 ? '' : 's'} has been added to your Library.`,
         [
@@ -83,7 +83,7 @@ export default function PlaylistPreviewScreen() {
       );
     } catch (err) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Import Failed', err instanceof Error ? err.message : 'Unknown error');
+      SleekAlert.alert('Import Failed', err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setIsCommitting(false);
     }

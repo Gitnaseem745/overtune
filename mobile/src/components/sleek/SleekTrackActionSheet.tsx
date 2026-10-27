@@ -20,11 +20,11 @@ import {
   Pressable,
   ScrollView,
   TextInput,
-  Alert,
   Share,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { SleekAlert } from './SleekAlert';
 import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
 import {
@@ -181,7 +181,7 @@ export function SleekTrackActionSheet({
     try {
       if (db.playlists.hasTrack(targetPlaylist.id, track.id)) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-        Alert.alert(
+        SleekAlert.alert(
           'Already in Playlist',
           `"${track.title}" is already in "${targetPlaylist.name}". A song can only be added once per playlist.`,
           [{ text: 'OK', style: 'default' }]
@@ -222,7 +222,7 @@ export function SleekTrackActionSheet({
     if (!db.isReady) return;
     const trimmedTitle = editTitle.trim();
     if (!trimmedTitle) {
-      Alert.alert('Title Required', 'Please enter a valid title for the track.');
+      SleekAlert.alert('Title Required', 'Please enter a valid title for the track.');
       return;
     }
 
@@ -251,14 +251,14 @@ export function SleekTrackActionSheet({
       onClose();
     } catch (err) {
       console.warn('[TrackActionSheet] Error updating metadata:', err);
-      Alert.alert('Error', 'Failed to update song metadata.');
+      SleekAlert.alert('Error', 'Failed to update song metadata.');
     }
   };
 
   // 8. Remove from Current Playlist
   const handleRemoveFromPlaylist = () => {
     if (!playlistId || !db.isReady) return;
-    Alert.alert(
+    SleekAlert.alert(
       'Remove from Playlist',
       `Remove "${track.title}" from "${playlistName || 'this playlist'}"?`,
       [
@@ -279,7 +279,7 @@ export function SleekTrackActionSheet({
 
   // 9. Delete from Library
   const handleDeleteTrack = () => {
-    Alert.alert(
+    SleekAlert.alert(
       'Delete Song',
       `Are you sure you want to remove "${track.title}" from your Overtone library?`,
       [
@@ -327,13 +327,13 @@ export function SleekTrackActionSheet({
         updateTrack(updated);
         onTrackUpdated?.(updated);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        Alert.alert('Downloaded', `"${track.title}" is now saved in Files app (On My iPhone > Overtone > Music) for offline playback!`);
+        SleekAlert.alert('Downloaded', `"${track.title}" is now saved in Files app (On My iPhone > Overtone > Music) for offline playback!`);
       } else {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        Alert.alert('Download Failed', 'Could not download track. Make sure Overtone Desktop is running on the same Wi-Fi.');
+        SleekAlert.alert('Download Failed', 'Could not download track. Make sure Overtone Desktop is running on the same Wi-Fi.');
       }
     } catch (err: any) {
-      Alert.alert('Download Error', err?.message || 'Failed to download track');
+      SleekAlert.alert('Download Error', err?.message || 'Failed to download track');
     } finally {
       setIsDownloading(false);
     }
@@ -364,7 +364,7 @@ export function SleekTrackActionSheet({
           onTrackUpdated?.(updated);
           targetUri = res.localUri;
         } else {
-          Alert.alert('Download Failed', 'Could not fetch song from desktop to save to Files.');
+          SleekAlert.alert('Download Failed', 'Could not fetch song from desktop to save to Files.');
           return;
         }
       }
@@ -377,7 +377,7 @@ export function SleekTrackActionSheet({
       }
     } catch (err: any) {
       setIsDownloading(false);
-      Alert.alert('Error', err?.message || 'Failed to save song to Files');
+      SleekAlert.alert('Error', err?.message || 'Failed to save song to Files');
     }
   };
 
@@ -386,7 +386,7 @@ export function SleekTrackActionSheet({
     if (!track || !db.isReady || isSending) return;
     const paired = db.pairedDevices.getAll();
     if (paired.length === 0) {
-      Alert.alert('No Paired Desktop', 'Connect to your computer first in Settings → Wi-Fi Desktop Sync.');
+      SleekAlert.alert('No Paired Desktop', 'Connect to your computer first in Settings → Wi-Fi Desktop Sync.');
       return;
     }
     const device = paired[0];
@@ -404,13 +404,13 @@ export function SleekTrackActionSheet({
       });
       if (res.success) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        Alert.alert('Sent to Desktop', `"${track.title}" was sent to ${device.name}.`);
+        SleekAlert.alert('Sent to Desktop', `"${track.title}" was sent to ${device.name}.`);
       } else {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        Alert.alert('Transfer Failed', res.error || 'Could not send song to desktop.');
+        SleekAlert.alert('Transfer Failed', res.error || 'Could not send song to desktop.');
       }
     } catch (e: any) {
-      Alert.alert('Error', e?.message || 'Transfer failed');
+      SleekAlert.alert('Error', e?.message || 'Transfer failed');
     } finally {
       setIsSending(false);
     }
@@ -421,7 +421,7 @@ export function SleekTrackActionSheet({
     if (!track || !db.isReady) return;
     const paired = db.pairedDevices.getAll();
     if (paired.length === 0) {
-      Alert.alert('No Paired Desktop', 'Connect to your computer in Settings → Wi-Fi Desktop Sync.');
+      SleekAlert.alert('No Paired Desktop', 'Connect to your computer in Settings → Wi-Fi Desktop Sync.');
       return;
     }
     const device = paired[0];
@@ -434,13 +434,13 @@ export function SleekTrackActionSheet({
       });
       if (res.success) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        Alert.alert('Playing on Desktop', `Sent playback request to ${device.name}.`);
+        SleekAlert.alert('Playing on Desktop', `Sent playback request to ${device.name}.`);
         onClose();
       } else {
-        Alert.alert('Remote Control Failed', res.error || 'Could not reach desktop.');
+        SleekAlert.alert('Remote Control Failed', res.error || 'Could not reach desktop.');
       }
     } catch (e: any) {
-      Alert.alert('Error', e?.message || 'Could not send play request.');
+      SleekAlert.alert('Error', e?.message || 'Could not send play request.');
     }
   };
 

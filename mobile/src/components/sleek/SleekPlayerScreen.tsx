@@ -15,13 +15,12 @@ import {
   useWindowDimensions,
   PanResponder,
   Share,
-  ActionSheetIOS,
   Platform,
-  Alert,
   Animated,
   BackHandler,
   Easing,
 } from 'react-native';
+import { SleekAlert } from './SleekAlert';
 import { Image } from 'expo-image';
 import Svg, { Path, Circle, Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
@@ -332,10 +331,10 @@ export function SleekPlayerScreen({ onDismiss }: SleekPlayerScreenProps = {}) {
     if (!currentTrack || !db.isReady) return;
     const pls = db.playlists.getAll();
     if (pls.length === 0) {
-      Alert.alert('No Playlists', 'Create a playlist first in the Playlists tab.');
+      SleekAlert.alert('No Playlists', 'Create a playlist first in the Playlists tab.');
       return;
     }
-    Alert.alert(
+    SleekAlert.alert(
       'Add to Playlist',
       `Add "${currentTrack.title}" to:`,
       [
@@ -344,7 +343,7 @@ export function SleekPlayerScreen({ onDismiss }: SleekPlayerScreenProps = {}) {
           onPress: () => {
             if (db.playlists.hasTrack(p.id, currentTrack.id)) {
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-              Alert.alert(
+              SleekAlert.alert(
                 'Already in Playlist',
                 `"${currentTrack.title}" is already in "${p.name}". A song can only be added once per playlist.`,
                 [{ text: 'OK', style: 'default' }]
@@ -353,7 +352,7 @@ export function SleekPlayerScreen({ onDismiss }: SleekPlayerScreenProps = {}) {
             }
             db.playlists.addTrack(p.id, currentTrack.id);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            Alert.alert('Added', `"${currentTrack.title}" added to "${p.name}".`);
+            SleekAlert.alert('Added', `"${currentTrack.title}" added to "${p.name}".`);
           },
         })),
         { text: 'Cancel', style: 'cancel' },

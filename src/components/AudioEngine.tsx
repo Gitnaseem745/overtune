@@ -373,16 +373,90 @@ export function AudioEngine() {
     }
   };
 
-  // Expose an audio seek handler through custom event
+  // Global audio event handlers for decoupling and external dispatchers
   useEffect(() => {
     const handleSeekEvent = (e: CustomEvent<{ time: number }>) => {
-      if (audioRef.current) {
-        audioRef.current.currentTime = e.detail.time;
+      if (typeof e.detail?.time === 'number') {
+        if (audioRef.current) {
+          audioRef.current.currentTime = e.detail.time;
+        }
+        setCurrentTime(e.detail.time);
       }
     };
+
+    const handleTogglePlayEvent = () => {
+      const store = usePlayerStore.getState();
+      if (!store.currentTrack && store.tracks.length > 0) {
+        store.playTrack(store.tracks[0]);
+      } else if (store.currentTrack) {
+        store.setIsPlaying(!store.isPlaying);
+      }
+    };
+
+    const handlePlayEvent = () => {
+      usePlayerStore.getState().setIsPlaying(true);
+    };
+
+    const handlePauseEvent = () => {
+      usePlayerStore.getState().setIsPlaying(false);
+    };
+
+    const handleNextEvent = () => {
+      usePlayerStore.getState().handleNext();
+    };
+
+    const handlePrevEvent = () => {
+      usePlayerStore.getState().handlePrev();
+    };
+
+    const handleToggleShuffleEvent = () => {
+      const store = usePlayerStore.getState();
+      store.setShuffleOn(!store.shuffleOn);
+    };
+
+    const handleCycleRepeatEvent = () => {
+      usePlayerStore.getState().cycleRepeatMode();
+    };
+
+    const handleToggleMuteEvent = () => {
+      const store = usePlayerStore.getState();
+      store.setIsMuted(!store.isMuted);
+    };
+
+    const handleSetVolumeEvent = (e: CustomEvent<{ volume: number }>) => {
+      if (typeof e.detail?.volume === 'number') {
+        const store = usePlayerStore.getState();
+        store.setVolume(e.detail.volume);
+        if (e.detail.volume > 0 && store.isMuted) {
+          store.setIsMuted(false);
+        }
+      }
+    };
+
     window.addEventListener('audio-seek', handleSeekEvent as EventListener);
-    return () => window.removeEventListener('audio-seek', handleSeekEvent as EventListener);
-  }, []);
+    window.addEventListener('audio-toggle-play', handleTogglePlayEvent);
+    window.addEventListener('audio-play', handlePlayEvent);
+    window.addEventListener('audio-pause', handlePauseEvent);
+    window.addEventListener('audio-next', handleNextEvent);
+    window.addEventListener('audio-prev', handlePrevEvent);
+    window.addEventListener('audio-toggle-shuffle', handleToggleShuffleEvent);
+    window.addEventListener('audio-cycle-repeat', handleCycleRepeatEvent);
+    window.addEventListener('audio-toggle-mute', handleToggleMuteEvent);
+    window.addEventListener('audio-set-volume', handleSetVolumeEvent as EventListener);
+
+    return () => {
+      window.removeEventListener('audio-seek', handleSeekEvent as EventListener);
+      window.removeEventListener('audio-toggle-play', handleTogglePlayEvent);
+      window.removeEventListener('audio-play', handlePlayEvent);
+      window.removeEventListener('audio-pause', handlePauseEvent);
+      window.removeEventListener('audio-next', handleNextEvent);
+      window.removeEventListener('audio-prev', handlePrevEvent);
+      window.removeEventListener('audio-toggle-shuffle', handleToggleShuffleEvent);
+      window.removeEventListener('audio-cycle-repeat', handleCycleRepeatEvent);
+      window.removeEventListener('audio-toggle-mute', handleToggleMuteEvent);
+      window.removeEventListener('audio-set-volume', handleSetVolumeEvent as EventListener);
+    };
+  }, [setCurrentTime]);
 
   return (
     <audio

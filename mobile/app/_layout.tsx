@@ -14,6 +14,7 @@ import { useDatabase } from '../src/hooks/useDatabase';
 import { useTheme } from '../src/hooks/useTheme';
 import { AudioService } from '../src/services/audio/AudioService';
 import { usePlayerStore } from '../src/store/usePlayerStore';
+import { SleekAlertHost } from '../src/components/sleek/SleekAlert';
 
 export default function RootLayout() {
   const router = useRouter();
@@ -128,6 +129,7 @@ export default function RootLayout() {
           }}
         />
       </Stack>
+      <SleekAlertHost />
     </SafeAreaProvider>
   );
 }

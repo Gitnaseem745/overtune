@@ -17,11 +17,12 @@ import {
   Pressable,
   TextInput,
   Switch,
-  Alert,
   ActivityIndicator,
   Modal,
   useWindowDimensions,
+  Linking,
 } from 'react-native';
+import { SleekAlert } from './SleekAlert';
 import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
@@ -556,13 +557,13 @@ export function SleekPlaylistsView() {
       loadPlaylists();
       router.push(`/playlist/${plId}`);
     } catch (e) {
-      Alert.alert('Error', 'Failed to create playlist');
+      SleekAlert.alert('Error', 'Failed to create playlist');
     }
   };
 
   const handlePlaylistOptions = (pl: MobilePlaylist) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    Alert.alert(
+    SleekAlert.alert(
       pl.name,
       `${pl.trackCount} track${pl.trackCount === 1 ? '' : 's'}`,
       [
@@ -571,10 +572,21 @@ export function SleekPlaylistsView() {
           onPress: () => router.push(`/playlist/${pl.id}`),
         },
         {
+          text: 'Export / Share (ZIP)',
+          onPress: async () => {
+            const plTracks = db.playlists.getTracks(pl.id);
+            if (!plTracks || plTracks.length === 0) {
+              SleekAlert.alert('Empty Playlist', 'Add songs to this playlist before exporting.');
+              return;
+            }
+            await FileImportService.sharePlaylistArchive(pl.name, plTracks);
+          },
+        },
+        {
           text: 'Delete Playlist',
           style: 'destructive',
           onPress: () => {
-            Alert.alert(
+            SleekAlert.alert(
               'Delete Playlist',
               `Are you sure you want to delete "${pl.name}"?`,
               [
@@ -996,7 +1008,7 @@ export function SleekSettingsView() {
       setImportProgress(null);
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert(
+      SleekAlert.alert(
         'Import Complete',
         `Successfully imported ${result.imported} track${result.imported === 1 ? '' : 's'}.${result.failed > 0 ? ` (${result.failed} failed/unsupported)` : ''}`,
         [{ text: 'OK', onPress: loadSettingsData }]
@@ -1004,7 +1016,7 @@ export function SleekSettingsView() {
     } catch (err: any) {
       setIsImporting(false);
       setImportProgress(null);
-      Alert.alert('Import Failed', err?.message || 'Could not import audio files');
+      SleekAlert.alert('Import Failed', err?.message || 'Could not import audio files');
     }
   };
 
@@ -1022,18 +1034,35 @@ export function SleekSettingsView() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       setIsExportingToFiles(true);
       const allTracks = db.tracks.getAll();
-      const count = await FileImportService.syncAllToFilesApp(allTracks);
+      const count = await FileImportService.syncAllToFilesApp(allTracks, db);
       const usage = await FileImportService.getStorageUsage();
       setStorageUsage(usage);
       setIsExportingToFiles(false);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert(
+      SleekAlert.alert(
         'Files App Sync Complete',
-        `Songs are stored in your device's Files app:\n\n• iOS: On My iPhone > Overtone > Music\n• Android: Overtone Music folder\n\nOther apps (VLC, GarageBand, CapCut, Files) can now access and play your music library.`
+        `All songs are saved in your device's Files app:\n\n• Location: On My iPhone > Overtone > Music\n• Music Storage: ${formatBytes(usage.audioBytes)}\n\nDuplicate files were cleaned up to prevent double storage. You can browse all songs in the Files app, or share the entire music collection.`,
+        [
+          { text: 'Done', style: 'cancel' },
+          {
+            text: 'Open Files App',
+            onPress: () => {
+              Linking.openURL('shareddocuments://').catch(() => {
+                SleekAlert.alert('Files App', 'Open the native Files app on your home screen to browse: On My iPhone > Overtone > Music');
+              });
+            },
+          },
+          {
+            text: 'Share All Songs (ZIP)',
+            onPress: async () => {
+              await FileImportService.sharePlaylistArchive('Overtone Library', allTracks);
+            },
+          },
+        ]
       );
     } catch (err: any) {
       setIsExportingToFiles(false);
-      Alert.alert('Export Error', err?.message || 'Could not export songs to Files app');
+      SleekAlert.alert('Export Error', err?.message || 'Could not export songs to Files app');
     }
   };
 
@@ -1042,7 +1071,7 @@ export function SleekSettingsView() {
     const res = await BackupService.exportBackup(db);
     if (res.success && res.filePath) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert(
+      SleekAlert.alert(
         'Backup Exported',
         'Your library, playlists, favorites, and settings have been safely backed up to a JSON file.',
         [
@@ -1054,7 +1083,7 @@ export function SleekSettingsView() {
         ]
       );
     } else {
-      Alert.alert('Backup Failed', res.error || 'Could not export backup');
+      SleekAlert.alert('Backup Failed', res.error || 'Could not export backup');
     }
   };
 
@@ -1065,11 +1094,11 @@ export function SleekSettingsView() {
 
     const preview = await BackupService.previewBackup(pick.uri);
     if (!preview.valid || !preview.summary) {
-      Alert.alert('Invalid Backup', preview.error || 'The selected file is not a valid Overtone backup.');
+      SleekAlert.alert('Invalid Backup', preview.error || 'The selected file is not a valid Overtone backup.');
       return;
     }
 
-    Alert.alert(
+    SleekAlert.alert(
       'Confirm Restore',
       `Restore backup created on ${new Date(preview.summary.createdAt).toLocaleDateString()} with ${preview.summary.playlistCount} playlists and ${preview.summary.favoriteCount} favorites?\n\nExisting audio files will NOT be affected.`,
       [
@@ -1081,13 +1110,13 @@ export function SleekSettingsView() {
             const restored = await BackupService.restoreBackup(pick.uri!, db);
             if (restored.success) {
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-              Alert.alert(
+              SleekAlert.alert(
                 'Restore Complete',
                 `Restored ${restored.restoredPlaylists} playlists and ${restored.restoredFavorites} favorites.`,
                 [{ text: 'OK', onPress: loadSettingsData }]
               );
             } else {
-              Alert.alert('Restore Failed', restored.error || 'Could not restore backup.');
+              SleekAlert.alert('Restore Failed', restored.error || 'Could not restore backup.');
             }
           },
         },
@@ -1096,7 +1125,7 @@ export function SleekSettingsView() {
   };
 
   const handleRevokeDevice = (device: PairedDevice) => {
-    Alert.alert(
+    SleekAlert.alert(
       'Disconnect Desktop',
       `Are you sure you want to disconnect from "${device.name}"? Pairing credentials will be removed.`,
       [
@@ -1124,7 +1153,7 @@ export function SleekSettingsView() {
       setIsCheckingInbox(false);
 
       if (!res.items || res.items.length === 0) {
-        Alert.alert('Inbox Up to Date', `No pending transfers from "${dev.name}".`);
+        SleekAlert.alert('Inbox Up to Date', `No pending transfers from "${dev.name}".`);
         return;
       }
 
@@ -1145,13 +1174,13 @@ export function SleekSettingsView() {
 
       loadSettingsData();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert(
+      SleekAlert.alert(
         'Transfers Received',
         `Successfully imported ${importedCount} item${importedCount !== 1 ? 's' : ''} from "${dev.name}".`
       );
     } catch (err: any) {
       setIsCheckingInbox(false);
-      Alert.alert('Inbox Check Failed', err?.message || 'Could not reach desktop.');
+      SleekAlert.alert('Inbox Check Failed', err?.message || 'Could not reach desktop.');
     }
   };
 
@@ -1202,15 +1231,15 @@ export function SleekSettingsView() {
           db
         );
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        Alert.alert(
+        SleekAlert.alert(
           'Playlist Imported',
           `"${playlist.name}" (${imp.totalTracks} songs) has been added to your Library!`
         );
       } else {
-        Alert.alert('Import Failed', res.error || 'Could not fetch playlist from desktop.');
+        SleekAlert.alert('Import Failed', res.error || 'Could not fetch playlist from desktop.');
       }
     } catch (err: any) {
-      Alert.alert('Error', err?.message || 'Failed to import playlist');
+      SleekAlert.alert('Error', err?.message || 'Failed to import playlist');
     }
   };
 
@@ -1220,9 +1249,9 @@ export function SleekSettingsView() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       SyncService.importSingleTrack(browseDevice, tr, db);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Added to Library', `"${tr.title}" has been saved to your songs!`);
+      SleekAlert.alert('Added to Library', `"${tr.title}" has been saved to your songs!`);
     } catch (err: any) {
-      Alert.alert('Error', err?.message || 'Failed to add song');
+      SleekAlert.alert('Error', err?.message || 'Failed to add song');
     }
   };
 
@@ -1236,7 +1265,7 @@ export function SleekSettingsView() {
         usePlayerStore.getState().loadAndPlay(localTrack, [localTrack]);
       }
     } catch (err: any) {
-      Alert.alert('Playback Error', err?.message || 'Could not stream song from desktop');
+      SleekAlert.alert('Playback Error', err?.message || 'Could not stream song from desktop');
     }
   };
 
@@ -1439,7 +1468,7 @@ export function SleekSettingsView() {
               <View style={styles.settingTextContainer}>
                 <Text style={styles.settingLabel}>Export Offline Songs to Files</Text>
                 <Text style={styles.settingDesc}>
-                  Ensure all downloaded music is accessible in the native Files app
+                  Move and sync songs to "On My iPhone &gt; Overtone &gt; Music" without duplicating storage
                 </Text>
               </View>
               <Pressable
@@ -1588,13 +1617,22 @@ export function SleekSettingsView() {
           {/* Browse Desktop Music Library Modal */}
           <Modal
             visible={isBrowseModalOpen}
+            transparent
             animationType="slide"
-            presentationStyle="pageSheet"
             onRequestClose={() => setIsBrowseModalOpen(false)}
+            statusBarTranslucent
           >
-            <View style={styles.browseModalContainer}>
-              {/* Header */}
-              <View style={styles.browseModalHeader}>
+            <View style={styles.browseModalOverlay}>
+              <Pressable style={styles.browseModalBackdrop} onPress={() => setIsBrowseModalOpen(false)} />
+              <View style={styles.browseSheetContainer}>
+                {/* Sheet Grabber Handle */}
+                <View style={styles.browseHandleContainer}>
+                  <View style={styles.browseHandlePill} />
+                </View>
+
+                <View style={styles.browseModalContainer}>
+                  {/* Header */}
+                  <View style={styles.browseModalHeader}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.browseModalTitle} numberOfLines={1}>
                     {browseDevice?.name || 'Desktop'}&apos;s Music
@@ -1756,6 +1794,8 @@ export function SleekSettingsView() {
                   </ScrollView>
                 </View>
               )}
+                </View>
+              </View>
             </View>
           </Modal>
 
@@ -2435,10 +2475,44 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#DC2626',
   },
+  browseModalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  browseModalBackdrop: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(10, 8, 4, 0.60)',
+  },
+  browseSheetContainer: {
+    height: '88%',
+    backgroundColor: '#FAF7EE',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    borderWidth: 1,
+    borderColor: 'rgba(249, 168, 38, 0.20)',
+    borderBottomWidth: 0,
+    overflow: 'hidden',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 20,
+  },
+  browseHandleContainer: {
+    alignItems: 'center',
+    paddingTop: 10,
+    paddingBottom: 4,
+  },
+  browseHandlePill: {
+    width: 38,
+    height: 4.5,
+    borderRadius: 2.5,
+    backgroundColor: '#E5DFD3',
+  },
   browseModalContainer: {
     flex: 1,
     backgroundColor: '#FAF7EE',
-    paddingTop: 20,
+    paddingTop: 10,
     paddingHorizontal: 18,
   },
   browseModalHeader: {

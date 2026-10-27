@@ -31,11 +31,22 @@ export function FullscreenPlayer() {
   const selectedAlbum = usePlayerStore((s) => s.selectedAlbum);
   const selectedPlaylist = usePlayerStore((s) => s.selectedPlaylist);
 
+  const tracks = usePlayerStore((s) => s.tracks);
+  const setIsPlaying = usePlayerStore((s) => s.setIsPlaying);
+  const setCurrentTime = usePlayerStore((s) => s.setCurrentTime);
+  const setVolume = usePlayerStore((s) => s.setVolume);
+  const setIsMuted = usePlayerStore((s) => s.setIsMuted);
+  const setShuffleOn = usePlayerStore((s) => s.setShuffleOn);
+  const cycleRepeatMode = usePlayerStore((s) => s.cycleRepeatMode);
+  const handleNext = usePlayerStore((s) => s.handleNext);
+  const handlePrev = usePlayerStore((s) => s.handlePrev);
+  const playTrack = usePlayerStore((s) => s.playTrack);
   const toggleFavorite = usePlayerStore((s) => s.toggleFavorite);
   const fetchLyrics = usePlayerStore((s) => s.fetchLyrics);
 
   const [isIdle, setIsIdle] = useState(false);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isHoveringControlsRef = useRef<boolean>(false);
   const activeLineRef = useRef<HTMLDivElement>(null);
   const lyricsScrollRef = useRef<HTMLDivElement>(null);
   const lastTrackIdRef = useRef<number | null>(null);
@@ -54,13 +65,15 @@ export function FullscreenPlayer() {
     }
   }, [currentTrack, fetchLyrics]);
 
-  // ── 5-Second Inactivity Timer ──
+  // ── 5-Second Inactivity Timer (Respects Control Hover) ──
   const scheduleIdleTimer = useCallback(() => {
     if (idleTimerRef.current) {
       clearTimeout(idleTimerRef.current);
     }
     idleTimerRef.current = setTimeout(() => {
-      setIsIdle(true);
+      if (!isHoveringControlsRef.current) {
+        setIsIdle(true);
+      }
     }, 5000);
   }, []);
 
@@ -89,13 +102,77 @@ export function FullscreenPlayer() {
     };
   }, [isFullscreenPlayerOpen, resetIdleTimer, scheduleIdleTimer]);
 
-  // ── Keyboard Shortcuts (Esc to exit, Space to play/pause) ──
+  // Direct store-based playback control handlers (with CustomEvent dispatching for compatibility)
+  const handleTogglePlay = useCallback(() => {
+    if (!currentTrack && tracks.length > 0) {
+      playTrack(tracks[0]);
+    } else if (currentTrack) {
+      setIsPlaying(!isPlaying);
+    }
+    window.dispatchEvent(new CustomEvent('audio-toggle-play'));
+  }, [currentTrack, tracks, playTrack, setIsPlaying, isPlaying]);
+
+  const handleNextTrack = useCallback(() => {
+    handleNext();
+    window.dispatchEvent(new CustomEvent('audio-next'));
+  }, [handleNext]);
+
+  const handlePrevTrack = useCallback(() => {
+    handlePrev();
+    window.dispatchEvent(new CustomEvent('audio-prev'));
+  }, [handlePrev]);
+
+  const handleToggleShuffle = useCallback(() => {
+    setShuffleOn(!shuffleOn);
+    window.dispatchEvent(new CustomEvent('audio-toggle-shuffle'));
+  }, [setShuffleOn, shuffleOn]);
+
+  const handleCycleRepeat = useCallback(() => {
+    cycleRepeatMode();
+    window.dispatchEvent(new CustomEvent('audio-cycle-repeat'));
+  }, [cycleRepeatMode]);
+
+  const handleToggleMute = useCallback(() => {
+    if (isMuted) {
+      setIsMuted(false);
+      if (volume === 0) setVolume(0.5);
+    } else {
+      setIsMuted(true);
+    }
+    window.dispatchEvent(new CustomEvent('audio-toggle-mute'));
+  }, [isMuted, volume, setIsMuted, setVolume]);
+
+  const handleSeek = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const time = parseFloat(e.target.value);
+    setCurrentTime(time);
+    window.dispatchEvent(new CustomEvent('audio-seek', { detail: { time } }));
+  }, [setCurrentTime]);
+
+  const handleVolumeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const vol = parseFloat(e.target.value);
+    setVolume(vol);
+    if (vol > 0 && isMuted) {
+      setIsMuted(false);
+    }
+    window.dispatchEvent(new CustomEvent('audio-set-volume', { detail: { volume: vol } }));
+  }, [setVolume, isMuted, setIsMuted]);
+
+  const handleLineClick = useCallback((time: number) => {
+    if (!lyrics?.isSynced || time < 0) return;
+    const seekTime = Math.max(0, time - (lyricOffset / 1000));
+    setCurrentTime(seekTime);
+    window.dispatchEvent(new CustomEvent('audio-seek', { detail: { time: seekTime } }));
+  }, [lyrics?.isSynced, lyricOffset, setCurrentTime]);
+
+  // ── Keyboard Shortcuts (Esc to exit, Space to play/pause, Arrows for seek/volume) ──
   useEffect(() => {
     if (!isFullscreenPlayerOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't intercept if user is typing in an input
-      if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return;
+      // Don't intercept if user is typing in a text field
+      const tagName = (e.target as HTMLElement)?.tagName;
+      const isInputText = tagName === 'TEXTAREA' || (tagName === 'INPUT' && (e.target as HTMLInputElement).type === 'text');
+      if (isInputText) return;
 
       if (e.key === 'Escape') {
         e.preventDefault();
@@ -107,7 +184,37 @@ export function FullscreenPlayer() {
         }
       } else if (e.key === ' ' || e.code === 'Space') {
         e.preventDefault();
-        window.dispatchEvent(new CustomEvent('audio-toggle-play'));
+        handleTogglePlay();
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        if (e.ctrlKey || e.metaKey || e.shiftKey) {
+          handleNext();
+        } else {
+          const target = Math.min(effectiveDuration, currentTime + 5);
+          setCurrentTime(target);
+          window.dispatchEvent(new CustomEvent('audio-seek', { detail: { time: target } }));
+        }
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        if (e.ctrlKey || e.metaKey || e.shiftKey) {
+          handlePrev();
+        } else {
+          const target = Math.max(0, currentTime - 5);
+          setCurrentTime(target);
+          window.dispatchEvent(new CustomEvent('audio-seek', { detail: { time: target } }));
+        }
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        const nextVol = Math.min(1, Math.round((volume + 0.05) * 100) / 100);
+        setVolume(nextVol);
+        if (isMuted) setIsMuted(false);
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        const nextVol = Math.max(0, Math.round((volume - 0.05) * 100) / 100);
+        setVolume(nextVol);
+      } else if (e.key.toLowerCase() === 'm') {
+        e.preventDefault();
+        handleToggleMute();
       } else if (e.key.toLowerCase() === 'l') {
         setFullscreenMode(fullscreenMode === 'lyrics' ? 'artwork' : 'lyrics');
       }
@@ -115,7 +222,22 @@ export function FullscreenPlayer() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isFullscreenPlayerOpen, fullscreenMode, setFullscreenMode, setFullscreenPlayerOpen]);
+  }, [
+    isFullscreenPlayerOpen, 
+    fullscreenMode, 
+    setFullscreenMode, 
+    setFullscreenPlayerOpen, 
+    handleTogglePlay, 
+    handleNext, 
+    handlePrev, 
+    currentTime, 
+    effectiveDuration, 
+    setCurrentTime, 
+    volume, 
+    setVolume, 
+    isMuted, 
+    handleToggleMute
+  ]);
 
   // ── Synced Lyrics Current Line ──
   const getActiveLineIndex = useCallback(() => {
@@ -145,30 +267,6 @@ export function FullscreenPlayer() {
     }
   }, [activeLineIndex, lyrics?.isSynced, fullscreenMode]);
 
-  // Playback control event dispatchers
-  const handleTogglePlay = () => window.dispatchEvent(new CustomEvent('audio-toggle-play'));
-  const handleNext = () => window.dispatchEvent(new CustomEvent('audio-next'));
-  const handlePrev = () => window.dispatchEvent(new CustomEvent('audio-prev'));
-  const handleToggleShuffle = () => window.dispatchEvent(new CustomEvent('audio-toggle-shuffle'));
-  const handleCycleRepeat = () => window.dispatchEvent(new CustomEvent('audio-cycle-repeat'));
-  const handleToggleMute = () => window.dispatchEvent(new CustomEvent('audio-toggle-mute'));
-
-  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const time = parseFloat(e.target.value);
-    window.dispatchEvent(new CustomEvent('audio-seek', { detail: { time } }));
-  };
-
-  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const vol = parseFloat(e.target.value);
-    window.dispatchEvent(new CustomEvent('audio-set-volume', { detail: { volume: vol } }));
-  };
-
-  const handleLineClick = (time: number) => {
-    if (!lyrics?.isSynced || time < 0) return;
-    const seekTime = Math.max(0, time - (lyricOffset / 1000));
-    window.dispatchEvent(new CustomEvent('audio-seek', { detail: { time: seekTime } }));
-  };
-
   if (!isFullscreenPlayerOpen) return null;
 
   const headerTitle = selectedPlaylist?.name 
@@ -197,6 +295,8 @@ export function FullscreenPlayer() {
 
       {/* ── Top Bar ── */}
       <header 
+        onMouseEnter={() => { isHoveringControlsRef.current = true; resetIdleTimer(); }}
+        onMouseLeave={() => { isHoveringControlsRef.current = false; scheduleIdleTimer(); }}
         className={`relative z-20 flex items-center justify-between px-8 py-6 transition-all duration-700 ${
           isIdle ? 'opacity-0 -translate-y-6 pointer-events-none' : 'opacity-100 translate-y-0 pointer-events-auto'
         }`}
@@ -325,6 +425,8 @@ export function FullscreenPlayer() {
 
       {/* ── Bottom Persistent Transport Bar ── */}
       <footer 
+        onMouseEnter={() => { isHoveringControlsRef.current = true; resetIdleTimer(); }}
+        onMouseLeave={() => { isHoveringControlsRef.current = false; scheduleIdleTimer(); }}
         className={`relative z-20 px-8 py-6 transition-all duration-700 bg-gradient-to-t from-black/90 via-black/60 to-transparent ${
           isIdle ? 'opacity-0 translate-y-8 pointer-events-none' : 'opacity-100 translate-y-0 pointer-events-auto'
         }`}
@@ -344,6 +446,7 @@ export function FullscreenPlayer() {
                 step={0.1}
                 value={currentTime}
                 onChange={handleSeek}
+                onPointerDown={() => { isHoveringControlsRef.current = true; resetIdleTimer(); }}
                 disabled={!currentTrack}
                 style={{
                   background: `linear-gradient(to right, ${accentHex} 0%, ${accentHex} ${progressPercent}%, rgba(255,255,255,0.2) ${progressPercent}%, rgba(255,255,255,0.2) 100%)`,
@@ -370,7 +473,7 @@ export function FullscreenPlayer() {
                 />
               )}
               <div className="min-w-0">
-                <p className="text-sm font-bold text-white truncate">{currentTrack?.title || 'No Track'}</p>
+                <p className="text-sm font-bold text-white truncate">{currentTrack?.title || 'No Track Selected'}</p>
                 <p className="text-xs text-neutral-400 truncate">{currentTrack?.artist || 'Unknown Artist'}</p>
               </div>
               {currentTrack && (
@@ -396,25 +499,28 @@ export function FullscreenPlayer() {
               </button>
 
               <button 
-                onClick={handlePrev}
-                className="text-neutral-300 hover:text-white transition-colors p-1"
-                title="Previous Track"
+                onClick={handlePrevTrack}
+                disabled={!currentTrack && tracks.length === 0}
+                className="text-neutral-300 hover:text-white transition-colors p-1 disabled:opacity-30 disabled:cursor-not-allowed"
+                title="Previous Track (Left Arrow / Ctrl+Left)"
               >
                 <SkipBack fill="currentColor" size={20} />
               </button>
 
               <button
                 onClick={handleTogglePlay}
-                className="w-12 h-12 rounded-full bg-white hover:scale-105 active:scale-95 text-black flex items-center justify-center transition-all shadow-xl"
-                title={isPlaying ? 'Pause' : 'Play'}
+                disabled={!currentTrack && tracks.length === 0}
+                className="w-12 h-12 rounded-full bg-white hover:scale-105 active:scale-95 text-black flex items-center justify-center transition-all shadow-xl disabled:opacity-40 disabled:cursor-not-allowed"
+                title={isPlaying ? 'Pause (Space)' : 'Play (Space)'}
               >
                 {isPlaying ? <Pause fill="black" size={22} /> : <Play fill="black" size={22} className="ml-0.5" />}
               </button>
 
               <button 
-                onClick={handleNext}
-                className="text-neutral-300 hover:text-white transition-colors p-1"
-                title="Next Track"
+                onClick={handleNextTrack}
+                disabled={!currentTrack && tracks.length === 0}
+                className="text-neutral-300 hover:text-white transition-colors p-1 disabled:opacity-30 disabled:cursor-not-allowed"
+                title="Next Track (Right Arrow / Ctrl+Right)"
               >
                 <SkipForward fill="currentColor" size={20} />
               </button>
@@ -445,15 +551,15 @@ export function FullscreenPlayer() {
                   fullscreenMode === 'lyrics' ? 'bg-white/20 text-white' : 'text-neutral-400 hover:text-white'
                 }`}
                 style={{ color: fullscreenMode === 'lyrics' ? accentHex : undefined }}
-                title={fullscreenMode === 'lyrics' ? 'Switch to Artwork' : 'Switch to Lyrics'}
+                title={fullscreenMode === 'lyrics' ? 'Switch to Artwork (L)' : 'Switch to Lyrics (L)'}
               >
                 <Mic2 size={18} />
               </button>
 
               <button 
                 onClick={handleToggleMute}
-                className="text-neutral-400 hover:text-white transition-colors"
-                title={isMuted ? 'Unmute' : 'Mute'}
+                className="text-neutral-400 hover:text-white transition-colors p-1"
+                title={isMuted ? 'Unmute (M)' : 'Mute (M)'}
               >
                 {isMuted || volume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}
               </button>
@@ -465,11 +571,13 @@ export function FullscreenPlayer() {
                 step={0.01}
                 value={isMuted ? 0 : volume}
                 onChange={handleVolumeChange}
+                onPointerDown={() => { isHoveringControlsRef.current = true; resetIdleTimer(); }}
                 style={{
                   background: `linear-gradient(to right, ${accentHex} 0%, ${accentHex} ${volPercent}%, rgba(255,255,255,0.2) ${volPercent}%, rgba(255,255,255,0.2) 100%)`,
                   accentColor: accentHex,
                 }}
                 className="w-24 h-1.5 rounded-full appearance-none cursor-pointer focus:outline-hidden transition-all"
+                title={`Volume: ${Math.round((isMuted ? 0 : volume) * 100)}% (Up/Down Arrow)`}
               />
 
               <button

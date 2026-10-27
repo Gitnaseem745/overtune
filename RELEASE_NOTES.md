@@ -2,6 +2,25 @@
 
 ---
 
+## 🎵 Desktop v0.2.3 & 📱 Mobile Update — Fullscreen Player Controls & Quality Fix (2026-10-27)
+
+This patch release resolves playback control issues in the desktop fullscreen player, adds global keyboard navigation shortcuts, enhances transport bar hover behavior, and updates standalone mobile APK build workflows.
+
+### 🌟 Key Highlights & Fixes
+
+#### 🖥️ Overtone Desktop v0.2.3
+- **Fixed Fullscreen Playback Controls**: Re-engineered fullscreen player controls (`FullscreenPlayer.tsx`) to directly invoke Zustand store actions (`setIsPlaying`, `handleNext`, `handlePrev`, `setShuffleOn`, `cycleRepeatMode`, `setVolume`, `setIsMuted`, `setCurrentTime`). All controls (Play/Pause, Next/Forward, Previous, Repeat, Shuffle, Mute, Volume slider, and Seek slider) now respond immediately.
+- **AudioEngine Global Event Dispatchers**: Added comprehensive global audio event listeners (`audio-toggle-play`, `audio-play`, `audio-pause`, `audio-next`, `audio-prev`, `audio-toggle-shuffle`, `audio-cycle-repeat`, `audio-toggle-mute`, `audio-set-volume`, `audio-seek`) in `AudioEngine.tsx` for robust decoupled control and external dispatchers.
+- **Immediate Scrubbing in Paused State**: Enhanced `audio-seek` handling to synchronize `currentTime` in the store instantly so time displays and lyrics respond while audio is paused.
+- **Expanded Fullscreen Keyboard Shortcuts**: Added keyboard navigation while in fullscreen: <kbd>Space</kbd> for play/pause, <kbd>→</kbd> / <kbd>←</kbd> for seek forward/backward (or next/prev with modifier), <kbd>↑</kbd> / <kbd>↓</kbd> for volume adjustment, and <kbd>M</kbd> for mute toggle.
+- **Persistent Controls on Hover**: Improved the 5-second idle inactivity timer to prevent controls and sliders from disappearing while the user's cursor is hovering over or interacting with transport bars.
+
+#### 📱 Mobile Companion App
+- **Files App Storage & Import Pipeline**: Enhanced local storage support in iOS Files app / Android storage and optimized track loading without playback latency.
+- **Sleek UI Playlist & Player Polish**: Refined playlist header layouts, action sheets, and modal components for seamless touch navigation.
+
+---
+
 ## 📱 Overtone iOS Companion App v1.0.1 & 🎵 Desktop v0.2.2 — Cross-Device Streaming & Quality Release (2026-10-16)
 
 This major release introduces robust multi-device synchronization, seamless iPhone streaming from desktop players, auto-healing SQLite audio databases, responsive mobile action bars, and essential desktop playlist and track management improvements.

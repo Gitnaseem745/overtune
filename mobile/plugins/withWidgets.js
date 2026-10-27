@@ -13,6 +13,14 @@ function withWidgets(config) {
   config = withInfoPlist(config, (config) => {
     config.modResults.NSSupportsLiveActivities = true;
     config.modResults.NSSupportsLiveActivitiesFrequentUpdates = true;
+    config.modResults.UIFileSharingEnabled = true;
+    config.modResults.LSSupportsOpeningDocumentsInPlace = true;
+
+    const schemes = config.modResults.LSApplicationQueriesSchemes || [];
+    if (!schemes.includes('shareddocuments')) {
+      schemes.push('shareddocuments');
+    }
+    config.modResults.LSApplicationQueriesSchemes = schemes;
 
     const bgModes = config.modResults.UIBackgroundModes || [];
     if (!bgModes.includes('audio')) {

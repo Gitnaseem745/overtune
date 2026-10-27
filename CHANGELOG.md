@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.2.3] - 2026-10-27 — Patch: Fullscreen Player Controls & Quality Fix
+
+### Fixed
+- **Fullscreen Playback Controls**: Rewired `FullscreenPlayer.tsx` to bind directly to Zustand store actions (`setIsPlaying`, `handleNext`, `handlePrev`, `setShuffleOn`, `cycleRepeatMode`, `setVolume`, `setIsMuted`, `setCurrentTime`, `playTrack`), resolving non-functioning play/pause, next, previous, shuffle, repeat, mute, and volume buttons.
+- **AudioEngine Event Bus**: Added global CustomEvent listeners in `AudioEngine.tsx` for `audio-toggle-play`, `audio-play`, `audio-pause`, `audio-next`, `audio-prev`, `audio-toggle-shuffle`, `audio-cycle-repeat`, `audio-toggle-mute`, and `audio-set-volume`.
+- **Seek Scrubbing While Paused**: Fixed `audio-seek` to update `currentTime` in the player store immediately so timeline progress and synced lyrics respond when paused.
+- **Fullscreen Inactivity Timer**: Prevented the 5-second inactivity timer from fading out controls while the user is actively hovering or adjusting sliders.
+
+### Added
+- **Fullscreen Keyboard Shortcuts**: Added keyboard navigation for <kbd>Space</kbd> (play/pause), <kbd>→</kbd> / <kbd>←</kbd> (seek forward/back), <kbd>↑</kbd> / <kbd>↓</kbd> (volume +/-), and <kbd>M</kbd> (mute toggle).
+
+---
+
 ## [1.0.1-mobile] - 2026-10-16 — Patch: Cross-Device Audio Streaming & Safe Area Enhancements
 
 ### Fixed

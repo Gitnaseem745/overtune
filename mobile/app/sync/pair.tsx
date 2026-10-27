@@ -15,8 +15,8 @@ import {
   Pressable,
   ActivityIndicator,
   ScrollView,
-  Alert,
 } from 'react-native';
+import { SleekAlert } from '../../src/components/sleek/SleekAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
@@ -109,7 +109,7 @@ export default function PairScreen() {
         );
       }
 
-      Alert.alert(
+      SleekAlert.alert(
         'Connected!',
         `Successfully paired with ${res.hostDeviceName || 'Desktop'}. You can now exchange playlists.`,
         [{ text: 'OK', onPress: () => router.back() }]

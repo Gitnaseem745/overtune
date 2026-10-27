@@ -1294,7 +1294,7 @@ export function SettingsModal() {
                   <OvertoneLogo size={48} />
                   <div>
                     <h3 className="text-base font-extrabold tracking-tight">Overtone</h3>
-                    <p className="text-xs text-amber-500 font-bold">Version 0.2.2 • Personal Music Hub</p>
+                    <p className="text-xs text-amber-500 font-bold">Version 0.2.3 • Personal Music Hub</p>
                     <p className={`text-[11px] ${isDark ? 'text-neutral-400' : 'text-gray-500'} mt-0.5`}>
                       Local-first desktop music player with Spotify-grade UI and offline reliability.
                     </p>

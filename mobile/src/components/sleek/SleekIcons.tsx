@@ -442,4 +442,29 @@ export function SleekDownloadedIcon({ size = 14, color = '#FFFFFF', fill = '#D97
   );
 }
 
+/** 32. Alert / Warning Triangle icon */
+export function SleekAlertTriangleIcon({ size = 20, color = '#D97706' }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M10.29 3.86L1.82 18C1.64 18.3 1.55 18.65 1.55 19C1.55 19.35 1.64 19.7 1.82 20C2 20.3 2.26 20.56 2.57 20.73C2.88 20.9 3.23 21 3.58 21H20.42C20.77 21 21.12 20.9 21.43 20.73C21.74 20.56 22 20.3 22.18 20C22.36 19.7 22.45 19.35 22.45 19C22.45 18.65 22.36 18.3 22.18 18L13.71 3.86C13.53 3.55 13.27 3.3 12.96 3.12C12.65 2.95 12.3 2.85 11.95 2.85C11.6 2.85 11.25 2.95 10.94 3.12C10.63 3.3 10.37 3.55 10.19 3.86H10.29Z"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path d="M12 9V13" stroke={color} strokeWidth="2" strokeLinecap="round" />
+      <Circle cx="12" cy="17" r="1" fill={color} />
+    </Svg>
+  );
+}
 
+/** 33. Info Circle icon */
+export function SleekInfoIcon({ size = 20, color = '#D97706' }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Circle cx="12" cy="12" r="10" stroke={color} strokeWidth="2" />
+      <Path d="M12 16V12M12 8H12.01" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    </Svg>
+  );
+}

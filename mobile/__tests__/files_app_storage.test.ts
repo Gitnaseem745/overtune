@@ -127,4 +127,123 @@ describe('Files App Storage & Sharing Service', () => {
       to: `${MUSIC_DIR}Song in Internal Audio.mp3`,
     });
   });
+
+  it('exports full playlist into a dedicated folder with .m3u8 playlist file', async () => {
+    (FileSystem.getInfoAsync as any).mockResolvedValue({ exists: false });
+    (FileSystem.makeDirectoryAsync as any).mockResolvedValue(undefined);
+    (FileSystem.copyAsync as any).mockResolvedValue(undefined);
+    (FileSystem.writeAsStringAsync as any).mockResolvedValue(undefined);
+
+    const playlistTracks: MobileTrack[] = [
+      {
+        id: 1,
+        title: 'Song One',
+        artistId: null,
+        albumId: null,
+        fileUri: `${MUSIC_DIR}Song One.mp3`,
+        duration: 180,
+        trackNumber: 1,
+        genre: null,
+        fileHash: null,
+        artworkUri: null,
+        fileSize: 4000,
+        format: 'mp3',
+        sampleRate: 44100,
+        bitRate: 320,
+        channels: 2,
+        importedAt: '2026-10-15T00:00:00.000Z',
+        lastPlayedAt: null,
+      },
+      {
+        id: 2,
+        title: 'Song Two',
+        artistId: null,
+        albumId: null,
+        fileUri: `${MUSIC_DIR}Song Two.mp3`,
+        duration: 210,
+        trackNumber: 2,
+        genre: null,
+        fileHash: null,
+        artworkUri: null,
+        fileSize: 5000,
+        format: 'mp3',
+        sampleRate: 44100,
+        bitRate: 320,
+        channels: 2,
+        importedAt: '2026-10-15T00:00:00.000Z',
+        lastPlayedAt: null,
+      },
+    ];
+
+    const res = await FileImportService.exportPlaylistFolderToFiles('Summer Vibes', playlistTracks);
+    expect(res.exportedCount).toBe(2);
+    expect(res.folderUri).toContain(`${MUSIC_DIR}Summer Vibes/`);
+    expect(FileSystem.makeDirectoryAsync).toHaveBeenCalledWith(
+      `${MUSIC_DIR}Summer Vibes/`,
+      { intermediates: true }
+    );
+    expect(FileSystem.writeAsStringAsync).toHaveBeenCalledWith(
+      `${MUSIC_DIR}Summer Vibes/Summer Vibes.m3u8`,
+      expect.stringContaining('#EXTM3U')
+    );
+  });
+
+  it('shares all songs in a playlist as a single .zip archive', async () => {
+    (Sharing.isAvailableAsync as any).mockResolvedValueOnce(true);
+    (Sharing.shareAsync as any).mockResolvedValueOnce(undefined);
+    (FileSystem.getInfoAsync as any).mockResolvedValue({ exists: true });
+    (FileSystem.readAsStringAsync as any).mockResolvedValue('AAAA');
+    (FileSystem.writeAsStringAsync as any).mockResolvedValue(undefined);
+
+    const playlistTracks: MobileTrack[] = [
+      {
+        id: 10,
+        title: 'First Track',
+        artistId: null,
+        albumId: null,
+        fileUri: `${MUSIC_DIR}First Track.mp3`,
+        duration: 150,
+        trackNumber: 1,
+        genre: null,
+        fileHash: null,
+        artworkUri: null,
+        fileSize: 3000,
+        format: 'mp3',
+        sampleRate: 44100,
+        bitRate: 320,
+        channels: 2,
+        importedAt: '2026-10-15T00:00:00.000Z',
+        lastPlayedAt: null,
+      },
+      {
+        id: 11,
+        title: 'Second Track',
+        artistId: null,
+        albumId: null,
+        fileUri: `${MUSIC_DIR}Second Track.mp3`,
+        duration: 200,
+        trackNumber: 2,
+        genre: null,
+        fileHash: null,
+        artworkUri: null,
+        fileSize: 4500,
+        format: 'mp3',
+        sampleRate: 44100,
+        bitRate: 320,
+        channels: 2,
+        importedAt: '2026-10-15T00:00:00.000Z',
+        lastPlayedAt: null,
+      },
+    ];
+
+    const shared = await FileImportService.sharePlaylistArchive('Workout Mix', playlistTracks);
+    expect(shared).toBe(true);
+    expect(Sharing.shareAsync).toHaveBeenCalledWith(
+      expect.stringContaining('Workout Mix.zip'),
+      expect.objectContaining({
+        mimeType: 'application/zip',
+        UTI: 'public.zip-archive',
+      })
+    );
+  });
 });

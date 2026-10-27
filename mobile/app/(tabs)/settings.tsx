@@ -14,8 +14,8 @@ import {
   Pressable,
   Switch,
   TextInput,
-  Alert,
 } from 'react-native';
+import { SleekAlert } from '../../src/components/sleek/SleekAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
@@ -86,7 +86,7 @@ export default function SettingsScreen() {
   }, [loadSettingsData]);
 
   const handleRevokeDevice = (device: PairedDevice) => {
-    Alert.alert(
+    SleekAlert.alert(
       'Disconnect Desktop',
       `Are you sure you want to disconnect from "${device.name}"? Pairing credentials will be removed.`,
       [

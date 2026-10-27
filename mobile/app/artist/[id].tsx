@@ -55,27 +55,6 @@ export default function ArtistDetailScreen() {
     setFavorites(db.favorites.getIds());
   }, [db.isReady, id]);
 
-  if (!artist) {
-    return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-        <EmptyState icon="🎤" title="Artist Not Found" message="This artist has no tracks." />
-      </SafeAreaView>
-    );
-  }
-
-  const handlePlayAll = () => {
-    if (tracks.length === 0) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    loadAndPlay(tracks[0], tracks, 0);
-  };
-
-  const handleShuffleAll = () => {
-    if (tracks.length === 0) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    const randomIndex = Math.floor(Math.random() * tracks.length);
-    loadAndPlay(tracks[randomIndex], tracks, randomIndex);
-  };
-
   const handlePlayTrack = useCallback(
     (track: MobileTrack) => {
       const index = tracks.findIndex((t) => t.id === track.id);
@@ -84,7 +63,7 @@ export default function ArtistDetailScreen() {
     [loadAndPlay, tracks]
   );
 
-  const getArtistName = useCallback(() => artist.name, [artist.name]);
+  const getArtistName = useCallback(() => artist?.name || 'Unknown Artist', [artist?.name]);
 
   const renderTrackItem = useCallback(
     ({ item }: { item: MobileTrack }) => (
@@ -107,6 +86,27 @@ export default function ArtistDetailScreen() {
     }),
     []
   );
+
+  if (!artist) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <EmptyState icon="🎤" title="Artist Not Found" message="This artist has no tracks." />
+      </SafeAreaView>
+    );
+  }
+
+  const handlePlayAll = () => {
+    if (tracks.length === 0) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    loadAndPlay(tracks[0], tracks, 0);
+  };
+
+  const handleShuffleAll = () => {
+    if (tracks.length === 0) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const randomIndex = Math.floor(Math.random() * tracks.length);
+    loadAndPlay(tracks[randomIndex], tracks, randomIndex);
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>

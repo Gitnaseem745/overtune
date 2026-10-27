@@ -187,8 +187,33 @@ export class TrackRepository {
     fileSize?: number,
     artworkUri?: string
   ): boolean {
+    let finalUri = fileUri;
+    try {
+      let candidate = fileUri;
+      let counter = 1;
+      while (true) {
+        const existing = this.db.getFirstSync(
+          'SELECT id FROM tracks WHERE file_uri = ? AND id != ? LIMIT 1',
+          [candidate, id]
+        );
+        if (!existing) {
+          finalUri = candidate;
+          break;
+        }
+        const dotIndex = fileUri.lastIndexOf('.');
+        if (dotIndex > 0) {
+          const base = fileUri.substring(0, dotIndex);
+          const ext = fileUri.substring(dotIndex);
+          candidate = `${base} (${id}${counter > 1 ? `_${counter}` : ''})${ext}`;
+        } else {
+          candidate = `${fileUri}_${id}${counter > 1 ? `_${counter}` : ''}`;
+        }
+        counter++;
+      }
+    } catch { /* ignore */ }
+
     const fields = ['file_uri = ?'];
-    const values: any[] = [fileUri];
+    const values: any[] = [finalUri];
     if (format) {
       fields.push('format = ?');
       values.push(format);
@@ -202,11 +227,16 @@ export class TrackRepository {
       values.push(artworkUri);
     }
     values.push(id);
-    const result = this.db.runSync(
-      `UPDATE tracks SET ${fields.join(', ')} WHERE id = ?`,
-      values
-    );
-    return result.changes > 0;
+    try {
+      const result = this.db.runSync(
+        `UPDATE tracks SET ${fields.join(', ')} WHERE id = ?`,
+        values
+      );
+      return result.changes > 0;
+    } catch (err) {
+      console.warn('[TrackRepository] updateFileUri warning:', err);
+      return false;
+    }
   }
 
   delete(id: number): boolean {

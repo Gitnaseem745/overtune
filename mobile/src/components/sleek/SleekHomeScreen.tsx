@@ -16,8 +16,8 @@ import {
   ScrollView,
   Pressable,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
+import { SleekAlert } from './SleekAlert';
 import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
@@ -202,7 +202,7 @@ export function SleekHomeScreen({ userName: propUserName }: SleekHomeScreenProps
                 const imp = SyncService.importPlaylistWithTracks(dev, playlistName, tracks, db);
                 loadData();
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                Alert.alert(
+                SleekAlert.alert(
                   'Received Playlist from Desktop',
                   `"${playlistName}" (${imp.totalTracks} songs) was imported to your Library!`,
                   [
@@ -217,7 +217,7 @@ export function SleekHomeScreen({ userName: propUserName }: SleekHomeScreenProps
                 SyncService.importSingleTrack(dev, track, db);
                 loadData();
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                Alert.alert(
+                SleekAlert.alert(
                   'Received Song from Desktop',
                   `"${track.title}" by ${track.artist || 'Unknown Artist'} was added to your Library!`
                 );
@@ -296,7 +296,7 @@ export function SleekHomeScreen({ userName: propUserName }: SleekHomeScreenProps
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
     } catch (err: any) {
-      Alert.alert('Handoff Failed', err?.message || 'Could not transfer playback to iPhone');
+      SleekAlert.alert('Handoff Failed', err?.message || 'Could not transfer playback to iPhone');
     } finally {
       setIsHandoffLoading(false);
     }
@@ -364,7 +364,7 @@ export function SleekHomeScreen({ userName: propUserName }: SleekHomeScreenProps
       setIsImporting(false);
 
       loadData();
-      Alert.alert(
+      SleekAlert.alert(
         'Import Completed',
         `Imported: ${result.imported} track${result.imported !== 1 ? 's' : ''}` +
           (result.duplicates ? `\nSkipped duplicates: ${result.duplicates}` : '') +
@@ -372,7 +372,7 @@ export function SleekHomeScreen({ userName: propUserName }: SleekHomeScreenProps
       );
     } catch (err: any) {
       setIsImporting(false);
-      Alert.alert('Import Failed', err?.message || 'Could not import audio files');
+      SleekAlert.alert('Import Failed', err?.message || 'Could not import audio files');
     }
   };
 
