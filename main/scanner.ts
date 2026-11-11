@@ -2,7 +2,7 @@ import chokidar from 'chokidar';
 import { getDb, addWatchedFolder, updateWatchedFolder, logScanError } from './db';
 import * as path from 'path';
 import * as fs from 'fs';
-import * as mm from 'music-metadata';
+import type { IPicture } from 'music-metadata';
 import crypto from 'crypto';
 import { app, BrowserWindow } from 'electron';
 
@@ -128,7 +128,7 @@ export function isAudioFile(filePath: string) {
   return supportedExtensions.includes(ext);
 }
 
-async function saveCoverArt(picture: mm.IPicture, albumId: number): Promise<string | null> {
+async function saveCoverArt(picture: IPicture, albumId: number): Promise<string | null> {
   try {
     const userDataPath = app.getPath('userData');
     const coversDir = path.join(userDataPath, 'covers');
@@ -154,7 +154,8 @@ export async function insertOrGetTrack(filePath: string): Promise<number | null>
   }
 
   try {
-    const metadata = await mm.parseFile(filePath);
+    const { parseFile } = await import('music-metadata');
+    const metadata = await parseFile(filePath);
     
     const title = metadata.common.title || path.basename(filePath, path.extname(filePath));
     const artistName = metadata.common.artist || 'Unknown Artist';

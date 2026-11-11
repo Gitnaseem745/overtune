@@ -97,7 +97,7 @@ overtune/
 │   ├── db.ts                   # SQLite schema, queries, favorites, playlist CRUD, ratings & tags
 │   ├── scanner.ts              # ID3 scanner, folder watcher (chokidar) & artwork cache
 │   ├── lyrics.ts               # LRC/TXT lyrics parser, sidecar matching & offset persistence
-│   ├── metadata-editor.ts      # Tag writing (node-id3), duplicate review & library health
+│   ├── metadata-editor.ts      # Tag writing (music-metadata), duplicate review & library health
 │   ├── shortcuts.ts            # Global keyboard shortcuts & conflict validation
 │   ├── tray.ts                 # System tray icon, playback controls & background minimize
 │   ├── diagnostics.ts          # Privacy-sanitized diagnostics & support bundle generation

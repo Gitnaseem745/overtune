@@ -2,7 +2,7 @@
  * Library Care & Metadata Tools Tests — Overtune v0.1.7
  * 
  * Tests database schema, watched folders, scan errors, metadata updating,
- * file tag writing with node-id3, duplicate detection, missing file tracking,
+ * file tag writing with music-metadata, duplicate detection, missing file tracking,
  * relink flow, and health report generation.
  */
 
@@ -12,7 +12,7 @@ const path = require('node:path');
 const fs = require('node:fs');
 const os = require('node:os');
 const Database = require('better-sqlite3');
-const NodeID3 = require('node-id3');
+
 
 describe('Library Care — Database Operations', () => {
   let db;
@@ -219,63 +219,36 @@ describe('Library Care — Database Operations', () => {
   });
 });
 
-describe('Library Care — File Tag Writing (node-id3)', () => {
+describe('Library Care — File Tag Writing (music-metadata)', () => {
   let tempDir;
   let testMp3Path;
-
-  before(() => {
+  before(async () => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'overtune-id3-test-'));
     testMp3Path = path.join(tempDir, 'sample.mp3');
-
-    // Create a valid MP3 file buffer with an initial ID3 tag
-    const initialTags = {
-      title: 'Original Title',
-      artist: 'Original Artist',
-      album: 'Original Album',
-      year: '2020',
-      trackNumber: '1',
-      genre: 'Rock'
-    };
-    
-    // Create an empty dummy buffer and write ID3 tags into it
-    const dummyAudioBuffer = Buffer.alloc(1024, 0);
-    const taggedBuffer = NodeID3.create(initialTags);
-    const fullBuffer = Buffer.concat([taggedBuffer, dummyAudioBuffer]);
-    fs.writeFileSync(testMp3Path, fullBuffer);
+    const audio = Buffer.alloc(417 * 4);
+    for (let i = 0; i < 4; i++) Buffer.from([255, 251, 144, 0]).copy(audio, i * 417);
+    fs.writeFileSync(testMp3Path, audio);
+    const { updateFile } = await import('music-metadata');
+    await updateFile(testMp3Path, { title: 'Original Title', artist: 'Original Artist', album: 'Original Album', year: 2020, track: { no: 1, of: 12 }, genre: 'Rock' });
   });
-
-  after(() => {
-    if (tempDir && fs.existsSync(tempDir)) {
-      fs.rmSync(tempDir, { recursive: true, force: true });
-    }
+  after(() => { if (tempDir) fs.rmSync(tempDir, { recursive: true, force: true }); });
+  it('reads initial ID3 tags', async () => {
+    const { parseFile } = await import('music-metadata');
+    const { common } = await parseFile(testMp3Path);
+    assert.equal(common.title, 'Original Title');
+    assert.equal(common.artist, 'Original Artist');
+    assert.equal(common.album, 'Original Album');
   });
-
-  it('should read initial ID3 tags from the test MP3', () => {
-    const tags = NodeID3.read(testMp3Path);
-    assert.equal(tags.title, 'Original Title');
-    assert.equal(tags.artist, 'Original Artist');
-    assert.equal(tags.album, 'Original Album');
-  });
-
-  it('should write and update ID3 tags using NodeID3.update', () => {
-    const updatedTags = {
-      title: 'Updated Title v0.1.7',
-      artist: 'Updated Artist',
-      album: 'Updated Album',
-      year: '2026',
-      trackNumber: '5',
-      genre: 'Electronic'
-    };
-
-    const updateSuccess = NodeID3.update(updatedTags, testMp3Path);
-    assert.equal(updateSuccess, true);
-
-    const tagsAfter = NodeID3.read(testMp3Path);
-    assert.equal(tagsAfter.title, 'Updated Title v0.1.7');
-    assert.equal(tagsAfter.artist, 'Updated Artist');
-    assert.equal(tagsAfter.album, 'Updated Album');
-    assert.equal(tagsAfter.year, '2026');
-    assert.equal(tagsAfter.trackNumber, '5');
-    assert.equal(tagsAfter.genre, 'Electronic');
+  it('updates selected tags while preserving track totals and audio', async () => {
+    const { updateFile } = await import('music-metadata');
+    const { parseFile } = await import('music-metadata');
+    const before = fs.readFileSync(testMp3Path).subarray(-417 * 4);
+    await updateFile(testMp3Path, { title: 'Updated Title', artist: 'Updated Artist', year: 2026, track: { no: 5 }, genre: 'Electronic' });
+    const { common } = await parseFile(testMp3Path);
+    assert.equal(common.title, 'Updated Title');
+    assert.equal(common.year, 2026);
+    assert.deepEqual(common.track, { no: 5, of: 12 });
+    assert.equal(common.genre[0], 'Electronic');
+    assert.deepEqual(fs.readFileSync(testMp3Path).subarray(-417 * 4), before);
   });
 });

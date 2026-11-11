@@ -577,7 +577,7 @@ export function LibraryCareView() {
                         Write ID3 tags directly into audio file (MP3)
                       </span>
                       <span className={`text-[11px] block mt-0.5 ${isDark ? 'text-neutral-400' : 'text-gray-500'}`}>
-                        When checked, ID3v2 tags are written to disk using node-id3. When unchecked, changes are safely stored in Overtune&apos;s catalog database without touching original files.
+                        When checked, ID3v2 tags are written to disk. When unchecked, changes are safely stored in Overtune&apos;s catalog database without touching original files.
                       </span>
                     </div>
                   </label>

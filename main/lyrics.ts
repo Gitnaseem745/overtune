@@ -1,6 +1,5 @@
 import * as path from 'path';
 import * as fs from 'fs';
-import * as mm from 'music-metadata';
 import { getLyricOffset } from './db';
 
 // ── Types ─────────────────────────────────────────────────────────────
@@ -132,7 +131,8 @@ function findSidecarLyricFile(trackPath: string): { filePath: string; type: 'lrc
  */
 async function readEmbeddedLyrics(trackPath: string): Promise<{ content: string; isSynced: boolean } | null> {
   try {
-    const metadata = await mm.parseFile(trackPath);
+    const { parseFile } = await import('music-metadata');
+    const metadata = await parseFile(trackPath);
     const lyrics = metadata.common.lyrics;
 
     if (lyrics && lyrics.length > 0) {

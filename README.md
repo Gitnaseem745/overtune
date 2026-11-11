@@ -228,7 +228,7 @@ Crafted natively for iPhone with fluid 3D perspective transitions, radial arc vo
 ### 🛡️ Library Care & Metadata Tools
 - **Library Scan Dashboard:** Real-time visibility into monitored folders, tracked audio counts, last scan timestamps, one-click folder rescan, safe folder removal, and structured error logs.
 - **Safe Metadata Editor:** Edit track title, artist, album, track number, year, and genre. Choose between 100% risk-free catalog-only updates or direct file tag writes.
-- **Direct ID3v2 Tag Writing:** Integrated `node-id3` tag writing for MP3 audio files with explicit confirmation and safety guards.
+- **Direct ID3v2 Tag Writing:** Integrated `music-metadata` tag writing for MP3 audio files with explicit confirmation and safety guards.
 - **Album Artwork Manager:** Browse album cover art with filters for missing covers, one-click artwork replacement with automatic app cover cache and optional file embedding.
 - **Deduplication Review:** SHA-256 cryptographic file hashing detects identical audio tracks. Inspect paths, open directly in Explorer, and cleanly remove duplicates from the library without touching disk files.
 - **Missing File Recovery:** Flags tracks whose disk paths are broken (moved or renamed files) with an interactive relink dialog.
@@ -340,7 +340,7 @@ Overtone on iOS is built from the ground up as a native-grade mobile companion w
 graph TD
     subgraph Electron Main Process [Electron 32 Main Process]
         Scanner[Folder Scanner & Chokidar Watcher]
-        Metadata[music-metadata & node-id3 Parser]
+        Metadata[music-metadata Parser]
         SQLite[(better-sqlite3 WAL Database)]
         Protocol[Custom local:// Protocol HTTP 206 Streaming]
         BackupEngine[Backup & Migration Engine]
@@ -388,7 +388,7 @@ graph TD
 | **State Management** | [Zustand 5](https://github.com/pmndrs/zustand) | Lightweight, reactive centralized state store |
 | **Styling & Icons** | [Tailwind CSS 4](https://tailwindcss.com/) & [Lucide](https://lucide.dev/) | Utility-first responsive design & crisp iconography |
 | **Database** | [better-sqlite3](https://github.com/WiseLibs/better-sqlite3) | Synchronous, ultra-fast local SQLite storage in WAL mode |
-| **Metadata & Tagging** | [music-metadata](https://github.com/Borewit/music-metadata) & [node-id3](https://github.com/Zazama/node-id3) | Audio metadata parsing & direct ID3v2 tag writing |
+| **Metadata & Tagging** | [music-metadata](https://github.com/Borewit/music-metadata) | Audio metadata parsing & direct ID3v2 tag writing |
 | **Directory Watching**| [chokidar 3](https://github.com/paulmillr/chokidar) | Incremental filesystem change monitoring |
 | **Packaging** | [electron-builder](https://www.electron.build/) | NSIS Windows installer generation & bundling |
 | **Test Runner** | Node.js Test Runner | Native unit test suite with 90/90 passing tests |
@@ -424,7 +424,7 @@ overtune/
 │   ├── db.ts                   # SQLite schema, queries, favorites, playlist CRUD & M3U
 │   ├── scanner.ts              # ID3 scanner, folder watcher & artwork cache
 │   ├── lyrics.ts               # LRC/TXT parser, sidecar matching & embedded lyrics reader
-│   ├── metadata-editor.ts      # Tag editing & node-id3 writing
+│   ├── metadata-editor.ts      # Tag editing & music-metadata writing
 │   ├── backup.ts               # overtone-backup v1.0 JSON export/import & rollback snapshots
 │   ├── device-sync.ts          # Local-network Wi-Fi P2P device synchronization server
 │   ├── migration.ts            # Versioned schema migrations & library relocation wizard

@@ -1,12 +1,13 @@
 import * as path from 'path';
 import * as fs from 'fs';
-import NodeID3 from 'node-id3';
+import type { TagPatch } from 'music-metadata';
+import { writeMp3Tags } from './mp3-tags';
 import { getDb, updateTrackMetadataCatalog, type TrackMetadataUpdate } from './db';
 import { app, dialog, shell } from 'electron';
 
 // ── File Tag Writing ─────────────────────────────────────────────────
 // Writes metadata changes back into audio file tags where supported.
-// Uses node-id3 for MP3 ID3v2 tags, with catalog updates always persisted.
+// Uses music-metadata for MP3 tags, with catalog updates always persisted.
 
 /**
  * Update track metadata in both the Overtune catalog and optionally
@@ -46,27 +47,18 @@ export async function updateTrackMetadata(
   const ext = path.extname(track.path).toLowerCase();
   if (ext === '.mp3') {
     try {
-      const tags: NodeID3.Tags = {};
+      const tags: TagPatch = {};
       if (fields.title !== undefined) tags.title = fields.title;
       if (fields.artist !== undefined) tags.artist = fields.artist;
       if (fields.album !== undefined) tags.album = fields.album;
       if (fields.track_number !== undefined && fields.track_number !== null) {
-        tags.trackNumber = String(fields.track_number);
+        tags.track = { no: fields.track_number };
       }
       if (fields.genre !== undefined && fields.genre !== null) tags.genre = fields.genre;
-      if (fields.year !== undefined && fields.year !== null) tags.year = String(fields.year);
+      if (fields.year !== undefined && fields.year !== null) tags.year = Number(fields.year);
 
-      const writeResult = NodeID3.update(tags, track.path);
-      if (writeResult === true) {
-        return { success: true, catalogUpdated: true, fileUpdated: true };
-      } else {
-        return {
-          success: true,
-          catalogUpdated: true,
-          fileUpdated: false,
-          error: 'Could not write ID3 tags to file. Catalog was updated.',
-        };
-      }
+      await writeMp3Tags(track.path, tags);
+      return { success: true, catalogUpdated: true, fileUpdated: true };
     } catch (err) {
       return {
         success: true,
@@ -193,12 +185,14 @@ export async function replaceAlbumArtworkDialog(
 
   if (writeToFile) {
     try {
+      const data = fs.readFileSync(destPath);
+      const formats: Record<string, string> = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.bmp': 'image/bmp' };
+      const format = formats[path.extname(destPath).toLowerCase()];
+      if (!format) throw new Error('Unrecognized artwork format');
       const tracks = db.prepare(`SELECT path FROM tracks WHERE album_id = ?`).all(albumId) as Array<{ path: string }>;
       for (const t of tracks) {
         if (path.extname(t.path).toLowerCase() === '.mp3' && fs.existsSync(t.path)) {
-          NodeID3.update({
-            image: destPath,
-          }, t.path);
+          await writeMp3Tags(t.path, { picture: [{ format, type: 'Cover (front)', data }] });
         }
       }
     } catch (e) {
